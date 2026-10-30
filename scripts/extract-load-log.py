@@ -3,7 +3,7 @@ import argparse
 from pathlib import Path
 import re
 
-RELEVANT = re.compile(r"DeepSpaceAE|deepspaceae|Harmony|Exception|\bError\b|ModLoader|ModHook|LocHelper|localization|missing translation|no translation found", re.IGNORECASE)
+RELEVANT = re.compile(r"DeepSpaceAE|deepspaceae|Harmony|Exception|\bError\b|ModLoader|ModHook|LocHelper|localization|missing translation|no translation found|font asset|text object", re.IGNORECASE)
 
 
 def console_glyph_warning(line):

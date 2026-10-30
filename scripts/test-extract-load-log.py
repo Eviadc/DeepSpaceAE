@@ -20,6 +20,7 @@ class LogExtractionTests(unittest.TestCase):
     def test_other_fonts_objects_and_real_errors_are_kept(self):
         for line in (WARNING.replace("OfficeCodePro-Regular SDF", "Noto Sans"), WARNING.replace("[Text]", "[Node (Text)]"), "Error: " + WARNING):
             self.assertFalse(tool.console_glyph_warning(line))
+            self.assertIn(line, tool.extract([line]))
         self.assertTrue(tool.console_glyph_warning(WARNING))
 
     def test_missing_translation_is_not_confused_with_missing_glyph(self):
