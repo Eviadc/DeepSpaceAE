@@ -2,6 +2,8 @@
 
 状态：**全部未核验**。本轮无合法可用游戏引用，不登录 Steam，不下载/上传游戏文件，不安装 Unity Editor/Wine，不操作本地电脑。不为获得“编译成功”创建假游戏接口。
 
+用户指定的测试目标：游戏内版本 `100-REV3`、Steam Build `26284217`、Windows x64，记录在 [target-build.json](target-build.json)。尚未独立核对两种版本标识的对应关系或“最新正式版”状态。API 核验、适配和安装包制作属于开发端工作，不要求测试玩家运行核验工具；当前没有可供游戏加载的测试包。
+
 文档参考：[`dragonpan2/probably-stolen-modding`](https://github.com/dragonpan2/probably-stolen-modding)，本次查阅提交 `accceead2d7b63bc1746bcb053e6ab41bea75d2a`，日期 2026-10-30。仅查阅 README.zh-CN.md、ModdingGuide.zh-CN.md、APIChanges.zh-CN.md 的文字，不运行其中的项目或脚本。后者明确包含“下一次更新（开发中）”；指南也要求以实际游戏行为为准。所有 API 名称均只是待核验线索。
 
 | 待验证项 | 需要取得的证据 | 当前状态 |
