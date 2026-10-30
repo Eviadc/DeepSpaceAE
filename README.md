@@ -2,7 +2,9 @@
 
 《深空当铺：可能是偷的》的存储网络模组工程。目标依次是高效率、可扩展、高兼容：计划在主物品栏摆放核心、连接件和接口形成网络，首版聚焦真实容器的统一索引与安全取放，自动合成后置。
 
-**当前交付为可运行的存储网络内存原型，不是可玩的游戏模组。真实游戏 API 尚未核验。** 已有核心、管线、存储总线、终端的逻辑拓扑、可配置频道、终端只读索引与测试宿主中的模拟取放，以及原创 SVG 占位图标。尚无游戏入口、manifest、Unity 对象替身、真实库存放置或自动合成；不宣称游戏兼容、存档安全或跨容器原子事务。
+**当前提供 100-REV3 游戏内测试版与内存原型。** GameAdapter 已使用用户提供的真实程序集完成静态 API 核验并编译，包含游戏入口、四种 1×1 部件、原生相邻连接、频道和终端。默认只读；实验整实例取放默认关闭。**云端未启动真实游戏，尚不证明加载、取放或存档安全，不承诺跨容器原子性。** 自动合成仍未实现。
+
+安装包使用说明：[游戏内安装与测试](docs/game-test.md)。本地测试无需安装开发工具，也无需运行 API 核验程序。
 
 ## 工程
 
@@ -11,7 +13,7 @@
 | 项目 | 目标框架 | 本轮边界 |
 | --- | --- | --- |
 | `src/DeepSpaceAE.Core` | `netstandard2.1` | 不可变模型、显式拓扑、频道分配、终端按实例的统一索引；无游戏依赖 |
-| `src/DeepSpaceAE.GameAdapter` | `netstandard2.1` | 仅依赖检查和边界；默认不参与编译，显式编译会报出依赖/未实现原因 |
+| `src/DeepSpaceAE.GameAdapter` | `netstandard2.1` | 真实游戏入口、部件、容器观测与终端；显式指定合法引用并核验哈希后构建 |
 | `tests/DeepSpaceAE.Tests` | `net10.0` | xUnit 测试、测试专用内存容器、可操作的开发终端（CLI） |
 
 `netstandard2.1` 是库的兼容性目标，不是游戏运行验证。测试进程运行在现代 .NET 10，不是 Unity/Mono。
@@ -71,25 +73,27 @@ dotnet test tests/DeepSpaceAE.Tests/DeepSpaceAE.Tests.csproj -c Release --no-bui
   --logger 'trx;LogFileName=core-model.trx' --results-directory artifacts/test-results
 ```
 
-默认解决方案的 Debug/Release 构建都只选择 Core 与 Tests；GameAdapter 在解决方案中可见，但无 `Build.0`。所有项目可还原，GameAdapter 的还原不代表适配完成。必需检查为锁定还原、核心/测试项目干净构建和非零测试运行；真实游戏检查是下一阶段的必需前提，本轮未运行。
+默认解决方案的 Debug/Release 构建都只选择 Core 与 Tests；GameAdapter 在解决方案中可见，但无 `Build.0`，使无游戏引用的环境仍能开发核心。游戏构建需另行执行下面的显式命令；真实游戏运行结果与编译结果分别记录。
 
 依赖网络仅需 `builds.dotnet.microsoft.com`、`api.nuget.org` 及 NuGet 返回的下载端点。查阅指南需要 GitHub。没有应用服务要启动，没有端口要开放，也没有密钥要求。禁止关闭 TLS、签名或校验验证来绕过失败。
 
-## 适配层的明确失败
+## 构建游戏测试包（开发端）
 
 ```bash
 source scripts/env.sh
-dotnet build src/DeepSpaceAE.GameAdapter/DeepSpaceAE.GameAdapter.csproj -c Release --no-restore
+GameManagedDir=/workspace/.deepspaceae/game-references/100-REV3 bash scripts/build-game.sh
+# 提交/审查当前源代码后打包；文件名带源码提交，拒绝覆盖已有包
+python scripts/package-game.py
 ```
 
-无引用时应以非零退出并报告 `EAE001`（`GameManagedDir` 未设置）。显式指向空目录则报告 `EAE002`（缺少真实 DLL）。未来只允许使用合法可用、与目标版本匹配的真实程序集；本轮不获取这些文件。即使文件齐全，也会报告 `EAE003`：真实绑定尚未实现/核验，不生成空壳 DLL 冒充成功。不应通过添加假游戏接口或跳过检查让它变绿。
+引用由用户授权提供，置于仓库外。无引用时报告 `EAE001`；缺文件时报告 `EAE002`；`Assembly-CSharp.dll` SHA-256 与已核验的用户版本不符时报告 `EAE004`，拒绝静默适配其他版本。原先“尚未实现”的 `EAE003` 门禁已在完成真实绑定后移除，没有用替身 DLL 绕过编译。
 
-未来核验后才可决定实际引用、加载入口及发布清单。目前候选引用沿用指南中的 `Assembly-CSharp`、`UnityEngine`、`UnityEngine.CoreModule`、`0Harmony`，全部 `Private=false`，不拷贝到输出。文件存在本身不证明版本匹配或 API 安全。
+开发端引用 `Assembly-CSharp`、`UnityEngine`、`UnityEngine.CoreModule`、`0Harmony`，全部 `Private=false`，不拷贝到输出。PNG 与 manifest 在 `assets/game`，打包使用逐文件白名单，绝不递归打包 bin 或 Managed。NuGet 打包仍禁用；自有 ZIP 安装包是单独审查的流程。文件存在与编译通过仍不证明运行安全。
 
 ## 测试含义与后续
 
 测试按实例而非物品类型计数，同 ID 不同状态不合并，同 ID 同状态也不自动堆叠。容量不足/拒收保持源实例；模拟批次逐项报告结果，允许前项成功后项失败。重复请求只在同一个内存会话内重放；同请求 ID 不同载荷报错，不承诺跨重启、持久化、并发或未知结果下的幂等。
 
-这些断言只证明模拟模型，不证明真实游戏已经安全。实际搬运不能以“先删源、再造目标”代替原生入口。下一步优先完成 [真实 API 待验证清单](docs/api-verification.md)，再实现最小只读观测和受约束的原生搬运试验。核心算法可独立推进，但不要立即扩展成完整 AE。
+这些断言只证明模拟模型，不证明真实游戏已经安全。游戏适配用 `SlotMarker.TryAcceptOnce` 做受限的整实例实验搬运，不自行删源/造目标；未知结果锁定写入。下一步在独立测试档按 [游戏测试说明](docs/game-test.md) 验证真实行为，并更新 [API 核验清单](docs/api-verification.md)，不要直接扩展成完整 AE。
 
-详见 [架构边界](docs/architecture.md)、[初始化验证记录](docs/validation.md)、[网络原型与本轮验证](docs/network-prototype.md)。仓库和构建输出不得包含游戏 DLL、本体、存档或凭据；`.gitignore` 只是第一道防线，提交前仍需审查。三个项目均禁用 NuGet 打包；当前不生成或发布模组包，测试输出也不可作为模组分发。
+详见 [架构边界](docs/architecture.md)、[初始化验证记录](docs/validation.md)、[内存原型历史验证](docs/network-prototype.md)。仓库与安装包不得包含游戏 DLL、本体、存档或凭据；`.gitignore` 只是第一道防线，提交与打包前仍需审查。测试输出不可作为模组分发；本轮仅生成给用户手动安装的 ZIP，不推送远程或发布创意工坊。

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Manifest>
+  <ID>deepspaceae</ID>
+  <Name>DeepSpaceAE 测试版</Name>
+  <Author>Eviadc</Author>
+  <ModVersion>0.1.0-alpha</ModVersion>
+  <Description>存储网络测试版：核心、管线、物品存储总线和终端。默认只读；实验取放仅用于独立测试档。禁用模组前请移除所有 AE 部件。</Description>
+  <GameVersions><Version>100-REV3</Version></GameVersions>
+  <Prerequisites />
+  <Assemblies>
+    <Assembly>DeepSpaceAE.Core.dll</Assembly>
+    <Assembly>DeepSpaceAE.GameAdapter.dll</Assembly>
+  </Assemblies>
+  <Capabilities />
+</Manifest>

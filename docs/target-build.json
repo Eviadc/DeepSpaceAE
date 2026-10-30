@@ -5,12 +5,13 @@
   "source": "user-reported",
   "developmentReferences": {
     "userAuthorizedUpload": true,
-    "status": "awaiting-upload",
+    "status": "received-and-used-for-compilation",
     "use": "API verification and compilation only",
     "redistributionAllowed": false
   },
   "labelBuildPairVerified": false,
   "latestStableVerified": false,
-  "assemblySignaturesVerified": false,
+  "assemblySignaturesVerified": true,
+  "assemblyCSharpSha256": "0fd3de05d961c8a415758f8f78a8e0a32692b8b45fb34350df885ed8bd5e8eb0",
   "runtimeBehaviorVerified": false
 }

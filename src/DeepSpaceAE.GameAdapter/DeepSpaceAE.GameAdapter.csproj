@@ -1,12 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <Version>0.1.0</Version>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../DeepSpaceAE.Core/DeepSpaceAE.Core.csproj" />
-    <!-- Candidate references from the guide, not evidence of supported game APIs. -->
+    <!-- Real, user-supplied 100-REV3 references. Never copy to output. -->
     <Reference Include="Assembly-CSharp" HintPath="$(GameManagedDir)/Assembly-CSharp.dll" Private="false" />
     <Reference Include="UnityEngine" HintPath="$(GameManagedDir)/UnityEngine.dll" Private="false" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(GameManagedDir)/UnityEngine.CoreModule.dll" Private="false" />
@@ -20,7 +20,10 @@
     </ItemGroup>
     <Error Condition="!Exists('%(RequiredGameAssembly.Identity)')" Code="EAE002"
            Text="Missing real game reference: %(RequiredGameAssembly.Identity). No stubs are provided." />
-    <Error Code="EAE003"
-           Text="GameAdapter is intentionally unimplemented. Presence of DLLs does not verify game version, API signatures or behavior. Complete docs/api-verification.md in a separate task before implementing bindings; no adapter binary is produced." />
+    <GetFileHash Files="$(GameManagedDir)/Assembly-CSharp.dll" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="CheckedGameAssembly" />
+    </GetFileHash>
+    <Error Condition="'%(CheckedGameAssembly.FileHash)' != '0FD3DE05D961C8A415758F8F78A8E0A32692B8B45FB34350DF885ED8BD5E8EB0'"
+           Code="EAE004" Text="Unexpected Assembly-CSharp.dll hash. This adapter was checked against the user-supplied 100-REV3 assembly only. Re-verify APIs before targeting another build." />
   </Target>
 </Project>

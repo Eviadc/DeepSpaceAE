@@ -6,6 +6,8 @@ artifacts/
 .dotnet/
 .deepspaceae/
 .nuget/
+**/__pycache__/
+*.py[cod]
 .vs/
 .idea/
 *.user
@@ -28,6 +30,15 @@ artifacts/
 *.dat
 GameReferences/
 game/
+# Only our authored game assets are allowed beneath the otherwise ignored game directory name.
+!assets/game/
+!assets/game/manifest.xml
+!assets/game/Textures/
+!assets/game/Textures/Items/
+!assets/game/Textures/Items/core.png
+!assets/game/Textures/Items/pipeline.png
+!assets/game/Textures/Items/item-storage-bus.png
+!assets/game/Textures/Items/terminal.png
 game-files/
 **/*_Data/
 **/Managed/
