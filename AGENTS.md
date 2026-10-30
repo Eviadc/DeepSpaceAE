@@ -11,4 +11,5 @@
 - 100-REV3 的屏幕主库存是 EmporiumEntry.Instance.invElement，由 GameSession.MainInventory() 统一取得。不要把 PlayerStore.GetStoreInventory() 当成主库存：它返回另一份独立且未挂主窗口的库存，原包 c5d6faa 已因此出现不可见生成和错误网络观测；详见 docs/game-runtime-feedback.md。禁止靠改计数、重复过滤或自动销毁物品掩盖错误根库存。
 - 模型测试通过不证明游戏安全，不承诺跨容器原子事务。真实写入试验必须有相应授权和证据。
 - 游戏 DLL、本体、存档、凭据和构建缓存不入库；未来输出包只允许自有产物白名单，不递归打包测试或游戏引用目录。
-- 未经明确要求，不推送远程或发布模组；不要操作本地电脑、登录 Steam、安装 Unity Editor/Wine。
+- 用户已明确授权：今后其要求的修复，完成适当验证后默认提交并直接推送到 Eviadc/DeepSpaceAE 的 main，无需逐次确认。保留远端已有工作，不强推；若无法安全合并或认证失败，报告具体障碍。安装 ZIP、游戏引用、存档和凭据仍不得进入 Git。
+- 模组发布与附件交付按用户已给出的具体授权和渠道要求执行；不要操作本地电脑、登录 Steam、安装 Unity Editor/Wine。
