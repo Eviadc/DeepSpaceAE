@@ -43,7 +43,7 @@ internal sealed class CableVisuals
     private void Changed(GameItem item, GameInventory inventory, SlotMarker slot)
     {
         if (GameSession.IsPart(item) && !ReferenceEquals(item.parentInventory, root)) Inactive(item);
-        poses.Remove(item); Invalidate();
+        poses.Remove(item); Invalidate(); session.NativeStorageChanged();
     }
     private static (int, int, int, int, int, bool, bool) Pose(GameItem item)
     { var s = item.modifiedShape; return (s.minX, s.minY, s.width, s.height, s.orientation, s.flipped, GeneralHelper.IsItemEffectivelyOwned(item)); }
@@ -54,7 +54,7 @@ internal sealed class CableVisuals
         if (root == null) return;
         if (ReferenceEquals(item.parentInventory, root))
         {
-            if (!poses.TryGetValue(item, out var old) || old != Pose(item)) { Invalidate(); session.StructureChanged(item); }
+            if (!poses.TryGetValue(item, out var old) || old != Pose(item)) { Invalidate(); session.StructureChanged(item); session.NativeStorageChanged(); }
         }
         else if (item.parentInventory?.GetParentItem() is GameItem owner && owner.identifier == "deepspaceae.core")
         {
@@ -62,7 +62,7 @@ internal sealed class CableVisuals
             int output = HypertechBatteryHelper.IsHypertechBattery(item) ? HypertechBatteryHelper.GetOutput(item) : 0;
             var previous = batteryStates.GetValue(item, _ => new BatteryState { Energy = -1, Output = -1 });
             if (previous.Energy != energy || previous.Output != output)
-            { previous.Energy = energy; previous.Output = output; Invalidate(); session.StructureChanged(owner); }
+            { previous.Energy = energy; previous.Output = output; Invalidate(); session.StructureChanged(owner); session.NativeStorageChanged(owner); }
         }
     }
     internal void Invalidate()

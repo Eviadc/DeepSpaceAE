@@ -25,7 +25,7 @@ public sealed class ModEntry : IMod
         log = new ModLog(new ModManifest { Name = "DeepSpaceAE" });
         session = new GameSession(log);
         ActiveSession = session;
-        log.Log("DeepSpaceAE 0.2.0 / 100-REV3 initialized.");
+        log.Log("DeepSpaceAE 0.3.0 / 100-REV3 initialized.");
     }
 
     public void OnEnable()

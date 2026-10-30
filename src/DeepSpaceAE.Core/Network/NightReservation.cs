@@ -22,6 +22,11 @@ public sealed class NightReservation
         Day = day; Required = budget; Battery = battery; Phase = NightPhase.Reserved;
         return true;
     }
+    public bool RepricePending(int required)
+    {
+        if (Phase != NightPhase.Reserved || required <= 0) return false;
+        Required = required; return true;
+    }
     public bool BeginDebit(int day, long battery)
     {
         if (Phase != NightPhase.Reserved || Day > day || Battery != battery) return false;

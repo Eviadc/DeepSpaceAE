@@ -44,10 +44,15 @@ internal static class PartStorage
     {
         if (item.identifier == "deepspaceae.core")
         {
-            var slot = new GameSlotInventory(3, 3);
+            var slot = new GameSlotInventory();
             slots.Add(item, new Slots { Inventory = slot });
+            // Same native battery backdrop and audio as MachineHelper.SetupBatterySlot,
+            // without registering a second native machinery power consumer.
+            slot.SetBackgroundFadeSprite("Items/items_tool", "battery100");
+            slot.onSlotAddItemFunc += (_, _, _) => AudioManager.Instance.Play3("battery_insert");
+            slot.onSlotRemoveItemFunc += (_, _, _) => AudioManager.Instance.Play3("battery_removed");
             slot.mayInventoryAddItemFunc = (battery, _) => CanInstall(item, battery);
-            slot.onSlotRemoveItemEndFunc += (_, _, _) => ModEntry.ActiveSession?.Visuals.Invalidate();
+            slot.onSlotRemoveItemEndFunc += (_, _, _) => { ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item); };
             slot.maxSlotRemoveItemFunc = (_, _, _) => Lease(item).CanRemove(Day) ? int.MaxValue : 0;
             slot.onSlotAddItemEndFunc += (battery, _, _) => {
                 if (ModEntry.ActiveSession?.Loading != false || item.parentInventory == null) { RestoreLocks(item); return; }
@@ -55,8 +60,8 @@ internal static class PartStorage
                 var lease = Lease(item);
                 if (!lease.Reserve(Day, cost, battery.uniqueId, n => CanSupply(battery, n)))
                     throw new InvalidOperationException("Battery reservation failed after native insertion.");
-                Save(item, lease); slot.LockInv();
-                ModEntry.ActiveSession?.Visuals.Invalidate();
+                Save(item, lease); Number(item, "power_policy_revision", 2); slot.LockInv();
+                ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item);
             };
             var window = new PixelWindow(true, "AE 核心 · 电池"); window.Attach(slot); item.SetContentWindow(window);
         }
@@ -69,8 +74,8 @@ internal static class PartStorage
                 && (card.identifier == Capacity || (card.identifier == Tag && !grid.childItems.Any(c => c.identifier == Tag)));
             grid.maxSlotRemoveItemFunc = (_, _, _) => data.RemovingUpgrade ? int.MaxValue : 0;
             grid.mayInventoryRemoveItemFunc = (_, _) => data.RemovingUpgrade;
-            grid.onSlotAddItemEndFunc += (_, _, _) => ModEntry.ActiveSession?.Visuals.Invalidate();
-            grid.onSlotRemoveItemEndFunc += (_, _, _) => ModEntry.ActiveSession?.Visuals.Invalidate();
+            grid.onSlotAddItemEndFunc += (_, _, _) => { ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item); };
+            grid.onSlotRemoveItemEndFunc += (_, _, _) => { ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item); };
             var window = new PixelWindow(true, "AE 总线 · 升级"); window.Attach(grid); item.SetContentWindow(window);
         }
     }
@@ -83,7 +88,7 @@ internal static class PartStorage
     internal static bool CanSupply(GameItem battery, int cost) => battery.unitCount == 1 && battery.IsTag(PowerHelper.POWER_SOURCE_ITEM_TAG)
         && !CurrentConverterHelper.IsCurrentConverter(battery) && GeneralHelper.IsItemEffectivelyOwned(battery) && PowerHelper.CanDrawPowerSource(battery, cost);
     internal static bool CanInstall(GameItem core, GameItem battery) => ReferenceEquals(core.parentInventory, GameSession.MainInventory()) && GeneralHelper.IsItemEffectivelyOwned(core) && Lease(core).CanRemove(Day)
-        && CanSupply(battery, ModEntry.ActiveSession?.CoreCost(core) ?? 8);
+        && CanSupply(battery, ModEntry.ActiveSession?.CoreCost(core) ?? 2);
     internal static GameItem? Battery(GameItem core) => Inventory(core).childItems.SingleOrDefault();
     internal static NightReservation Lease(GameItem core) => new(Int(core, "power_day", -1), Int(core, "power_budget"), Int(core, "power_battery"),
         (NightPhase)Int(core, "power_phase"));
@@ -92,11 +97,22 @@ internal static class PartStorage
         Number(core, "power_day", lease.Day); Number(core, "power_budget", lease.Required);
         Number(core, "power_battery", checked((int)lease.Battery)); Number(core, "power_phase", (int)lease.Phase);
     }
+    private static NightReservation Reprice(GameItem core, int cost)
+    {
+        var lease = Lease(core);
+        if (Int(core, "power_policy_revision") < 2)
+        {
+            int next = cost > 0 ? cost : Math.Max(2, (int)(((long)lease.Required + 3) / 4));
+            if (lease.RepricePending(next)) Save(core, lease);
+            Number(core, "power_policy_revision", 2);
+        }
+        return lease;
+    }
     internal static bool Powered(GameItem core, int cost, bool reserve = false)
     {
         var battery = Battery(core);
         if (battery == null) return false;
-        var lease = Lease(core);
+        var lease = Reprice(core, cost);
         if (lease.Phase == NightPhase.DebitStarted || lease.Phase == NightPhase.Fault ||
             (lease.Phase == NightPhase.Settled && lease.Day >= Day) ||
             (lease.Phase == NightPhase.Reserved && (lease.Day != Day || lease.Battery != battery.uniqueId))) return false;
@@ -117,7 +133,7 @@ internal static class PartStorage
     internal static void Settle(GameItem core, int cost, ModLog log)
     {
         var battery = Battery(core);
-        var lease = Lease(core);
+        var lease = Reprice(core, cost);
         if (lease.Phase == NightPhase.Empty || (lease.Phase == NightPhase.Settled && lease.Day < Day))
         {
             if (cost <= 0 || battery == null || !lease.Reserve(Day, cost, battery.uniqueId, n => CanSupply(battery, n))) return;

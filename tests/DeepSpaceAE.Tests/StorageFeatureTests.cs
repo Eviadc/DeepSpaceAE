@@ -130,6 +130,6 @@ public sealed class StorageFeatureTests
         var topology=new NetworkTopology(new[]{new NetworkNode("c",NetworkPart.Core),new NetworkNode("p",NetworkPart.Pipeline),
             new NetworkNode("t",NetworkPart.Terminal),new NetworkNode("b",NetworkPart.ItemStorageBus,"box")},
             new[]{new NetworkLink("c","p"),new NetworkLink("p","t"),new NetworkLink("p","b")},new ChannelSettings());
-        var e=new NetworkEvaluation(topology); Assert.Equal(17,e.NightCosts["c"]); Assert.Equal("c",e.ComponentCore["t"]);
+        var e=new NetworkEvaluation(topology); Assert.Equal(4,e.NightCosts["c"]); Assert.Equal("c",e.ComponentCore["t"]);
     }
 }

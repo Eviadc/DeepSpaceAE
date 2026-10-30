@@ -46,11 +46,17 @@ internal static class PerformanceProbe
                 if (found.Count != count || !ReferenceEquals(found, search.Find("cell #power","METAL",CatalogSort.Quantity)))
                     throw new InvalidOperationException("Search cache probe failed.");
             });
+            var footprints = items.Select(item => new DisplayFootprint(item.InstanceId, new[] {
+                new GridCell(0,0), new GridCell(1,0), new GridCell(0,1), new GridCell(1,1), new GridCell(0,2), new GridCell(1,2) })).ToArray();
+            var virtualPacking = Measure(() => {
+                var layout = new VirtualInventoryLayout(footprints);
+                if (layout.PageCount < 1 || layout.At(0,0,0) != items[0].InstanceId) throw new InvalidOperationException("Projection probe failed.");
+            });
             foreach (bool limited in new[] { true, false })
             {
                 NetworkEvaluation evaluation = null!;
                 var network = Measure(() => evaluation = new NetworkEvaluation(PhysicalNetworkProjection.Build(nodes, edges, new ChannelSettings(limited))));
-                results.Add(new { parts = count * 2 + 1, items = count, channels = limited, spatial, index, filtered, catalog, network,
+                results.Add(new { parts = count * 2 + 1, items = count, channels = limited, spatial, index, filtered, catalog, virtualPacking, network,
                     searches = evaluation.SearchPasses, transportVisits = evaluation.VisitedTransportNodes,
                     online = evaluation.Devices.Values.Count(device => device.Status == DeviceStatus.Online) });
             }

@@ -39,7 +39,7 @@ for name, path in files.items():
         size = 48 if Path(name).name in ("core.png", "core-off.png") else 16
         assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", data[16:24]) == (size, size)
 version = ET.parse(files["DeepSpaceAE/manifest.xml"]).getroot().findtext("ModVersion")
-assert version == "0.2.0-alpha"
+assert version == "0.3.0-alpha"
 output = root / "artifacts/packages" / f"DeepSpaceAE-{version}-100-REV3-{revision[:7]}.zip"
 if output.exists():
     raise SystemExit("Package already exists; refusing to overwrite.")

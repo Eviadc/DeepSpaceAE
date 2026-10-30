@@ -51,3 +51,9 @@
 详见 [架构实现与成本](storage-features.md) 和 [逐项本地验收](game-test.md)。云端未启动 Unity；回调覆盖、存档往返、中断结果、各种原生换电/工具入口及跨模组行为仍待验证。所有新功能真实游戏结果：**未运行**。
 
 指南参考仍为 dragonpan2/probably-stolen-modding 提交 accceead2d7b63bc1746bcb053e6ab41bea75d2a。APIChanges 开发中内容不作版本证据；本版使用的是用户真实 100-REV3 程序集。
+
+## 0.3 UI 与拖放静态核验
+
+已核对 MachineDnaManipulator 原生机器布局、MachineryPanel/Intake/Stack/ProgressBar、默认 1×1 GameSlotInventory、StealPixelElement（只借用渲染，不改真实父库存）、ItemMouseDragHandler 的按下/开始/结束/预览清理、SlotMarker 两种接收入口和 GameItemElement.Destroy 覆盖。公开物品类别的本地化实际是 TypeHelper.GetTypeDisplayName → Mechanic/type_*，并非直接展示状态标签键或假定 Data 表。实现及边界见 [原生 UI 迁移](native-ui.md)。
+
+这些签名已使用用户现有 REV3 引用构建，不代表 REV5 核验。新 UI 实际比例、鼠标事件顺序和旧存档往返仍未在云端运行。

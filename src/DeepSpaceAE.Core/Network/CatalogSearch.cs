@@ -9,10 +9,11 @@ public sealed class CatalogRecord
     public string ItemId { get; }
     public string Name { get; }
     public IReadOnlyCollection<string> Tags { get; }
+    internal IReadOnlyCollection<string> SearchTags { get; }
     public int Quantity { get; }
     internal string Text { get; }
-    public CatalogRecord(Guid instance, string itemId, string name, IEnumerable<string> tags, int quantity = 1)
-    { Quantity = quantity; Instance = instance; ItemId = itemId; Name = name; Tags = Array.AsReadOnly(tags.Distinct(StringComparer.Ordinal).ToArray()); Text = name + " " + itemId; }
+    public CatalogRecord(Guid instance, string itemId, string name, IEnumerable<string> tags, int quantity = 1, IEnumerable<string>? tagNames = null)
+    { Quantity = quantity; Instance = instance; ItemId = itemId; Name = name; Tags = Array.AsReadOnly(tags.Distinct(StringComparer.Ordinal).ToArray()); Text = name + " " + itemId; SearchTags = Array.AsReadOnly(Tags.Concat(tagNames ?? Array.Empty<string>()).Distinct(StringComparer.Ordinal).ToArray()); }
 }
 public sealed class CatalogSearch
 {
@@ -39,7 +40,7 @@ public sealed class CatalogSearch
         var words = query.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
         cachedQuery = query; cachedTag = tag; cachedSort = sort;
         candidates = candidates.Where(r => words.All(w => w.StartsWith("#", StringComparison.Ordinal)
-            ? r.Tags.Any(t => t.IndexOf(w.Substring(1), StringComparison.OrdinalIgnoreCase) >= 0)
+            ? r.SearchTags.Any(t => t.IndexOf(w.Substring(1), StringComparison.OrdinalIgnoreCase) >= 0)
             : r.Text.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0));
         if (sort == CatalogSort.Name) candidates = candidates.OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.Instance);
         if (sort == CatalogSort.Quantity) candidates = candidates.OrderByDescending(r => r.Quantity).ThenBy(r => r.Instance);

@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace DeepSpaceAE.GameAdapter;
 
-internal sealed class GameSession
+internal sealed partial class GameSession
 {
     internal const string WindowId = "deepspaceae.terminal";
     private sealed class Token
@@ -43,8 +43,8 @@ internal sealed class GameSession
     private readonly ModLog log;
     internal bool Loading { get; private set; } = true;
     private bool writeFault, writing, refreshQueued;
-    private int page, carryPage, filterPage;
-    private CatalogSort sort;
+    private int page;
+    private CatalogSort sort = CatalogSort.Name;
     private string search = "", tag = "", message = "";
     private GameItem? openTerminal;
     private readonly HashSet<GameInventory> observed = new();
@@ -57,8 +57,8 @@ internal sealed class GameSession
     internal static bool IsPart(GameItem item) => item.identifier != null && ModEntry.PartKinds.ContainsKey(item.identifier);
     internal void Reset()
     {
-        Loading = true; Close(); Visuals.Detach(); identities = new(); observations = new(); writeFault = writing = false;
-        page = carryPage = filterPage = 0; search = tag = message = "";
+        Loading = true; Close(); uncertainItems.Clear(); NativeDrag.Gesture = null; NativeDrag.OriginItem = null; NativeDrag.OriginSource = null; Visuals.Detach(); identities = new(); observations = new(); writeFault = writing = false;
+        page = 0; search = tag = message = "";
     }
     private void Unobserve()
     {
@@ -67,16 +67,16 @@ internal sealed class GameSession
     }
     internal void Close()
     {
-        Unobserve();
+        Unobserve(); CloseNative();
         if (CustomUIManager.Instance == null) return;
         CustomUIManager.Instance.CloseWindow(WindowId); CustomUIManager.Instance.CloseWindow("deepspaceae.part");
     }
     private void Changed(GameItem item, GameInventory inventory, SlotMarker slot)
     {
-        if (refreshQueued || openTerminal == null) return;
+        if (refreshQueued || openTerminal == null) { RefreshPartLater(); return; }
         refreshQueued = true;
         var current = openTerminal;
-        LetterboxManager.RunNextUpdate(() => { refreshQueued = false; if (ReferenceEquals(openTerminal, current) && !writing) Open(current); });
+        LetterboxManager.RunNextUpdate(() => { refreshQueued = false; if (ReferenceEquals(openTerminal, current) && !writing && ItemMouseDragHandler.current?.IsDraggingItem != true) Open(current); RefreshPartLater(); });
     }
     internal void ItemChanged(GameItem item)
     {
@@ -125,9 +125,9 @@ internal sealed class GameSession
     }
     internal int CoreCost(GameItem core)
     {
-        if (!ReferenceEquals(core.parentInventory, MainInventory())) return 8;
+        if (!ReferenceEquals(core.parentInventory, MainInventory())) return 2;
         var board = ReadBoard();
-        return board.Evaluation.NightCosts.TryGetValue(Id(core), out var cost) ? cost : 8;
+        return board.Evaluation.NightCosts.TryGetValue(Id(core), out var cost) ? cost : 2;
     }
     internal void DayStarted()
     {
@@ -174,9 +174,8 @@ internal sealed class GameSession
         internal Dictionary<GameItem, List<GameInventory>> Inventories = new();
         internal Dictionary<Guid, GameItem> Live = new();
         internal Dictionary<Guid, GameInventory> Sources = new();
-        internal GameItem[] Carried = null!;
         internal CatalogSearch Search = null!;
-        internal Dictionary<GameItem, Sprite?> Sprites = new();
+
     }
     private View Read(GameItem terminal)
     {
@@ -209,18 +208,17 @@ internal sealed class GameSession
                 var itemTags = PartStorage.Tags(item);
                 if (!filter.Allows(item.identifier, itemTags)) continue;
                 var id = GuidFor(item); view.Live.Add(id, item); view.Sources.Add(id, inventory);
-                records.Add(new CatalogRecord(id, item.identifier, item.name ?? "?", itemTags, item.unitCount));
+                var publicTags = item.GetGameItemType();
+                records.Add(new CatalogRecord(id, item.identifier, item.name ?? "?", publicTags, item.unitCount, publicTags.Select(NativeWidgets.TagName)));
             }
         }
         view.Search = new CatalogSearch(records);
-        view.Carried = board.Layout.Items.Where(i => !IsPart(i) && !view.Inventories.ContainsKey(i) && GeneralHelper.IsItemEffectivelyOwned(i)).ToArray();
         return view;
     }
     private void Error(Exception e)
     {
         log.Warning(Diagnostics.ConsoleText(e.ToString()));
-        CustomUIManager.Window("deepspaceae.part", "DeepSpaceAE", CustomUIManager.LAYER_PAPER)
-            .SetSize(520, 230).SetDraggable(true).SetCloseOnEscape(true).AddLabel(e is Rejected ? Safe(e.Message) : "操作未完成，请保留游戏日志并检查网络状态。").Show();
+        ShowNotice(e is Rejected ? Safe(e.Message) : "操作未完成，请保留游戏日志并检查网络状态。");
     }
     internal void OpenPart(GameItem part)
     {
@@ -244,124 +242,7 @@ internal sealed class GameSession
             if (!PartStorage.Powered(view.Core, view.Board.Evaluation.NightCosts[Id(view.Core)], true)) throw new Rejected("电池无法预留整晚用电。");
             Show(terminal, view);
         }
-        catch (Exception e) { Unobserve(); CustomUIManager.Instance?.CloseWindow(WindowId); Error(e); }
-    }
-    private void Show(GameItem terminal, View view)
-    {
-        Unobserve();
-        var b = CustomUIManager.Window(WindowId, "DeepSpaceAE · 存储终端", CustomUIManager.LAYER_PAPER)
-            .SetSize(780, 760).SetDraggable(true).SetCloseOnEscape(true).OnClose(Unobserve);
-        openTerminal = terminal;
-        foreach (var inv in view.Inventories.Values.SelectMany(i => i).Append(view.Root).Distinct())
-        { foreach (var item in inv.childItems) observations.GetValue(item, i => new Observation(i)); observed.Add(inv); inv.onSlotAddItemEndFunc += Changed; inv.onSlotRemoveItemEndFunc += Changed; inv.onSlotChangeAmountItemFunc += Changed; }
-        Action render = () => { };
-        b.BeginGrid(2, 340, 32).AddInput("搜索名称、ID；#标签", search, value => { search = value; page = 0; render(); }, onTyping: value => { search = value; page = 0; render(); });
-        var tags = new[] { "全部标签" }.Concat(view.Search.Tags).ToArray();
-        int selected = Array.IndexOf(tags, tag); if (selected < 0) tag = "";
-        b.AddDropdown(tags, Math.Max(0, selected), index => { tag = index == 0 ? "" : tags[index]; page = 0; render(); }).End();
-        b.BeginGrid(2, 340, 32).AddDropdown(new[] { "原始顺序", "按名称", "按数量" }, (int)sort,
-            i => { sort = (CatalogSort)i; page = 0; render(); }).AddButton("刷新", () => Open(terminal)).End();
-        b.BeginScroll(550); var body = b.CurrentContainer; b.End();
-        render = () => {
-            CustomUIBuilder.ClearContainer(body);
-            var grid = new CustomUIBuilder(CustomUIManager.Instance, b.Handle, body);
-            if (!string.IsNullOrEmpty(message)) grid.AddLabel(Safe(message));
-            if (writeFault) grid.AddWarning("物品移动结果异常，操作已锁定。请保存日志并停止取放。");
-            var rows = view.Search.Find(search, string.IsNullOrEmpty(tag) ? null : tag, sort);
-            page = Math.Max(0, Math.Min(page, Math.Max(0, (rows.Count - 1) / 32)));
-            grid.AddLabel($"网络库存 · {rows.Count} 个实例 · 第 {page + 1} 页").BeginGrid(8, 84, 68);
-            foreach (var row in rows.Skip(page * 32).Take(32))
-            {
-                var item = view.Live[row.Instance]; var source = view.Sources[row.Instance];
-                ItemCell(grid, item, SpriteFor(view, item), () => Transfer(terminal, item, source, false));
-            }
-            grid.End().BeginGrid(2, 340, 32).AddButton("上一页", () => { page--; render(); }).AddButton("下一页", () => { if ((page + 1) * 32 < rows.Count) page++; render(); }).End();
-            carryPage = Math.Max(0, Math.Min(carryPage, Math.Max(0, (view.Carried.Length - 1) / 16)));
-            grid.AddLabel("主物品栏 · 点击存入网络（按总线优先级）").BeginGrid(8, 84, 68);
-            foreach (var item in view.Carried.Skip(carryPage * 16).Take(16)) { var captured = item; ItemCell(grid, captured, SpriteFor(view, captured), () => Transfer(terminal, captured, view.Root, true)); }
-            grid.End().BeginGrid(2, 340, 32).AddButton("主栏上一页", () => { carryPage--; render(); }).AddButton("主栏下一页", () => { if ((carryPage + 1) * 16 < view.Carried.Length) carryPage++; render(); }).End();
-            CustomUIBuilder.RebuildLayout(body);
-        };
-        render(); b.Show();
-    }
-    private static Sprite? SpriteFor(View view, GameItem item)
-    {
-        if (!view.Sprites.TryGetValue(item, out var sprite))
-        { sprite = (item as GameItemElement)?.ResolveSpriteByName(item.spritePath); view.Sprites.Add(item, sprite); }
-        return sprite;
-    }
-    private static void ItemCell(CustomUIBuilder b, GameItem item, Sprite? sprite, Action action)
-    {
-        b.BeginGrid(1, 80, 30);
-        string detail = Safe(item.name) + "\n" + Safe(item.identifier) + " ×" + item.unitCount;
-        if (item.IsTag(PowerHelper.POWER_SOURCE_ITEM_TAG)) detail += "\n电量 " + PowerHelper.GetAvailableEnergyFromItem(item, false) + " kJ";
-        if (sprite != null) b.AddIconButton(sprite, 32, action).WithTooltip(detail);
-        b.AddButton(Safe(item.name) + " ×" + item.unitCount, action).WithTooltip(detail).End();
-    }
-    private void ShowCore(GameItem core)
-    {
-        var board = ReadBoard(); var lease = PartStorage.Lease(core); var battery = PartStorage.Battery(core);
-        int cost = board.Evaluation.NightCosts.TryGetValue(Id(core), out var n) ? n : 8;
-        var members = board.Evaluation.ComponentCore.Where(p => p.Value == Id(core)).Select(p => board.ById[p.Key]).ToArray();
-        var b = CustomUIManager.Window("deepspaceae.part", "DeepSpaceAE · 网络控制器", CustomUIManager.LAYER_PAPER)
-            .SetSize(650, 620).SetDraggable(true).SetCloseOnEscape(true)
-            .AddHeader(board.Powered.Contains(Id(core)) ? "网络在线" : "网络未激活")
-            .AddLabel($"每晚用电 {cost} kJ · 本日预留 {((lease.Phase == NightPhase.Reserved) ? lease.Required : 0)} kJ")
-            .AddLabel("频道 " + (board.Evaluation.ChannelsUsed.TryGetValue(Id(core), out var used) ? used : 0) + " / 32；线缆上限 8")
-            .AddLabel(battery == null ? "电池槽：空" : "电池：" + Safe(battery.name) + (lease.Phase == NightPhase.Fault || lease.Phase == NightPhase.DebitStarted ? " · 上次结算未确认，已锁定" : lease.CanRemove(PartStorage.Day) ? " · 可更换" : " · 已锁定，夜间结算后次日可更换"));
-        foreach (NetworkPart part in Enum.GetValues(typeof(NetworkPart)))
-        { int count = members.Count(i => ModEntry.PartKinds[i.identifier] == part); b.AddLabel(PartName(part) + $"：{count} × {NetworkEvaluation.NightCost(part)} kJ"); }
-        b.BeginScroll(280);
-        if (battery != null) b.AddLabel(HypertechBatteryHelper.IsHypertechBattery(battery) ? "超科技电池：沿用原生输出上限" : "剩余电量：" + PowerHelper.GetAvailableEnergyFromItem(battery, false) + " kJ");
-        if (battery == null) b.AddLabel("仅显示足够支持整晚运行的电池。");
-        if (battery == null)
-            foreach (var candidate in MainInventory()!.childItems.Where(i => PartStorage.CanInstall(core, i)))
-            { var captured = candidate; b.AddButton("安装 " + Safe(captured.name), () => ConfigureMove(core, captured, PartStorage.Inventory(core))); }
-        else if (lease.CanRemove(PartStorage.Day)) b.AddButton("取出电池", () => ConfigureMove(core, battery, MainInventory()!));
-        b.End().Show();
-    }
-    private static string PartName(NetworkPart p) => p == NetworkPart.Core ? "核心" : p == NetworkPart.Pipeline ? "线缆" : p == NetworkPart.Terminal ? "终端" : "存储总线";
-    private void ShowCable(GameItem cable)
-    {
-        var board = ReadBoard();
-        bool online = board.Evaluation.ComponentCore.TryGetValue(Id(cable), out var core) && board.Powered.Contains(core);
-        CustomUIManager.Window("deepspaceae.part", "AE 线缆", CustomUIManager.LAYER_PAPER).SetSize(400, 220).SetDraggable(true).SetCloseOnEscape(true)
-            .AddLabel(online ? "在线" : "未激活").AddLabel("已用频道：" + board.Evaluation.ChannelsUsed[Id(cable)] + " / 8").AddLabel("每晚耗电：1 kJ").Show();
-    }
-    private void ShowBus(GameItem bus)
-    {
-        var policy = PartStorage.Policy(bus); var filters = PartStorage.Filters(bus); int slot = filterPage;
-        slot = Math.Max(0, Math.Min(slot, policy.Slots - 1)); filterPage = slot;
-        var b = CustomUIManager.Window("deepspaceae.part", "DeepSpaceAE · 存储总线", CustomUIManager.LAYER_PAPER)
-            .SetSize(700, 780).SetDraggable(true).SetCloseOnEscape(true).BeginScroll(680)
-            .AddInput("优先级（整数，越大越优先）", policy.Priority.ToString(), value => { if (int.TryParse(value, out var priority)) ConfigureNumber(bus, "priority", priority); })
-            .AddDropdown(new[] { "存入与取出", "仅取出", "仅存入" }, (int)policy.Access, i => { ConfigureNumber(bus, "access", i); OpenPart(bus); })
-            .AddToggle("排除匹配项", policy.Exclude, value => { ConfigureNumber(bus, "exclude", value ? 1 : 0); OpenPart(bus); })
-            .AddToggle("筛选也作用于取出", policy.FilterExtraction, value => { ConfigureNumber(bus, "extract_filter", value ? 1 : 0); OpenPart(bus); })
-            .AddLabel($"{(policy.Tags ? "标签" : "物品")}筛选 · {policy.Slots} 槽 · 空筛选接收全部 · 第 {slot + 1} 槽")
-            .AddInput(policy.Tags ? "输入真实标签，或从下方选择" : "输入物品 ID，或点击主栏物品复制类型", filters[slot], value => SetFilter(bus, slot, value))
-            .BeginGrid(2, 340, 32).AddButton("前一槽", () => { filterPage = Math.Max(0, slot - 1); OpenPart(bus); })
-            .AddButton("清除此槽", () => { SetFilter(bus, slot, ""); OpenPart(bus); })
-            .AddButton("后一槽", () => { filterPage = Math.Min(policy.Slots - 1, slot + 1); OpenPart(bus); }).End()
-            .BeginGrid(9, 65, 32);
-        for (int i = 0; i < policy.Slots; i++)
-        {
-            int index = i;
-            b.AddButton((i == slot ? "▶" : "") + (i + 1) + ":" + Safe(filters[i]), () => { filterPage = index; OpenPart(bus); });
-        }
-        b.End().BeginScroll(180);
-        if (policy.Tags)
-        {
-            var options = MainInventory()!.childItems.SelectMany(PartStorage.Tags).Distinct(StringComparer.Ordinal).OrderBy(v => v, StringComparer.Ordinal).ToArray();
-            b.AddDropdown(new[] { "从主栏物品标签选择" }.Concat(options).ToArray(), 0, i => { if (i > 0) { SetFilter(bus, slot, options[i - 1]); OpenPart(bus); } });
-        }
-        else foreach (var item in MainInventory()!.childItems.Where(i => !IsPart(i)))
-        { var captured = item; b.AddButton(Safe(item.name), () => { SetFilter(bus, slot, captured.identifier); OpenPart(bus); }); }
-        b.End().AddHeader("升级卡 " + PartStorage.Inventory(bus).childItems.Count + " / 5");
-        foreach (var card in PartStorage.Inventory(bus).childItems) b.AddLabel(Safe(card.name));
-        foreach (var card in MainInventory()!.childItems.Where(i => i.identifier == PartStorage.Capacity || i.identifier == PartStorage.Tag))
-        { var captured = card; b.AddButton("安装 " + Safe(card.name), () => ConfigureMove(bus, captured, PartStorage.Inventory(bus))); }
-        b.AddLabel("使用 AE 扳手拆卸升级卡。").End().Show();
+        catch (Exception e) { CloseTerminal(); CustomUIManager.Instance?.CloseWindow(WindowId); Error(e); }
     }
     private void ConfigureNumber(GameItem bus, string key, int value)
     {
@@ -421,52 +302,7 @@ internal sealed class GameSession
                 || !slot.inventory.childItems.Any(i => ReferenceEquals(i, item)) || source.childItems.Any(i => ReferenceEquals(i, item)))
                 throw new InvalidOperationException("Native movement result unknown; operations locked. No retry or rollback.");
         }
-        catch { writeFault = true; throw; }
-    }
-    private void Transfer(GameItem terminal, GameItem item, GameInventory expectedSource, bool deposit)
-    {
-        if (writing) return; writing = true;
-        try
-        {
-            if (writeFault) throw new Rejected("物品移动已锁定。");
-            var view = Read(terminal);
-            if (!ReferenceEquals(item.parentInventory, expectedSource) || !GeneralHelper.IsItemEffectivelyOwned(item)) throw new Rejected("物品位置已变更，请刷新。");
-            GameItem? targetBus = null, expectedOwner = null;
-            SlotMarker placement;
-            if (deposit)
-            {
-                if (!ReferenceEquals(expectedSource, view.Root) || !view.Carried.Contains(item)) throw new Rejected("该物品无法存入。");
-                var tags = PartStorage.Tags(item); SlotMarker? found = null;
-                var policies = view.Policies.ToDictionary(p => Id(p.Key), p => p.Value, StringComparer.Ordinal);
-                foreach (var busId in StorageRouting.InsertionOrder(policies, item.identifier, tags))
-                {
-                    var candidateBus = view.Board.ById[busId];
-                    try { found = Placement(item, view.Inventories[view.Owners[candidateBus]]); }
-                    catch (Rejected) { continue; } // Preflight only: no native mutation occurred.
-                    targetBus = candidateBus; expectedOwner = view.Owners[candidateBus]; break;
-                }
-                placement = found ?? throw new Rejected("网络中没有符合筛选且有空位的容器。");
-            }
-            else
-            {
-                if (!view.Live.ContainsKey(GuidFor(item))) throw new Rejected("物品已不在可访问的网络中。");
-                placement = Placement(item, new[] { view.Root });
-            }
-            var final = Read(terminal);
-            if (!ReferenceEquals(view.Core, final.Core) || !ReferenceEquals(view.Root, final.Root)) throw new Rejected("网络已变更，请刷新。");
-            if (targetBus != null)
-            {
-                if (!final.Owners.TryGetValue(targetBus, out var owner) || !ReferenceEquals(owner, expectedOwner)
-                    || !final.Policies[targetBus].CanInsert(item.identifier, PartStorage.Tags(item)) || !final.Inventories[owner].Contains(placement.inventory))
-                    throw new Rejected("总线目标或筛选已变更，请刷新。");
-            }
-            else if (!final.Live.ContainsKey(GuidFor(item))) throw new Rejected("物品已不可访问，请刷新。");
-            if (!PartStorage.Powered(final.Core, final.Board.Evaluation.NightCosts[Id(final.Core)], true)) throw new Rejected("电池不足以支持整晚运行。");
-            NativeMove(item, expectedSource, placement); message = "已" + (deposit ? "存入 " : "取出 ") + Safe(item.name) + " ×" + item.unitCount;
-        }
-        catch (Exception e) { message = e is Rejected ? e.Message : "操作发生异常，取放已锁定。"; log.Warning(Diagnostics.ConsoleText(e.ToString())); }
-        finally { writing = false; Visuals.Invalidate(); }
-        Open(terminal);
+        catch { writeFault = true; if (item.parentInventory == null) uncertainItems.Add(item); throw; }
     }
     private static string Safe(string? value) => (value ?? "?").Replace("<", "〈").Replace(">", "〉");
 }
