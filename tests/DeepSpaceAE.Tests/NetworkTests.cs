@@ -89,6 +89,25 @@ public sealed class NetworkTests
         Assert.All(view.Network.ChannelsUsed.Values, count => Assert.Equal(0, count));
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ConflictingTerminalCannotReadAnOnlineBusInAnotherNetwork(bool channels)
+    {
+        var original = new NetworkPrototype();
+        var topology = new NetworkTopology(original.Topology.Nodes.Values.Concat(new[] {
+            new NetworkNode("conflicting-core", NetworkPart.Core),
+            new NetworkNode("separate-core", NetworkPart.Core),
+            new NetworkNode("separate-bus", NetworkPart.ItemStorageBus, "unconnected") }),
+            original.Topology.Links.Concat(new[] { new NetworkLink("conflicting-core", "trunk"),
+                new NetworkLink("separate-core", "separate-bus") }), new ChannelSettings(channels));
+        var view = new TerminalCatalog(topology, "terminal", original.Storage.Values.Select(c => c.Snapshot()));
+        Assert.Equal(DeviceStatus.ConflictingCores, view.Connection.Status);
+        Assert.Equal(DeviceStatus.Online, view.Network.Devices["separate-bus"].Status);
+        Assert.Empty(view.Index.ByInstance);
+        Assert.True(original.Storage["unconnected"].Contains(NetworkPrototype.HiddenId));
+    }
+
     [Fact]
     public void IndependentNetworksDoNotLeakItemsToOtherTerminal()
     {

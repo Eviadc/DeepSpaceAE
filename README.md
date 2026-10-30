@@ -6,6 +6,8 @@
 
 安装包使用说明：[游戏内安装与测试](docs/game-test.md)。本地测试无需安装开发工具，也无需运行 API 核验程序。
 
+2026-10-31 本地反馈已定位原包 `c5d6faa` 的主库存绑定错误；请暂停使用该包验证网络与取放。修订源码统一使用真实主库存 `EmporiumEntry.Instance.invElement` 并增加诊断，详见 [本地反馈记录](docs/game-runtime-feedback.md)。用户截图已确认原包终端窗口能打开；修订后的运行效果及保存/搬运仍待实测。
+
 ## 工程
 
 一个 `DeepSpaceAE.sln`，三个项目：

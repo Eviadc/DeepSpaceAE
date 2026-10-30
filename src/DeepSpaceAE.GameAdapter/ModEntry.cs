@@ -14,10 +14,13 @@ public sealed class ModEntry : IMod
         ("deepspaceae.terminal", "AE 存储终端", "terminal", NetworkPart.Terminal) };
     private ModLog log = null!;
     private GameSession session = null!;
+    private int spawnRequests;
 
     public void Init(ModManifest manifest)
     {
-        log = new ModLog(manifest);
+        // ModLog only reads Name. Preserve the actual mod manifest and use an ASCII
+        // log label so F8 does not generate a missing-glyph warning for every log line.
+        log = new ModLog(new ModManifest { Name = "DeepSpaceAE" });
         session = new GameSession(log);
         log.Log("DeepSpaceAE 0.1.0 / 100-REV3 test build initialized.");
     }
@@ -28,6 +31,7 @@ public sealed class ModEntry : IMod
         ModHook.OnGameLoadedEarly += Reset;
         ModHelper.AddDebugFunction(ModId, ModHelper.DEBUG_CATEGORY_SPAWN, "AE: Spawn kit", SpawnKit);
         ModHelper.AddDebugFunction(ModId, ModHelper.DEBUG_CATEGORY_SPECIAL, "AE: Open terminal", OpenTerminal);
+        ModHelper.AddDebugFunction(ModId, ModHelper.DEBUG_CATEGORY_SPECIAL, "AE: Diagnose", session.Diagnose);
         log.Log("Enabled. Load a TEST save, then use F9 > Spawn > AE: Spawn kit. Native writes default OFF.");
     }
 
@@ -37,9 +41,15 @@ public sealed class ModEntry : IMod
         ModHook.OnGameLoadedEarly -= Reset;
         ModHelper.RemoveDebugFunctions(ModId);
         session.Close();
+        Diagnostics.Close();
     }
 
-    private void Reset() => session.Reset();
+    private void Reset()
+    {
+        spawnRequests = 0;
+        Diagnostics.Close();
+        session.Reset();
+    }
 
     private void Register(ModItemDirectory directory)
     {
@@ -71,26 +81,56 @@ public sealed class ModEntry : IMod
 
     private void SpawnKit()
     {
+        var request = ++spawnRequests;
+        log.Log($"Spawn kit request #{request} received.");
         try
         {
-            var root = PlayerStore.Instance?.GetStoreInventory();
-            if (root == null) { log.Warning("Load a test save before spawning AE parts."); return; }
+            var root = GameSession.MainInventory();
+            if (root == null)
+            {
+                log.Warning("Load a test save before spawning AE parts.");
+                Diagnostics.Show("DeepSpaceAE - Spawn kit", new[] { "Load a test save first. No parts spawned." });
+                return;
+            }
+            var before = Diagnostics.PartCounts(root);
             int placed = 0;
+            int nested = 0;
             foreach (var part in Parts)
                 for (int i = 0; i < (part.Part == NetworkPart.Pipeline ? 6 : 1); i++)
                 {
                     var item = ModHelper.SetItemOwnerShip(ModHelper.SpawnItem(part.Id), true);
-                    if (GraphUtils.TryAcceptAllOrDestroy(root, item, "DeepSpaceAE spawn kit")) placed++;
+                    if (GraphUtils.TryAcceptAllOrDestroy(root, item, "DeepSpaceAE spawn kit"))
+                    {
+                        if (ReferenceEquals(item.parentInventory, root)) placed++;
+                        else nested++;
+                    }
                 }
-            log.Log($"Spawn kit: {placed}/9 parts placed. Arrange them in the MAIN inventory; no space means that new part is not kept.");
+            if (OverlayHandler.current != null) OverlayHandler.current.UpdateInventoryStateUI();
+            var lines = new[] { $"Request #{request}: main={placed}; nested={nested}; not kept={9 - placed - nested}.",
+                "MAIN before: " + before, "MAIN after: " + Diagnostics.PartCounts(root),
+                "Native placement may put parts inside another container. Move them into MAIN to connect.",
+                "Each click creates another kit. Use only ONE core in the connected test network." };
+            log.Log(string.Join("\n", lines));
+            Diagnostics.Show("DeepSpaceAE - Spawn kit result", lines);
         }
-        catch (Exception error) { log.Error(error.ToString()); }
+        catch (Exception error)
+        {
+            log.Error(Diagnostics.ConsoleText(error.ToString()));
+            Diagnostics.Show("DeepSpaceAE - Spawn failed", new[] { error.Message,
+                "Some parts may already exist. Check MAIN and nested containers; do not blindly repeat." });
+        }
     }
 
     private void OpenTerminal()
     {
-        var terminal = PlayerStore.Instance?.GetStoreInventory()?.childItems.FirstOrDefault(i => i.identifier == "deepspaceae.terminal");
-        if (terminal == null) { log.Warning("Place an AE terminal in the main inventory first."); return; }
+        var terminal = GameSession.MainInventory()?.childItems.FirstOrDefault(i => i.identifier == "deepspaceae.terminal");
+        if (terminal == null)
+        {
+            log.Warning("Place an AE terminal in the main inventory first.");
+            Diagnostics.Show("DeepSpaceAE - Terminal not found", new[] {
+                "Place an AE terminal directly in MAIN, outside bags and boxes.", "Use F9 > Special > AE: Diagnose to inspect parts." });
+            return;
+        }
         session.Open(terminal);
     }
 }

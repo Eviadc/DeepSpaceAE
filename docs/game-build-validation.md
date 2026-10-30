@@ -42,6 +42,8 @@ python scripts/package-game.py
 - 包内源码信息：`DeepSpaceAE/build-info.json`
 - 用户步骤：[安装与游戏内测试](game-test.md)，同时包含在 ZIP 中。
 
+后续排查补充：仓库中的 `docs/game-test.md` 已补充此真实版本启用 F8/F9 所需的根目录 `dev.txt` 标记，以及无窗口时的分层排查步骤；以上既有 ZIP 未重新构建或修改，因此包内说明仍是打包时的版本，不包含这次补充。
+
 本机证据：`artifacts/validation/game-core-tests.log`、`game-build.log`、`game-prototype-smoke.log` 及当前 `artifacts/test-results/core-model.trx`。这些生成文件被忽略；后续任务需重新执行，不使用旧 TRX 证明新结果。
 
 ## 配置状态

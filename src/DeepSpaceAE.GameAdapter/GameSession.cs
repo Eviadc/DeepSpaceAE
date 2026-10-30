@@ -25,6 +25,9 @@ internal sealed class GameSession
     private string message = "只读模式；请用独立测试存档。";
 
     internal GameSession(ModLog log) => this.log = log;
+    // 100-REV3 attaches this inventory to invWindow and wires its MainInvArea callbacks.
+    // PlayerStore.GetStoreInventory() returns a different, unattached inventory.
+    internal static GameGridInventory? MainInventory() => EmporiumEntry.Instance?.invElement;
     internal string Id(GameItem item) => identities.GetValue(item, _ => new Token()).Id.ToString("N");
     internal Guid GuidFor(GameItem item) => identities.GetValue(item, _ => new Token()).Id;
     internal static bool IsPart(GameItem item) => ModEntry.Parts.Any(p => p.Id == item.identifier);
@@ -83,7 +86,7 @@ internal sealed class GameSession
 
     private View Read(GameItem terminal)
     {
-        var root = PlayerStore.Instance?.GetStoreInventory() ?? throw new InvalidOperationException("请先载入存档。");
+        var root = MainInventory() ?? throw new InvalidOperationException("请先载入存档。");
         if (terminal.identifier != "deepspaceae.terminal" || !ReferenceEquals(terminal.parentInventory, root))
             throw new InvalidOperationException("终端必须直接放在主物品栏。请激活主库存中的 AE 终端。");
         var view = new View { Root = root, Parts = root.childItems.Where(i => IsPart(i) && GeneralHelper.IsItemEffectivelyOwned(i)).ToList() };
@@ -123,17 +126,25 @@ internal sealed class GameSession
     internal void Open(GameItem selected)
     {
         if (writing) return;
+        log.Log("Open terminal requested: " + Diagnostics.ConsoleText(selected.identifier ?? "unknown"));
         try
         {
             if (CustomUIManager.Instance == null) { log.Warning("Game UI is not ready."); return; }
-            var root = PlayerStore.Instance?.GetStoreInventory();
+            var root = MainInventory();
             if (root == null) throw new InvalidOperationException("请先载入存档。");
             var terminal = selected.identifier == "deepspaceae.terminal" ? selected
                 : root.childItems.FirstOrDefault(i => i.identifier == "deepspaceae.terminal");
             if (terminal == null) throw new InvalidOperationException("请先在主库存放置一个 AE 终端。");
             Show(terminal);
         }
-        catch (Exception error) { message = error.Message; log.Error(error.ToString()); }
+        catch (Exception error)
+        {
+            // An open failure is not the current status of a later successful window.
+            // In particular, do not leave a stale 'not in MAIN' warning in message.
+            log.Error(Diagnostics.ConsoleText(error.ToString()));
+            Diagnostics.Show("DeepSpaceAE - Terminal open failed", new[] { error.Message,
+                "See F8 for the full exception, or use F9 > Special > AE: Diagnose." });
+        }
     }
 
     private void Show(GameItem terminal)
@@ -142,19 +153,24 @@ internal sealed class GameSession
         var builder = CustomUIManager.Window(WindowId, "DeepSpaceAE · 存储终端 0.1.0", CustomUIManager.LAYER_PAPER)
             .SetSize(660, 700).SetDraggable(true).SetCloseOnEscape(true)
             .AddLabel($"网络：{view.Catalog.Connection.Status} | 频道 {(channels ? "开：核心32 / 管线8" : "关闭限制")}")
+            .AddLabel("主库存部件：" + Diagnostics.PartCounts(view.Root))
+            .AddLabel("实际写入许可：" + (writeFault ? "已锁定" : writesEnabled ? "开启" : "关闭（只读）"))
             .AddWarning(message)
             .AddToggle("启用频道限制", channels, enabled => { channels = enabled; Open(terminal); })
             .AddToggle("实验取放（仅测试档；整实例、不堆叠）", writesEnabled && !writeFault, enabled => {
                 writesEnabled = enabled && !writeFault;
                 message = writeFault ? "本次会话发生未知搬运结果，写入已锁定，请停止测试并查看 F8。" : (writesEnabled ? "实验取放已开启。每次移动重新核验连接。" : "已切换只读。");
                 Open(terminal);
-            }).AddButton("刷新网络与容器", () => Open(terminal)).BeginScroll(470);
+            }).AddButton("刷新网络与容器", () => Open(terminal))
+            .AddButton("只读诊断", Diagnose).BeginScroll(400);
+        if (view.Catalog.Connection.Status == DeviceStatus.ConflictingCores)
+            builder.AddWarning("核心冲突：让本终端的连通网络只保留一个核心。关闭频道限制不能解除核心冲突。");
         foreach (var part in view.Parts)
         {
             if (part.identifier != "deepspaceae.item_storage_bus") continue;
             var status = view.Catalog.Network.Devices[Id(part)].Status;
             var selectedOwner = view.Owners.TryGetValue(part, out var current) ? current.name : "未接入：需侧边接触真实容器";
-            builder.AddHeader($"总线 {Short(part)} · {status} · {Safe(selectedOwner)}");
+            builder.AddHeader($"总线 {Short(part)} · 设备 {status} · {(Online(view, part) ? "本终端可访问" : "本终端不可访问")} · {Safe(selectedOwner)}");
             foreach (var candidate in view.Candidates[part])
             {
                 var capturedBus = part;
@@ -200,6 +216,41 @@ internal sealed class GameSession
             }
         }
         builder.End().AddButton("关闭", Close).Show();
+        log.Log($"Terminal shown: status={view.Catalog.Connection.Status}; visible={rows.Length}; writes={writesEnabled && !writeFault}. "
+            + Diagnostics.PartCounts(view.Root));
+    }
+
+    internal void Diagnose()
+    {
+        var lines = new List<string> { "Read-only observation; no items moved or spawned.",
+            $"Writes enabled={writesEnabled}; fault={writeFault}. IDs are session-only." };
+        try
+        {
+            var root = MainInventory();
+            if (root == null) throw new InvalidOperationException("Load a test save first.");
+            lines.Add("MAIN = EmporiumEntry.invElement: " + Diagnostics.PartCounts(root));
+            var legacy = PlayerStore.Instance?.GetStoreInventory(); // Observation only; never a movement target.
+            lines.Add("Legacy store same object as MAIN: " + ReferenceEquals(root, legacy));
+            if (legacy != null) lines.Add("Legacy store (ignored by network): " + Diagnostics.PartCounts(legacy));
+            var parts = root.childItems.Where(IsPart).ToArray();
+            var buses = parts.Where(item => item.identifier == "deepspaceae.item_storage_bus").ToArray();
+            foreach (var part in parts.Take(100))
+            {
+                var neighbors = parts.Where(other => !ReferenceEquals(other, part) && part.IsAdjacent(other)).Select(Short);
+                lines.Add($"{Short(part)} {part.identifier}; parent=MAIN:{ReferenceEquals(part.parentInventory, root)}; owned={GeneralHelper.IsItemEffectivelyOwned(part)}; adjacent=[{string.Join(",", neighbors)}]");
+            }
+            if (parts.Length > 100) lines.Add("Part detail truncated at 100; MAIN counts above are complete.");
+            var others = root.childItems.Where(item => !IsPart(item)).ToArray();
+            foreach (var owner in others.Take(60))
+            {
+                var touching = buses.Where(bus => bus.IsAdjacent(owner)).Select(Short);
+                lines.Add($"{Short(owner)} {owner.identifier}; owned={GeneralHelper.IsItemEffectivelyOwned(owner)}; direct inventories={Contents(owner).Count}; adjacent buses=[{string.Join(",", touching)}]");
+            }
+            if (others.Length > 60) lines.Add("Non-AE detail truncated at 60.");
+        }
+        catch (Exception error) { lines.Add("Observation stopped: " + error.Message); log.Error(Diagnostics.ConsoleText(error.ToString())); }
+        log.Log(Diagnostics.ConsoleText(string.Join("\n", lines)));
+        Diagnostics.Show("DeepSpaceAE - Read-only diagnostics", lines);
     }
 
     private bool Online(View view, GameItem bus)
@@ -261,13 +312,13 @@ internal sealed class GameSession
                 || !placement.inventory.childItems.Any(i => ReferenceEquals(i, item)) || source.childItems.Any(i => ReferenceEquals(i, item)))
                 throw new InvalidOperationException("搬运结果未知或不完整；停止写入，不自动重试或回滚。");
             message = $"已移动整实例 {Short(item)} ×{count}。";
-            log.Log(message);
+            log.Log(Diagnostics.ConsoleText(message));
         }
         catch (Exception error)
         {
             if (enteredNative || error is not MoveRejectedException) { writeFault = true; writesEnabled = false; }
             message = error.Message;
-            log.Warning(error.ToString());
+            log.Warning(Diagnostics.ConsoleText(error.ToString()));
         }
         finally { writing = false; }
         Open(terminal);
