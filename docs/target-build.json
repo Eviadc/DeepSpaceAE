@@ -3,6 +3,12 @@
   "steamBuildId": "26284217",
   "testPlatform": "Windows x64",
   "source": "user-reported",
+  "developmentReferences": {
+    "userAuthorizedUpload": true,
+    "status": "awaiting-upload",
+    "use": "API verification and compilation only",
+    "redistributionAllowed": false
+  },
   "labelBuildPairVerified": false,
   "latestStableVerified": false,
   "assemblySignaturesVerified": false,

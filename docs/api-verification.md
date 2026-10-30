@@ -1,8 +1,10 @@
 # 真实 API 待验证清单（下一步优先）
 
-状态：**全部未核验**。本轮无合法可用游戏引用，不登录 Steam，不下载/上传游戏文件，不安装 Unity Editor/Wine，不操作本地电脑。不为获得“编译成功”创建假游戏接口。
+状态：**全部未核验，等待用户提供真实引用**。用户已明确授权把必要的合法游戏编译引用上传到云端，供 API 核验和模组开发使用；该授权取代此前对这些引用上传的禁止。不自行登录 Steam 或获取游戏本体、资源、存档、凭据，不安装 Unity Editor/Wine，不操作本地电脑。不为获得“编译成功”创建假游戏接口。
 
 用户指定的测试目标：游戏内版本 `100-REV3`、Steam Build `26284217`、Windows x64，记录在 [target-build.json](target-build.json)。尚未独立核对两种版本标识的对应关系或“最新正式版”状态。API 核验、适配和安装包制作属于开发端工作，不要求测试玩家运行核验工具；当前没有可供游戏加载的测试包。
+
+待提供的最小引用集合来自指南：`Assembly-CSharp.dll`、`UnityEngine.dll`、`UnityEngine.CoreModule.dll`、`0Harmony.dll`。接收后放在 checkout 外，记录文件名及 SHA-256，核验真实类型/方法后实现适配。仅当实际依赖解析或编译报告缺失时再请求额外引用；不要求整个 Managed 目录。这些文件不提交到 Git，不随模组、源码包或其他分发产物携带。
 
 文档参考：[`dragonpan2/probably-stolen-modding`](https://github.com/dragonpan2/probably-stolen-modding)，本次查阅提交 `accceead2d7b63bc1746bcb053e6ab41bea75d2a`，日期 2026-10-30。仅查阅 README.zh-CN.md、ModdingGuide.zh-CN.md、APIChanges.zh-CN.md 的文字，不运行其中的项目或脚本。后者明确包含“下一次更新（开发中）”；指南也要求以实际游戏行为为准。所有 API 名称均只是待核验线索。
 
