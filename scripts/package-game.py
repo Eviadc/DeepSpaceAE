@@ -14,10 +14,14 @@ files = {
     "DeepSpaceAE/manifest.xml": root / "assets/game/manifest.xml",
     "DeepSpaceAE/安装与测试.md": root / "docs/game-test.md",
 }
-for key in ("core", "pipeline", "item-storage-bus", "terminal"):
+keys = ["core", "pipeline", "item-storage-bus", "terminal"] + [f"pipeline-{m}" for m in range(16)]
+keys += [k + "-off" for k in keys.copy()]
+keys += ["capacity-upgrade", "tag-upgrade", "wrench"]
+assert len(keys) == len(set(keys)) == 43
+for key in keys:
     files[f"DeepSpaceAE/Textures/Items/{key}.png"] = root / f"assets/game/Textures/Items/{key}.png"
-for mask in range(16):
-    files[f"DeepSpaceAE/Textures/Items/pipeline-{mask}.png"] = root / f"assets/game/Textures/Items/pipeline-{mask}.png"
+files["DeepSpaceAE/THIRD-PARTY-NOTICES.md"] = root / "assets/THIRD-PARTY-NOTICES.md"
+files["DeepSpaceAE/artwork-sources.json"] = root / "assets/ae2-source/sources.json"
 for source in files.values():
     if not source.is_file():
         raise SystemExit(f"Missing package input: {source.name}. Build the game adapter first.")
@@ -32,9 +36,11 @@ for name, path in files.items():
         raise SystemExit(f"{path.name} does not contain the current source revision. Rebuild after committing.")
     if name.endswith(".png"):
         data = path.read_bytes()
-        size = 48 if Path(name).name == "core.png" else 16
+        size = 48 if Path(name).name in ("core.png", "core-off.png") else 16
         assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", data[16:24]) == (size, size)
-output = root / "artifacts/packages" / f"DeepSpaceAE-0.1.0-alpha-100-REV3-{revision[:7]}.zip"
+version = ET.parse(files["DeepSpaceAE/manifest.xml"]).getroot().findtext("ModVersion")
+assert version == "0.2.0-alpha"
+output = root / "artifacts/packages" / f"DeepSpaceAE-{version}-100-REV3-{revision[:7]}.zip"
 if output.exists():
     raise SystemExit("Package already exists; refusing to overwrite.")
 output.parent.mkdir(parents=True, exist_ok=True)
@@ -45,6 +51,8 @@ info = {
     "steamBuildId": "26284217 (user-reported)",
     "referenceAssemblySha256": "0fd3de05d961c8a415758f8f78a8e0a32692b8b45fb34350df885ed8bd5e8eb0",
     "configuration": "Release",
+    "modVersion": version,
+    "artworkLicense": "CC-BY-NC-SA-3.0; see THIRD-PARTY-NOTICES.md",
     "targetFramework": "netstandard2.1",
     "gameRuntimeTest": "NOT RUN; to be tested by the user on Windows x64",
     "files": hashes,

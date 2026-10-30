@@ -1,69 +1,87 @@
-"""Render our original integer-coordinate pixel assets. Standard library only; no game art inputs."""
+"""Reproduce AE2-derived pixel assets (Pillow 12.3.0 for decoding; stdlib PNG encoder).
+Source hashes/model provenance: assets/ae2-source/sources.json. License: CC BY-NC-SA 3.0.
+"""
 from pathlib import Path
 import argparse
+import hashlib
+import json
 import struct
 import zlib
+from PIL import Image, ImageDraw, ImageOps, ImageChops
 
-ROOT = Path(__file__).resolve().parents[1] / "assets/game/Textures/Items"
+REPO = Path(__file__).resolve().parents[1]
+SOURCE = REPO / 'assets/ae2-source'
+ROOT = REPO / 'assets/game/Textures/Items'
 
-
-def render(size, rectangles):
-    pixels = bytearray(size * size * 4)
-    for x0, y0, x1, y1, color in rectangles:
-        for y in range(y0, y1):
-            for x in range(x0, x1):
-                offset = (y * size + x) * 4
-                pixels[offset:offset + 4] = bytes(color)
-    raw = b"".join(b"\0" + pixels[y * size * 4:(y + 1) * size * 4] for y in range(size))
-
+def png(image):
+    image = image.convert('RGBA'); width, height = image.size; pixels = image.tobytes()
+    raw = b''.join(b'\0' + pixels[y*width*4:(y+1)*width*4] for y in range(height))
     def chunk(kind, data):
-        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+        return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind+data))
+    return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB',width,height,8,6,0,0,0)) + chunk(b'IDAT',zlib.compress(raw,9)) + chunk(b'IEND',b'')
 
-    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 6, 0, 0, 0))
-            + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
-
+def image(name): return Image.open(SOURCE / name).convert('RGBA')
+def inactive(img):
+    result = ImageOps.grayscale(img).point(lambda x: x*2//5).convert('RGBA'); result.putalpha(img.getchannel('A')); return result
 
 def assets():
-    dark = (21, 30, 42, 255)
-    metal = (75, 94, 112, 255)
-    cyan = (90, 230, 246, 255)
-    gold = (249, 183, 62, 255)
+    metadata = json.loads((SOURCE/'sources.json').read_text())
+    for entry in metadata['files']:
+        assert hashlib.sha256((SOURCE/entry['file']).read_bytes()).hexdigest() == entry['sha256'], entry['file']
     result = {}
+    core = image('controller_powered.png'); core.alpha_composite(image('controller_lights.png').crop((0,0,16,16)))
+    result['core.png'] = core.resize((48,48), Image.Resampling.NEAREST)
+    result['core-off.png'] = inactive(image('controller.png')).resize((48,48), Image.Resampling.NEAREST)
+    # Orthographic top (world x/z) projection of AE2 storage_bus_base.json up faces.
+    # Rotate axes so the front/north face points to local east, matching native bus rules.
+    bus = Image.new('RGBA',(16,16)); texture = image('storage_bus_sides.png')
+    model = json.loads((SOURCE/'storage_bus_base.json').read_text())
+    for element in sorted(model['elements'], key=lambda e:e['to'][1]):
+        if 'up' not in element['faces']: continue
+        x0,y0,z0=element['from']; x1,y1,z1=element['to']
+        for x in range(x0,x1):
+            for z in range(z0,z1): bus.putpixel((15-z,x), texture.getpixel((x,z)))
+    draw = ImageDraw.Draw(bus)
+    draw.rectangle((0,6,11,9), fill=(80,84,95,255))
+    draw.line((1,7,13,7),fill=(237,194,72,255),width=2)
+    draw.polygon([(12,4),(15,7),(12,10)],fill=(237,194,72,255))
+    result['item-storage-bus.png'] = bus
+    terminal=Image.new('RGBA',(16,16))
+    # AE2 model north-face UV is [2,2,14,14]; each mask needs its own cable-color tint.
+    for name,color in [('terminal_dark.png',(24,44,33)),('terminal_medium.png',(76,139,86)),('terminal_bright.png',(151,252,132))]:
+        layer=image(name)
+        colored=ImageChops.multiply(layer.convert('RGB'),Image.new('RGB',(16,16),color)).convert('RGBA')
+        colored.putalpha(layer.getchannel('A')); terminal.alpha_composite(colored)
+    terminal.alpha_composite(image('monitor_front.png'))
+    result['terminal.png']=terminal
+    # Cable geometry is our four-port grid projection; pixels sampled from AE2 glass cable.
+    cable=image('transparent.png')
     for mask in range(16):
-        # Faint complete cell remains clickable, including unconnected ends.
-        rectangles = [(0, 0, 16, 16, (21, 30, 42, 8)), (5, 5, 11, 11, metal)]
-        for bit, rect in enumerate([(6, 0, 10, 8), (8, 6, 16, 10), (6, 8, 10, 16), (0, 6, 8, 10)]):
-            if mask & (1 << bit):
-                rectangles.append((*rect, cyan))
-        rectangles.append((6, 6, 10, 10, cyan))
-        result[f"pipeline-{mask}.png"] = render(16, rectangles)
-    result["pipeline.png"] = result["pipeline-15.png"]  # Directory/spawner preview only.
-    core = [(0, 0, 48, 48, dark), (1, 1, 47, 47, metal), (3, 3, 45, 45, dark)]
-    for y in (8, 24, 40):
-        for x in (8, 24, 40):
-            core.extend([(x - 5, y - 5, x + 5, y + 5, metal), (x - 2, y - 2, x + 2, y + 2, cyan)])
-    core.extend([(20, 20, 28, 28, gold), (22, 22, 26, 26, cyan)])
-    result["core.png"] = render(48, core)
-    bus = [(0, 0, 16, 16, dark), (0, 5, 8, 11, metal), (0, 7, 12, 9, gold)]
-    for x in range(8, 15):
-        half = (14 - x) // 2 + 1
-        bus.append((x, 8 - half, x + 1, 8 + half, gold))
-    result["item-storage-bus.png"] = render(16, bus)
-    terminal = [(0, 0, 16, 16, dark), (1, 1, 15, 14, metal), (3, 3, 13, 11, dark),
-                (4, 4, 11, 5, cyan), (4, 7, 10, 8, cyan), (5, 14, 11, 16, metal)]
-    result["terminal.png"] = render(16, terminal)
-    return result
+        img=Image.new('RGBA',(16,16)); draw=ImageDraw.Draw(img)
+        for bit, rect in enumerate([(6,0,9,7),(8,6,15,9),(6,8,9,15),(0,6,7,9)]):
+            if mask & (1<<bit): draw.rectangle(rect,fill=(122,195,211,255))
+        draw.rectangle((5,5,10,10), fill=(63,87,99,255))
+        for y in range(6,10):
+            for x in range(6,10):
+                p=cable.getpixel((x,y)); img.putpixel((x,y),p if p[3] else (122,195,211,255))
+        result[f'pipeline-{mask}.png']=img
+    result['pipeline.png']=result['pipeline-15.png']
+    for name,img in list(result.items()):
+        if not name.endswith('-off.png') and name[:-4]+'-off.png' not in result: result[name[:-4]+'-off.png']=inactive(img)
+    result['capacity-upgrade.png']=image('card_capacity.png')
+    tag=image('card_fuzzy.png'); draw=ImageDraw.Draw(tag)
+    for x in (6,9): draw.line((x,5,x,11),fill=(208,255,194,255))
+    for y in (7,9): draw.line((4,y,11,y),fill=(208,255,194,255))
+    result['tag-upgrade.png']=tag
+    result['wrench.png']=image('certus_quartz_wrench.png')
+    return {k:png(v) for k,v in result.items()}
 
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--check", action="store_true")
-    args = parser.parse_args()
-    for name, content in assets().items():
-        path = ROOT / name
+if __name__=='__main__':
+    parser=argparse.ArgumentParser();parser.add_argument('--check',action='store_true');args=parser.parse_args()
+    generated=assets()
+    for name, content in generated.items():
+        path=ROOT/name
         if args.check:
-            if not path.is_file() or path.read_bytes() != content:
-                raise SystemExit(f"Asset differs from authored geometry: {name}")
-        else:
-            path.write_bytes(content)
-    print("Verified 20 authored PNGs." if args.check else "Rendered 20 authored PNGs.")
+            if not path.is_file() or path.read_bytes()!=content: raise SystemExit('Asset mismatch: '+name)
+        else: path.write_bytes(content)
+    print(('Verified' if args.check else 'Rendered'),len(generated),'licensed PNGs.')

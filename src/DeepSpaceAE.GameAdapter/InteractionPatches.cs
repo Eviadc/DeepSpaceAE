@@ -29,3 +29,29 @@ internal static class ShapeChangedPatch
     [HarmonyPostfix]
     private static void Postfix(GameItem __instance) => ModEntry.ActiveSession?.Visuals.ShapeChanged(__instance);
 }
+
+// Native battery swapping can enter unchecked movement without MayRemove.
+[HarmonyPatch(typeof(GraphUtils), nameof(GraphUtils.SwapItemsInPlace))]
+internal static class LockedBatterySwapPatch
+{
+    [HarmonyPrefix]
+    private static bool Prefix(GameItem source, GameItem target, ref bool __result)
+    {
+        bool Locked(GameItem item)
+        {
+            var inv = item?.parentInventory;
+            var owner = inv?.GetParentItem();
+            return owner != null && (owner.identifier == "deepspaceae.core" || owner.identifier == "deepspaceae.item_storage_bus")
+                && (inv!.IsRemoveLocked() || item!.MaxNumRemove() < item.unitCount);
+        }
+        if (!Locked(source) && !Locked(target)) return true;
+        __result = false; return false;
+    }
+}
+
+[HarmonyPatch(typeof(StoreStation), nameof(StoreStation.StartDay))]
+internal static class DayStartedPatch
+{
+    [HarmonyPostfix]
+    private static void Postfix() => ModEntry.ActiveSession?.DayStarted();
+}

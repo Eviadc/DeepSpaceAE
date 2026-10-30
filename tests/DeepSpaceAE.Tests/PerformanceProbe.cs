@@ -30,11 +30,27 @@ internal static class PerformanceProbe
                 var observation = new SnapshotIndex(snapshots);
                 if (!observation.ByInstance.ContainsKey(items[count - 1].InstanceId)) throw new InvalidOperationException("Index probe failed.");
             });
+            var itemTags = new[] { "METAL", "POWER" };
+            var policies = Enumerable.Range(0,31).Select(i => new StoragePolicy(i, StorageAccess.ReadWrite, i % 2 == 0,
+                true, true, 0, new[] { "excluded-" + i, "POWER" })).ToArray();
+            var filter = new ExtractionFilter(policies);
+            var filtered = Measure(() => {
+                int allowed = 0;
+                for (int i = 0; i < count; i++) if (filter.Allows("item", itemTags)) allowed++;
+                if (allowed != count) throw new InvalidOperationException("Filter probe failed.");
+            });
+            var records = items.Select((item,i) => new CatalogRecord(item.InstanceId,"battery","Cell " + i,itemTags,i+1)).ToArray();
+            var catalog = Measure(() => {
+                var search = new CatalogSearch(records);
+                var found = search.Find("cell #power", "METAL", CatalogSort.Quantity);
+                if (found.Count != count || !ReferenceEquals(found, search.Find("cell #power","METAL",CatalogSort.Quantity)))
+                    throw new InvalidOperationException("Search cache probe failed.");
+            });
             foreach (bool limited in new[] { true, false })
             {
                 NetworkEvaluation evaluation = null!;
                 var network = Measure(() => evaluation = new NetworkEvaluation(PhysicalNetworkProjection.Build(nodes, edges, new ChannelSettings(limited))));
-                results.Add(new { parts = count * 2 + 1, items = count, channels = limited, spatial, index, network,
+                results.Add(new { parts = count * 2 + 1, items = count, channels = limited, spatial, index, filtered, catalog, network,
                     searches = evaluation.SearchPasses, transportVisits = evaluation.VisitedTransportNodes,
                     online = evaluation.Devices.Values.Count(device => device.Status == DeviceStatus.Online) });
             }

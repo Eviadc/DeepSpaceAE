@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Manifest>
   <ID>deepspaceae</ID>
-  <Name>DeepSpaceAE Test</Name>
+  <Name>DeepSpaceAE</Name>
   <Author>Eviadc</Author>
-  <ModVersion>0.1.0-alpha</ModVersion>
-  <Description>存储网络测试版：核心、管线、物品存储总线和终端。默认只读；实验取放仅用于独立测试档。禁用模组前请移除所有 AE 部件。</Description>
+  <ModVersion>0.2.0-alpha</ModVersion>
+  <Description>主物品栏存储网络：电池供电、频道、定向总线、搜索终端、筛选升级与扳手。</Description>
   <GameVersions><Version>100-REV3</Version></GameVersions>
   <Prerequisites />
   <Assemblies>

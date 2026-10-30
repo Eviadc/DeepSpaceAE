@@ -26,7 +26,7 @@
 | 真实容器 | `GameItem.child`、`GraphNodeStorage.children`、`GameInventory.GetParentItem()`、`childItems`；仅枚举直接库存，遇到库存停止向下遍历 | 未运行 |
 | 物品身份 | 真实对象引用与 unitCount；模组使用弱引用会话 Guid 区分实例，不把 uniqueId 当作已证明的持久身份，不序列化完整游戏状态或自行合并 | 未运行 |
 | 终端 UI | `CustomUIManager.Window`、`CustomUIBuilder` 标签/按钮/开关/滚动/显示、窗口关闭；部件可挂原生激活回调 | 用户截图确认原包窗口能打开；显示多核心冲突、未接入及旧错误，不证明接入/搬运成功 |
-| 变更时机 | 原生库存/物品有逐实例回调，但未确认覆盖所有变更的全局事件；当前只在用户刷新/操作时重读，读取期间不订阅/替换原生库存回调 | 未运行 |
+| 变更时机 | 原生库存/物品有逐实例回调，但未确认覆盖所有变更的全局事件；当前窗口订阅真实库存 End/数量事件批量重读，所有写入强制重读；不替换原生回调 | 未运行 |
 | 原生搬运 | `MayRemove`、`MaxNumRemove`、`TryFindOneValidInventorySlot`、`SlotMarker.TryAcceptOnce`；原生可能先 Expel 后 UncheckedAccept，中间触发回调 | 未运行 |
 | 存档 | 游戏有 SaveItemNode 等原生数据结构；本模组不增加自有存储文件或持久容器身份 | 保存/载入/停用均未运行 |
 
@@ -34,26 +34,20 @@
 
 2026-10-31 用户提供了原包的真实终端窗口及 F8 警告截图，部分加载/UI 已有用户侧证据；问题、范围和源码诊断修订详见 [首次本地反馈](game-runtime-feedback.md)。这不代表修订后的二进制已在游戏验证。
 
-## 当前实现边界
+## 0.2 新增静态核验
 
-- 核心为自有 3×3 定义，其他部件 1×1；20 张 PNG 由原创整数几何脚本生成。不对其他物品占格做硬编码。
-- 控制台自有日志与清单显示名称为英文/ASCII；不修补或屏蔽游戏全局字体警告。
-- 从真实 DoubleClickAction/ClickAction 与默认激活处理器核验双击入口，已用 typed Harmony 补丁限定到 AE 物品。ApplyAnimationFrame、Sprites 缓存和库存 End 回调支持连接贴图，详细证据和复杂度见 [性能记录](performance.md)。
-- 核心/管线为传输网络；终端/总线是叶子。同一个端点接触不同传输连通分量时保持离线，不桥接；接触同一分量多段线时稳定选择一个端口。
-- 总线只从旋转/翻转后的箭头面紧邻格识别一个真实、有效拥有的容器；网络仅走背面。其他侧面不能接入。容器接入由当前方向推导，不保存手动容器绑定。
-- 默认只读。实验取放仅做精确对象的整实例移动，拒绝堆叠、拆分、自动嵌套目标；重新核验连通/频道/归属，异常或未知后置条件锁定本会话写入，不自动回滚/重试。
-- 主库存部件、已接入容器不在存入候选中；仅直接容器内容进入索引，嵌套物品不会被递归暴露。
+用户已确认 37f61bf 基础交互可用。0.2 的新 UI、供电、升级、拾荒和存档往返尚未实测，不能沿用前版运行结果。
 
-## 待本地验证
+- PowerHelper 的 power_source_item、能量/最大能量字段、CanDrawPowerSource、DrawPowerSource；普通电池足额才扣，HypertechBatteryHelper 沿用原生输出限制/无限能量语义，CurrentConverter 排除。
+- GameSlotInventory、GameGridInventory(5,1)、PixelWindow.Attach、GameItem.SetContentWindow：真实子库存挂在原生存档图中。TagState 与 GameItem.state 字典保存配置和结算，不创建假接口。
+- GameInventory.LockInv/UnlockInv、MaxNumRemove 回调；SlotMarker.TryAcceptOnce 不调用 MayRemove，因此必须额外约束 maxSlotRemoveItemFunc；GraphUtils.SwapItemsInPlace 的原生交换亦需限定 AE 子库存锁。
+- PlayerStore.EndNight 的 OnGoingSleepEarly 确有调用，先于原版夜间服务；StoreStation.StartDay 增加 dayCounter，使用后置钩子解锁。不把 OnWakingUp 事件声明当作已证明的调用时机。
+- SaveManager.EncodeNode 保存原生 state.Clone、uniqueId、子物品和库存节点编号；Decode 按目录工厂重建图、恢复状态和实例后 UncheckedAccept 子物品。加载 Early/Late 范围内禁止执行新电池预留回调，Late 恢复锁；节点顺序保持稳定。
+- GameItem.GetGameItemType/modifiedState.dict 提供实例类型和启用标签；排除 deepspaceae.* 内部字段。GetTagReadonly 会创建缺失标签，因此配置只读使用 TryGetValue。
+- ToolDirectory 的工具选择/目标委托用于扳手；拆卸通过真实 SlotMarker 移回原卡片。
+- LootRegistry.GroupIds/HasTable 与 ModHelper.RegisterLootTable/AddLootGroupEntry/RemoveLootGroupEntry，按运行时 POI_* 组添加自有权重，不替换原生战利品表。
+- CustomUIBuilder 的输入、图标、网格、下拉、滚动和清理容器用于正式 UI。额外 Unity 模块未上传，不使用需要这些模块类型出现在签名中的便捷方法，更不伪造枚举或游戏接口。
 
-按 [安装与测试](game-test.md) 先验证只读，再决定是否在独立测试档开启实验写入。分别记录通过/失败/未运行：
+详见 [架构实现与成本](storage-features.md) 和 [逐项本地验收](game-test.md)。云端未启动 Unity；回调覆盖、存档往返、中断结果、各种原生换电/工具入口及跨模组行为仍待验证。所有新功能真实游戏结果：**未运行**。
 
-1. 模组扫描、Harmony 加载、F8 英文日志、F9 三个 AE 按钮、核心 3×3/其他 1×1、20 张贴图、双击和拖拽互不干扰。
-2. 总线四方向与镜像、不同形状容器的实际占格接触、连接贴图更新；连接/断开后刷新、不同网络隔离、多核心和频道不足。
-3. 总线接入真实容器、同类不同状态实例、数量变化、对象销毁、嵌套不暴露、重复总线不重复计数。
-4. 满、拒收、锁定、所有权、目标堆叠、部分接受、回调重入、原生写入后异常；任何未知结果必须停止，不承诺补偿。
-5. 保存/载入恢复、模组停用、部件清理后的卸载行为，以及其他容器模组交互。没有完成这些测试前，不声明安全或兼容。
-
-指南参考仍为 `dragonpan2/probably-stolen-modding` 提交 `accceead2d7b63bc1746bcb053e6ab41bea75d2a`。APIChanges 的“下一次更新（开发中）”不作为版本证据；本轮使用的 API 是通过用户实际提供的程序集确认。
-
-本轮用户反馈 F9 生成已经可用（未提供该次包的源码标识）；新一轮双击/方向/贴图改动不沿用这项结果当作游戏运行通过。
+指南参考仍为 dragonpan2/probably-stolen-modding 提交 accceead2d7b63bc1746bcb053e6ab41bea75d2a。APIChanges 开发中内容不作版本证据；本版使用的是用户真实 100-REV3 程序集。

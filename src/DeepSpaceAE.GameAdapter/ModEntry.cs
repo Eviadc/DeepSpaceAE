@@ -17,7 +17,6 @@ public sealed class ModEntry : IMod
     internal static GameSession? ActiveSession { get; private set; }
     private ModLog log = null!;
     private GameSession session = null!;
-    private int spawnRequests;
 
     public void Init(ModManifest manifest)
     {
@@ -26,7 +25,7 @@ public sealed class ModEntry : IMod
         log = new ModLog(new ModManifest { Name = "DeepSpaceAE" });
         session = new GameSession(log);
         ActiveSession = session;
-        log.Log("DeepSpaceAE 0.1.0 / 100-REV3 test build initialized.");
+        log.Log("DeepSpaceAE 0.2.0 / 100-REV3 initialized.");
     }
 
     public void OnEnable()
@@ -36,10 +35,9 @@ public sealed class ModEntry : IMod
         ModHook.OnGameLoadedEarly += Reset;
         ModHook.OnGameLoadedLate += AttachInventory;
         ModHook.OnModAssetsLoaded += session.Visuals.AssetsLoaded;
-        ModHelper.AddDebugFunction(ModId, ModHelper.DEBUG_CATEGORY_SPAWN, "AE: Spawn kit", SpawnKit);
-        ModHelper.AddDebugFunction(ModId, ModHelper.DEBUG_CATEGORY_SPECIAL, "AE: Open terminal", OpenTerminal);
-        ModHelper.AddDebugFunction(ModId, ModHelper.DEBUG_CATEGORY_SPECIAL, "AE: Diagnose", session.Diagnose);
-        log.Log("Enabled. Load a TEST save, then use F9 > Spawn > AE: Spawn kit. Native writes default OFF.");
+        ModHook.OnGoingSleepEarly += session.Night;
+        ModHook.OnLootTablesLoaded += LootLoaded;
+        log.Log("Enabled.");
     }
 
     public void OnDisable()
@@ -48,21 +46,21 @@ public sealed class ModEntry : IMod
         ModHook.OnGameLoadedEarly -= Reset;
         ModHook.OnGameLoadedLate -= AttachInventory;
         ModHook.OnModAssetsLoaded -= session.Visuals.AssetsLoaded;
-        ModHelper.RemoveDebugFunctions(ModId);
+        ModHook.OnGoingSleepEarly -= session.Night;
+        ModHook.OnLootTablesLoaded -= LootLoaded;
+        foreach (var group in lootGroups) ModHelper.RemoveLootGroupEntry(ModId, group, "deepspaceae.scavenging");
+        lootGroups.Clear();
         session.Close();
         session.Visuals.Detach();
         ActiveSession = null;
-        Diagnostics.Close();
     }
 
     private void Reset()
     {
-        spawnRequests = 0;
-        Diagnostics.Close();
         session.Reset();
     }
 
-    private void AttachInventory() => session.Visuals.Attach();
+    private void AttachInventory() { session.Visuals.Attach(); session.DayStarted(); }
 
     private void Register(ModItemDirectory directory)
     {
@@ -72,10 +70,10 @@ public sealed class ModEntry : IMod
             directory.Add(definition.Id, () => {
                 var item = ItemDirectory.CreateEmptyItem(definition.Id);
                 item.name = definition.Name;
-                item.shortDescription = "DeepSpaceAE 测试部件；主物品栏内双击打开，单击保留拖拽。总线箭头面接容器，背面接线。";
-                item.flavorText = "0.1.0 测试版：频道默认核心32、管线8。禁用前先移除全部 AE 部件。";
+                item.shortDescription = definition.Part == NetworkPart.ItemStorageBus ? "箭头面接容器，背面接线。双击设置优先级与筛选。" : "放置于主物品栏接入网络。双击打开。";
+                item.flavorText = "深空中的应用能源。";
                 item.unitValue = 1;
-                item.SetSpriteAndShapeFromMod(ModId, definition.Sprite);
+                item.SetSpriteAndShapeFromMod(ModId, definition.Sprite + "-off");
                 // Intentional custom part definition, not a guess about other inventory shapes.
                 int size = definition.Part == NetworkPart.Core ? 3 : 1;
                 item.SetShape(new GridShapeBuilder(size, size).SetDataFill(1).Build());
@@ -85,65 +83,48 @@ public sealed class ModEntry : IMod
                 item.activateDefault = false;
                 item.mayActivateSlotItemFunc = (_, _, _) => false;
                 item.canActivateSlotItemFunc = (_, _, _) => false;
+                PartStorage.Create(item);
                 return item;
             });
         }
-        log.Log("Registered four AE parts.");
-    }
-
-    private void SpawnKit()
-    {
-        var request = ++spawnRequests;
-        log.Log($"Spawn kit request #{request} received.");
-        try
+        foreach (var entry in new[] { (PartStorage.Capacity, "AE 容量升级", "capacity-upgrade"),
+            (PartStorage.Tag, "AE 标签升级", "tag-upgrade"), (PartStorage.Wrench, "AE 扳手", "wrench") })
         {
-            session.Visuals.Attach();
-            var root = GameSession.MainInventory();
-            if (root == null)
-            {
-                log.Warning("Load a test save before spawning AE parts.");
-                Diagnostics.Show("DeepSpaceAE - Spawn kit", new[] { "Load a test save first. No parts spawned." });
-                return;
-            }
-            var before = Diagnostics.PartCounts(root);
-            int placed = 0;
-            int nested = 0;
-            foreach (var part in Parts)
-                for (int i = 0; i < (part.Part == NetworkPart.Pipeline ? 6 : 1); i++)
+            var definition = entry;
+            directory.Add(definition.Item1, () => {
+                var item = ItemDirectory.CreateEmptyItem(definition.Item1);
+                item.name = definition.Item2; item.unitValue = 20;
+                item.SetSpriteAndShapeFromMod(ModId, definition.Item3);
+                item.SetShape(new GridShapeBuilder(1, 1).SetDataFill(1).Build());
+                item.mayStackItemFunc = (_, _) => false;
+                item.shortDescription = definition.Item1 == PartStorage.Capacity ? "安装至存储总线，每张增加 9 个筛选槽。" :
+                    definition.Item1 == PartStorage.Tag ? "将总线筛选切换为标签。每条总线限一张。" : "对 AE 总线使用，拆卸一张升级卡。";
+                if (definition.Item1 == PartStorage.Wrench)
                 {
-                    var item = ModHelper.SetItemOwnerShip(ModHelper.SpawnItem(part.Id), true);
-                    if (GraphUtils.TryAcceptAllOrDestroy(root, item, "DeepSpaceAE spawn kit"))
-                    {
-                        if (ReferenceEquals(item.parentInventory, root)) placed++;
-                        else nested++;
-                    }
+                    item.SetGameItemType("TOOL");
+                    item.maySelectSlotItemFunc = (_, _, _) => true;
+                    item.canSelectSlotItemFunc = (_, _, _) => true;
+                    item.mayThisTargetItemFunc = (_, target) => target.identifier == "deepspaceae.item_storage_bus";
+                    item.canThisTargetItemFunc = (_, target) => target.identifier == "deepspaceae.item_storage_bus" && PartStorage.Inventory(target).childItems.Count > 0;
+                    item.onThisTargetItemFunc = (tool, target) => session.UseWrench(tool, target);
                 }
-            if (OverlayHandler.current != null) OverlayHandler.current.UpdateInventoryStateUI();
-            var lines = new[] { $"Request #{request}: main={placed}; nested={nested}; not kept={9 - placed - nested}.",
-                "MAIN before: " + before, "MAIN after: " + Diagnostics.PartCounts(root),
-                "Native placement may put parts inside another container. Move them into MAIN to connect.",
-                "Each click creates another kit. Use only ONE core in the connected test network." };
-            log.Log(string.Join("\n", lines));
-            Diagnostics.Show("DeepSpaceAE - Spawn kit result", lines);
+                return item;
+            });
         }
-        catch (Exception error)
-        {
-            log.Error(Diagnostics.ConsoleText(error.ToString()));
-            Diagnostics.Show("DeepSpaceAE - Spawn failed", new[] { error.Message,
-                "Some parts may already exist. Check MAIN and nested containers; do not blindly repeat." });
-        }
+        log.Log("Registered AE components, upgrades and wrench.");
     }
 
-    private void OpenTerminal()
+    private readonly HashSet<string> lootGroups = new(StringComparer.Ordinal);
+    private void LootLoaded()
     {
-        var terminal = GameSession.MainInventory()?.childItems.FirstOrDefault(i => i.identifier == "deepspaceae.terminal");
-        if (terminal == null)
-        {
-            log.Warning("Place an AE terminal in the main inventory first.");
-            Diagnostics.Show("DeepSpaceAE - Terminal not found", new[] {
-                "Place an AE terminal directly in MAIN, outside bags and boxes.", "Use F9 > Special > AE: Diagnose to inspect parts." });
-            return;
-        }
-        session.Open(terminal);
+        const string table = "deepspaceae.scavenging";
+        if (!LootRegistry.HasTable(table)) ModHelper.RegisterLootTable(ModId, table, ("deepspaceae.core", 1f), ("deepspaceae.pipeline", 8f),
+            ("deepspaceae.item_storage_bus", 3f), ("deepspaceae.terminal", 2f),
+            (PartStorage.Capacity, 2f), (PartStorage.Tag, 1f), (PartStorage.Wrench, 3f));
+        foreach (var group in LootRegistry.GroupIds.ToArray())
+            if (group.StartsWith("POI_", StringComparison.Ordinal) && lootGroups.Add(group))
+                ModHelper.AddLootGroupEntry(ModId, group, table, 20f);
+        if (lootGroups.Count == 0) log.Warning("No POI loot groups found; AE scavenging drops are unavailable.");
+        else log.Log("AE scavenging loot registered in " + lootGroups.Count + " POI groups.");
     }
 }

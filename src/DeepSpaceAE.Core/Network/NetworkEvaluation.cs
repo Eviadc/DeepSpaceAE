@@ -42,6 +42,8 @@ public sealed class NetworkEvaluation
     internal NetworkTopology Topology { get; }
     public IReadOnlyDictionary<string, DeviceConnection> Devices { get; }
     public IReadOnlyDictionary<string, int> ChannelsUsed { get; }
+    public IReadOnlyDictionary<string, string> ComponentCore { get; }
+    public IReadOnlyDictionary<string, int> NightCosts { get; }
     public int SearchPasses { get; private set; }
     public int VisitedTransportNodes { get; private set; }
 
@@ -51,6 +53,8 @@ public sealed class NetworkEvaluation
         Topology = topology;
         var devices = new Dictionary<string, DeviceConnection>(StringComparer.Ordinal);
         var used = topology.Nodes.Values.Where(n => !n.ConsumesChannel).ToDictionary(n => n.Id, _ => 0, StringComparer.Ordinal);
+        var membership = new Dictionary<string, string>(StringComparer.Ordinal);
+        var costs = new Dictionary<string, int>(StringComparer.Ordinal);
         var visited = new HashSet<string>(StringComparer.Ordinal);
         foreach (var start in topology.Nodes.Keys)
         {
@@ -73,6 +77,8 @@ public sealed class NetworkEvaluation
                 continue;
             }
             var core = cores[0].Id;
+            costs[core] = component.Sum(n => NightCost(n.Part));
+            foreach (var n in component) membership.Add(n.Id, core);
             Dictionary<string, RoutePath>? paths = null;
             var order = new List<RoutePath>();
             foreach (var node in endpoints)
@@ -100,9 +106,13 @@ public sealed class NetworkEvaluation
                 for (int i = order.Count - 1; i >= 0; i--)
                     if (order[i].Parent is RoutePath parent) used[parent.Id] += used[order[i].Id];
         }
+        ComponentCore = new ReadOnlyDictionary<string, string>(membership);
+        NightCosts = new ReadOnlyDictionary<string, int>(costs);
         Devices = new ReadOnlyDictionary<string, DeviceConnection>(devices);
         ChannelsUsed = new ReadOnlyDictionary<string, int>(used);
     }
+
+    public static int NightCost(NetworkPart part) => part == NetworkPart.Core ? 8 : part == NetworkPart.Pipeline ? 1 : 4;
 
     private Dictionary<string, RoutePath> Reachable(NetworkTopology topology, string core,
         Dictionary<string, int> used, List<RoutePath> order)

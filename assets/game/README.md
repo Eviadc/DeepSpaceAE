@@ -1,12 +1,7 @@
-# 游戏测试素材
+# 游戏素材
 
-20 张 PNG 均为原创程序化像素素材，源几何位于 scripts/generate-game-assets.py；CC0-1.0。不读取、复制或派生游戏贴图。运行 python3 scripts/generate-game-assets.py 可重复渲染，--check 只校验，依赖仅为 Python 标准库。
+43 张 PNG：核心、线缆、总线、终端与 16 个线缆连接掩码的在线/熄灭版本，加容量卡、标签卡、扳手。核心 48×48，其余 16×16。
 
-- core.png 为 48×48，对应当前默认 16 像素格下的 3×3 核心；注册时显式设置九格占用。
-- pipeline.png 是生成器预览。pipeline-0.png 到 pipeline-15.png 是 16 张 16×16 连接贴图，位 0/1/2/3 对应本地北/东/南/西，中心与边缘按端口绘制。微透明背景保留整格点击区域。
-- item-storage-bus.png 是 16×16 朝本地东侧的箭头；原生旋转与翻转同时应用于图像和端口。
-- terminal.png 为 16×16。
+素材采自 AE2 固定提交，原始输入、模型和逐文件哈希在 assets/ae2-source；来源及 CC BY-NC-SA 3.0 署名见 assets/THIRD-PARTY-NOTICES.md。这些 PNG 不适用早期原创占位素材的 CC0 声明。没有本游戏或 Minecraft 本体文件。
 
-连接贴图沿用固定 1×1 占格，只换 Sprite，不从贴图重新推导形状。运行时预制件和 UI 缩放仍需真实游戏复测，未验证其他 gridSize 的素材尺寸适配。
-
-manifest.xml 仅列两个自有 DLL，能力为空；不捆绑上传的游戏编译引用。
+可选重绘：Python 3 + Pillow 12.3.0，运行 python3 scripts/generate-game-assets.py；--check 验证已提交输出与输入哈希。标准构建/测试/打包使用已提交 PNG，不需要 Pillow。输出 PNG 使用自有标准库编码器，不受 Pillow 压缩器差异影响。

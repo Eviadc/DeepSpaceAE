@@ -11,9 +11,12 @@ public sealed class GameTextureTests
     private static readonly string Root = Path.Combine(AppContext.BaseDirectory, "assets", "game", "Textures", "Items");
 
     [Fact]
-    public void CoreTextureCoversAllNineCellsAndWhitelistContainsTwentyImages()
+    public void CoreTextureCoversAllNineCellsAndWhitelistContainsAllActiveAndInactiveImages()
     {
-        Assert.Equal(20, Directory.GetFiles(Root, "*.png").Length);
+        Assert.Equal(43, Directory.GetFiles(Root, "*.png").Length);
+        foreach (var name in new[] { "core", "terminal", "item-storage-bus", "pipeline" })
+            Assert.True(File.Exists(Path.Combine(Root, name + "-off.png")));
+        for (int mask = 0; mask < 16; mask++) Assert.True(File.Exists(Path.Combine(Root, $"pipeline-{mask}-off.png")));
         var (width, height, pixels) = Decode("core.png");
         Assert.Equal(48, width);
         Assert.Equal(48, height);

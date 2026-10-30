@@ -61,3 +61,9 @@ credentials/
 NuGet.Config.local
 Directory.Build.local.props
 .DS_Store
+
+# Explicit AE2-derived inactive/component asset whitelist.
+!assets/game/Textures/Items/*-off.png
+!assets/game/Textures/Items/capacity-upgrade.png
+!assets/game/Textures/Items/tag-upgrade.png
+!assets/game/Textures/Items/wrench.png
