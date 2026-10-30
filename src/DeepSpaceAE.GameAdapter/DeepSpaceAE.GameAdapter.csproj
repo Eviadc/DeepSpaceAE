@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../DeepSpaceAE.Core/DeepSpaceAE.Core.csproj" />
+    <!-- Candidate references from the guide, not evidence of supported game APIs. -->
+    <Reference Include="Assembly-CSharp" HintPath="$(GameManagedDir)/Assembly-CSharp.dll" Private="false" />
+    <Reference Include="UnityEngine" HintPath="$(GameManagedDir)/UnityEngine.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(GameManagedDir)/UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(GameManagedDir)/0Harmony.dll" Private="false" />
+  </ItemGroup>
+  <Target Name="RequireVerifiedGameBindings" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(GameManagedDir)' == ''" Code="EAE001"
+           Text="GameAdapter requires real assemblies from the matching, legally available game version. GameManagedDir is unset. No game files are downloaded by this project. See docs/api-verification.md." />
+    <ItemGroup>
+      <RequiredGameAssembly Include="$(GameManagedDir)/Assembly-CSharp.dll;$(GameManagedDir)/UnityEngine.dll;$(GameManagedDir)/UnityEngine.CoreModule.dll;$(GameManagedDir)/0Harmony.dll" />
+    </ItemGroup>
+    <Error Condition="!Exists('%(RequiredGameAssembly.Identity)')" Code="EAE002"
+           Text="Missing real game reference: %(RequiredGameAssembly.Identity). No stubs are provided." />
+    <Error Code="EAE003"
+           Text="GameAdapter is intentionally unimplemented. Presence of DLLs does not verify game version, API signatures or behavior. Complete docs/api-verification.md in a separate task before implementing bindings; no adapter binary is produced." />
+  </Target>
+</Project>
