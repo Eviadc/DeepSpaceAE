@@ -37,6 +37,8 @@ game/
 !assets/game/Textures/Items/
 !assets/game/Textures/Items/core.png
 !assets/game/Textures/Items/pipeline.png
+!assets/game/Textures/Items/pipeline-[0-9].png
+!assets/game/Textures/Items/pipeline-1[0-5].png
 !assets/game/Textures/Items/item-storage-bus.png
 !assets/game/Textures/Items/terminal.png
 game-files/

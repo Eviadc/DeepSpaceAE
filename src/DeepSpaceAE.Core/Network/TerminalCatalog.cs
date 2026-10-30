@@ -13,12 +13,17 @@ public sealed class TerminalCatalog
     public IReadOnlyList<string> MissingContainerIds { get; }
 
     public TerminalCatalog(NetworkTopology topology, string terminalId, IEnumerable<ContainerSnapshot> snapshots)
+        : this(topology, terminalId, snapshots, new NetworkEvaluation(topology)) { }
+
+    public TerminalCatalog(NetworkTopology topology, string terminalId, IEnumerable<ContainerSnapshot> snapshots, NetworkEvaluation evaluation)
     {
         if (topology is null) throw new ArgumentNullException(nameof(topology));
         if (snapshots is null) throw new ArgumentNullException(nameof(snapshots));
         if (!topology.Nodes.TryGetValue(terminalId, out var terminal) || terminal.Part != NetworkPart.Terminal)
             throw new ArgumentException("Select an existing terminal node.", nameof(terminalId));
-        Network = new NetworkEvaluation(topology);
+        if (evaluation is null || !ReferenceEquals(evaluation.Topology, topology))
+            throw new ArgumentException("Evaluation belongs to a different topology observation.", nameof(evaluation));
+        Network = evaluation;
         Connection = Network.Devices[terminalId];
         var selected = new Dictionary<string, ContainerSnapshot>(StringComparer.Ordinal);
         var attached = new HashSet<string>(StringComparer.Ordinal);

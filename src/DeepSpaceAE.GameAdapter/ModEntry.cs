@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using DeepSpaceAE.Core.Network;
 
@@ -12,6 +13,8 @@ public sealed class ModEntry : IMod
         ("deepspaceae.pipeline", "AE 管线", "pipeline", NetworkPart.Pipeline),
         ("deepspaceae.item_storage_bus", "AE 物品存储总线", "item-storage-bus", NetworkPart.ItemStorageBus),
         ("deepspaceae.terminal", "AE 存储终端", "terminal", NetworkPart.Terminal) };
+    internal static readonly Dictionary<string, NetworkPart> PartKinds = Parts.ToDictionary(part => part.Id, part => part.Part, StringComparer.Ordinal);
+    internal static GameSession? ActiveSession { get; private set; }
     private ModLog log = null!;
     private GameSession session = null!;
     private int spawnRequests;
@@ -22,13 +25,17 @@ public sealed class ModEntry : IMod
         // log label so F8 does not generate a missing-glyph warning for every log line.
         log = new ModLog(new ModManifest { Name = "DeepSpaceAE" });
         session = new GameSession(log);
+        ActiveSession = session;
         log.Log("DeepSpaceAE 0.1.0 / 100-REV3 test build initialized.");
     }
 
     public void OnEnable()
     {
+        ActiveSession = session;
         ModHook.OnModItemDirectoryInit += Register;
         ModHook.OnGameLoadedEarly += Reset;
+        ModHook.OnGameLoadedLate += AttachInventory;
+        ModHook.OnModAssetsLoaded += session.Visuals.AssetsLoaded;
         ModHelper.AddDebugFunction(ModId, ModHelper.DEBUG_CATEGORY_SPAWN, "AE: Spawn kit", SpawnKit);
         ModHelper.AddDebugFunction(ModId, ModHelper.DEBUG_CATEGORY_SPECIAL, "AE: Open terminal", OpenTerminal);
         ModHelper.AddDebugFunction(ModId, ModHelper.DEBUG_CATEGORY_SPECIAL, "AE: Diagnose", session.Diagnose);
@@ -39,8 +46,12 @@ public sealed class ModEntry : IMod
     {
         ModHook.OnModItemDirectoryInit -= Register;
         ModHook.OnGameLoadedEarly -= Reset;
+        ModHook.OnGameLoadedLate -= AttachInventory;
+        ModHook.OnModAssetsLoaded -= session.Visuals.AssetsLoaded;
         ModHelper.RemoveDebugFunctions(ModId);
         session.Close();
+        session.Visuals.Detach();
+        ActiveSession = null;
         Diagnostics.Close();
     }
 
@@ -51,6 +62,8 @@ public sealed class ModEntry : IMod
         session.Reset();
     }
 
+    private void AttachInventory() => session.Visuals.Attach();
+
     private void Register(ModItemDirectory directory)
     {
         foreach (var part in Parts)
@@ -59,20 +72,19 @@ public sealed class ModEntry : IMod
             directory.Add(definition.Id, () => {
                 var item = ItemDirectory.CreateEmptyItem(definition.Id);
                 item.name = definition.Name;
-                item.shortDescription = "DeepSpaceAE 测试部件；放在主物品栏，侧边接触核心或管线。终端/总线可激活。";
+                item.shortDescription = "DeepSpaceAE 测试部件；主物品栏内双击打开，单击保留拖拽。总线箭头面接容器，背面接线。";
                 item.flavorText = "0.1.0 测试版：频道默认核心32、管线8。禁用前先移除全部 AE 部件。";
                 item.unitValue = 1;
                 item.SetSpriteAndShapeFromMod(ModId, definition.Sprite);
                 // Intentional custom part definition, not a guess about other inventory shapes.
-                item.SetShape(new GridShapeBuilder(1, 1).SetDataFill(1).Build());
+                int size = definition.Part == NetworkPart.Core ? 3 : 1;
+                item.SetShape(new GridShapeBuilder(size, size).SetDataFill(1).Build());
                 item.mayStackItemFunc = (_, _) => false;
-                if (definition.Part != NetworkPart.Pipeline)
-                {
-                    item.activateDefault = true;
-                    item.mayActivateSlotItemFunc = (_, _, _) => true;
-                    item.canActivateSlotItemFunc = (_, _, _) => true;
-                    item.onActivateSlotItemFunc = (self, _, _) => session.Open(self);
-                }
+                // Native default activation runs on single press. All AE windows use the
+                // verified DoubleClickAction patch instead, regardless of single-click settings.
+                item.activateDefault = false;
+                item.mayActivateSlotItemFunc = (_, _, _) => false;
+                item.canActivateSlotItemFunc = (_, _, _) => false;
                 return item;
             });
         }
@@ -85,6 +97,7 @@ public sealed class ModEntry : IMod
         log.Log($"Spawn kit request #{request} received.");
         try
         {
+            session.Visuals.Attach();
             var root = GameSession.MainInventory();
             if (root == null)
             {

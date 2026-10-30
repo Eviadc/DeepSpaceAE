@@ -16,6 +16,8 @@ files = {
 }
 for key in ("core", "pipeline", "item-storage-bus", "terminal"):
     files[f"DeepSpaceAE/Textures/Items/{key}.png"] = root / f"assets/game/Textures/Items/{key}.png"
+for mask in range(16):
+    files[f"DeepSpaceAE/Textures/Items/pipeline-{mask}.png"] = root / f"assets/game/Textures/Items/pipeline-{mask}.png"
 for source in files.values():
     if not source.is_file():
         raise SystemExit(f"Missing package input: {source.name}. Build the game adapter first.")
@@ -30,7 +32,8 @@ for name, path in files.items():
         raise SystemExit(f"{path.name} does not contain the current source revision. Rebuild after committing.")
     if name.endswith(".png"):
         data = path.read_bytes()
-        assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", data[16:24]) == (16, 16)
+        size = 48 if Path(name).name == "core.png" else 16
+        assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", data[16:24]) == (size, size)
 output = root / "artifacts/packages" / f"DeepSpaceAE-0.1.0-alpha-100-REV3-{revision[:7]}.zip"
 if output.exists():
     raise SystemExit("Package already exists; refusing to overwrite.")

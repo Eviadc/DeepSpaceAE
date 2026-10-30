@@ -14,13 +14,14 @@ internal static class PrototypeTerminal
         try
         {
             if (args.Length == 1 && args[0] == "--smoke") return Smoke(Console.Out);
+            if (args.Length == 1 && args[0] == "--benchmark") return PerformanceProbe.Run();
             if (args.Length == 2 && args[0] == "--report")
             {
                 PrototypeReport.Export(new NetworkPrototype(), args[1]);
                 Console.WriteLine("Exported offline prototype snapshot: " + args[1]);
                 return 0;
             }
-            if (args.Length != 0) { Console.Error.WriteLine("Usage: demo.sh [--smoke | --report <new-file.html>]"); return 2; }
+            if (args.Length != 0) { Console.Error.WriteLine("Usage: demo.sh [--smoke | --benchmark | --report <new-file.html>]"); return 2; }
             return Run(Console.In, Console.Out);
         }
         catch (Exception error)

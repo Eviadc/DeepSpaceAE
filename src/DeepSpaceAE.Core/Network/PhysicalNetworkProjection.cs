@@ -13,27 +13,41 @@ public static class PhysicalNetworkProjection
         var edges = adjacency.ToArray();
         if (edges.Any(e => !parts.ContainsKey(e.A) || !parts.ContainsKey(e.B)))
             throw new ArgumentException("Observed edge references an unknown node.", nameof(adjacency));
-        var transportEdges = edges.Where(e => !parts[e.A].ConsumesChannel && !parts[e.B].ConsumesChannel).ToList();
-        var transport = new NetworkTopology(parts.Values.Where(n => !n.ConsumesChannel), transportEdges, channels);
-        var component = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var start in transport.Nodes.Keys.OrderBy(id => id, StringComparer.Ordinal))
+        var neighbors = parts.Keys.ToDictionary(id => id, _ => new List<string>(), StringComparer.Ordinal);
+        var transportEdges = new List<NetworkLink>();
+        foreach (var edge in edges)
+        {
+            neighbors[edge.A].Add(edge.B);
+            neighbors[edge.B].Add(edge.A);
+            if (!parts[edge.A].ConsumesChannel && !parts[edge.B].ConsumesChannel) transportEdges.Add(edge);
+        }
+        var component = new Dictionary<string, int>(StringComparer.Ordinal);
+        var componentId = 0;
+        foreach (var start in parts.Values.Where(n => !n.ConsumesChannel).Select(n => n.Id))
         {
             if (component.ContainsKey(start)) continue;
             var queue = new Queue<string>();
-            component.Add(start, start);
+            component.Add(start, componentId);
             queue.Enqueue(start);
             while (queue.Count > 0)
-                foreach (var next in transport.Neighbors(queue.Dequeue()))
-                    if (component.TryAdd(next, start)) queue.Enqueue(next);
+                foreach (var next in neighbors[queue.Dequeue()])
+                    if (!parts[next].ConsumesChannel && component.TryAdd(next, componentId)) queue.Enqueue(next);
+            componentId++;
         }
         foreach (var endpoint in parts.Values.Where(n => n.ConsumesChannel))
         {
-            var neighbors = edges.Where(e => e.A == endpoint.Id || e.B == endpoint.Id)
-                .Select(e => e.A == endpoint.Id ? e.B : e.A).Where(id => component.ContainsKey(id))
-                .Distinct().OrderBy(id => id, StringComparer.Ordinal).ToArray();
+            string? selected = null;
+            int? contactComponent = null;
+            bool ambiguous = false;
+            foreach (var neighbor in neighbors[endpoint.Id])
+            {
+                if (!component.TryGetValue(neighbor, out var current)) continue;
+                if (contactComponent.HasValue && contactComponent != current) { ambiguous = true; break; }
+                contactComponent = current;
+                if (selected == null || StringComparer.Ordinal.Compare(neighbor, selected) < 0) selected = neighbor;
+            }
             // Ambiguous physical contact with different transport components is offline, not a bridge.
-            if (neighbors.Length > 0 && neighbors.Select(id => component[id]).Distinct().Count() == 1)
-                transportEdges.Add(new NetworkLink(endpoint.Id, neighbors[0]));
+            if (!ambiguous && selected != null) transportEdges.Add(new NetworkLink(endpoint.Id, selected));
         }
         return new NetworkTopology(parts.Values, transportEdges, channels);
     }

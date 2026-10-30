@@ -7,33 +7,52 @@ namespace DeepSpaceAE.Core.Network;
 
 public enum DeviceStatus { Online, NoCore, ConflictingCores, ChannelExhausted }
 
-public sealed class DeviceConnection
+// Shared immutable path prefixes avoid quadratic route storage on long unlimited networks.
+internal sealed class RoutePath
 {
-    public DeviceStatus Status { get; }
-    public string? CoreId { get; }
-    public IReadOnlyList<string> Route { get; }
-
-    internal DeviceConnection(DeviceStatus status, string? coreId = null, string[]? route = null)
-    {
-        Status = status;
-        CoreId = coreId;
-        Route = Array.AsReadOnly(route ?? Array.Empty<string>());
-    }
+    internal readonly string Id;
+    internal readonly RoutePath? Parent;
+    internal readonly int Length;
+    internal RoutePath(string id, RoutePath? parent = null) { Id = id; Parent = parent; Length = (parent?.Length ?? 0) + 1; }
 }
 
-/// <summary>Deterministic greedy routing with residual per-core/per-pipeline channel budgets.</summary>
+public sealed class DeviceConnection
+{
+    private readonly RoutePath? path;
+    private IReadOnlyList<string>? route;
+    public DeviceStatus Status { get; }
+    public string? CoreId { get; }
+    public IReadOnlyList<string> Route
+    {
+        get
+        {
+            if (route != null) return route;
+            var result = new string[path?.Length ?? 0];
+            for (var cursor = path; cursor != null; cursor = cursor.Parent) result[cursor.Length - 1] = cursor.Id;
+            return route = Array.AsReadOnly(result);
+        }
+    }
+    internal DeviceConnection(DeviceStatus status, string? coreId = null, RoutePath? path = null)
+    { Status = status; CoreId = coreId; this.path = path; }
+}
+
+/// <summary>Shares one residual reachability tree until a pipeline saturates; failed devices do not repeat BFS.</summary>
 public sealed class NetworkEvaluation
 {
+    internal NetworkTopology Topology { get; }
     public IReadOnlyDictionary<string, DeviceConnection> Devices { get; }
     public IReadOnlyDictionary<string, int> ChannelsUsed { get; }
+    public int SearchPasses { get; private set; }
+    public int VisitedTransportNodes { get; private set; }
 
     public NetworkEvaluation(NetworkTopology topology)
     {
         if (topology is null) throw new ArgumentNullException(nameof(topology));
+        Topology = topology;
         var devices = new Dictionary<string, DeviceConnection>(StringComparer.Ordinal);
         var used = topology.Nodes.Values.Where(n => !n.ConsumesChannel).ToDictionary(n => n.Id, _ => 0, StringComparer.Ordinal);
         var visited = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var start in topology.Nodes.Keys.OrderBy(id => id, StringComparer.Ordinal))
+        foreach (var start in topology.Nodes.Keys)
         {
             if (!visited.Add(start)) continue;
             var component = new List<NetworkNode>();
@@ -43,60 +62,70 @@ public sealed class NetworkEvaluation
             {
                 var id = queue.Dequeue();
                 component.Add(topology.Nodes[id]);
-                foreach (var neighbor in topology.Neighbors(id))
-                    if (visited.Add(neighbor)) queue.Enqueue(neighbor);
+                foreach (var neighbor in topology.Neighbors(id)) if (visited.Add(neighbor)) queue.Enqueue(neighbor);
             }
             var cores = component.Where(n => n.Part == NetworkPart.Core).ToArray();
-            // Reserve terminals before buses; stable ordinal IDs decide contention within each kind.
-            foreach (var node in component.Where(n => n.ConsumesChannel)
-                .OrderBy(n => n.Part == NetworkPart.Terminal ? 0 : 1).ThenBy(n => n.Id, StringComparer.Ordinal))
+            var endpoints = component.Where(n => n.ConsumesChannel)
+                .OrderBy(n => n.Part == NetworkPart.Terminal ? 0 : 1).ThenBy(n => n.Id, StringComparer.Ordinal);
+            if (cores.Length != 1)
             {
-                if (cores.Length != 1)
-                {
-                    devices.Add(node.Id, new DeviceConnection(cores.Length == 0 ? DeviceStatus.NoCore : DeviceStatus.ConflictingCores));
-                    continue;
-                }
-                var route = FindRoute(topology, cores[0].Id, node.Id, used);
-                if (route is null)
-                {
-                    devices.Add(node.Id, new DeviceConnection(DeviceStatus.ChannelExhausted, cores[0].Id));
-                    continue;
-                }
-                foreach (var id in route)
-                    if (used.ContainsKey(id)) used[id]++;
-                devices.Add(node.Id, new DeviceConnection(DeviceStatus.Online, cores[0].Id, route));
+                foreach (var node in endpoints) devices.Add(node.Id, new DeviceConnection(cores.Length == 0 ? DeviceStatus.NoCore : DeviceStatus.ConflictingCores));
+                continue;
             }
+            var core = cores[0].Id;
+            Dictionary<string, RoutePath>? paths = null;
+            var order = new List<RoutePath>();
+            foreach (var node in endpoints)
+            {
+                if (topology.Channels.Enabled && used[core] >= topology.Channels.CoreCapacity)
+                { devices.Add(node.Id, new DeviceConnection(DeviceStatus.ChannelExhausted, core)); continue; }
+                if (paths == null) paths = Reachable(topology, core, used, order);
+                var neighbors = topology.Neighbors(node.Id); // Endpoints are single-connector leaves.
+                if (neighbors.Count == 0 || !paths.TryGetValue(neighbors[0], out var parent))
+                { devices.Add(node.Id, new DeviceConnection(DeviceStatus.ChannelExhausted, core)); continue; }
+                devices.Add(node.Id, new DeviceConnection(DeviceStatus.Online, core, new RoutePath(node.Id, parent)));
+                if (!topology.Channels.Enabled)
+                {
+                    used[parent.Id]++; // Fold subtree demand once, instead of walking every route.
+                    continue;
+                }
+                for (var cursor = parent; cursor != null; cursor = cursor.Parent)
+                {
+                    used[cursor.Id]++;
+                    if (topology.Nodes[cursor.Id].Part == NetworkPart.Pipeline && used[cursor.Id] == topology.Channels.PipelineCapacity)
+                        paths = null; // Only successful saturation invalidates reachability.
+                }
+            }
+            if (!topology.Channels.Enabled)
+                for (int i = order.Count - 1; i >= 0; i--)
+                    if (order[i].Parent is RoutePath parent) used[parent.Id] += used[order[i].Id];
         }
         Devices = new ReadOnlyDictionary<string, DeviceConnection>(devices);
         ChannelsUsed = new ReadOnlyDictionary<string, int>(used);
     }
 
-    private static string[]? FindRoute(NetworkTopology topology, string coreId, string target, Dictionary<string, int> used)
+    private Dictionary<string, RoutePath> Reachable(NetworkTopology topology, string core,
+        Dictionary<string, int> used, List<RoutePath> order)
     {
-        if (topology.Channels.Enabled && used[coreId] >= topology.Channels.CoreCapacity) return null;
+        SearchPasses++;
+        order.Clear();
+        var paths = new Dictionary<string, RoutePath>(StringComparer.Ordinal) { [core] = new RoutePath(core) };
         var queue = new Queue<string>();
-        var previous = new Dictionary<string, string?>(StringComparer.Ordinal) { [coreId] = null };
-        queue.Enqueue(coreId);
+        queue.Enqueue(core);
         while (queue.Count > 0)
         {
             var current = queue.Dequeue();
-            if (current == target)
-            {
-                var route = new List<string>();
-                for (string? id = target; id != null; id = previous[id]) route.Add(id);
-                route.Reverse();
-                return route.ToArray();
-            }
-            if (topology.Nodes[current].ConsumesChannel) continue;
+            VisitedTransportNodes++;
+            order.Add(paths[current]);
             foreach (var next in topology.Neighbors(current))
             {
-                if (previous.ContainsKey(next)) continue;
+                if (topology.Nodes[next].ConsumesChannel || paths.ContainsKey(next)) continue;
                 if (topology.Channels.Enabled && topology.Nodes[next].Part == NetworkPart.Pipeline
                     && used[next] >= topology.Channels.PipelineCapacity) continue;
-                previous.Add(next, current);
+                paths.Add(next, new RoutePath(next, paths[current]));
                 queue.Enqueue(next);
             }
         }
-        return null;
+        return paths;
     }
 }

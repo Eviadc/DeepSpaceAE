@@ -10,9 +10,13 @@ namespace DeepSpaceAE.GameAdapter;
 internal sealed class GameSession
 {
     internal const string WindowId = "deepspaceae.terminal";
-    private sealed class Token { internal Guid Id { get; } = Guid.NewGuid(); }
+    private sealed class Token
+    {
+        internal Guid Id { get; } = Guid.NewGuid();
+        internal string Text { get; }
+        internal Token() => Text = Id.ToString("N");
+    }
     private ConditionalWeakTable<GameItem, Token> identities = new();
-    private readonly Dictionary<GameItem, GameItem> bindings = new();
     private readonly ModLog log;
     private bool channels = true;
     private bool writesEnabled;
@@ -20,35 +24,42 @@ internal sealed class GameSession
     private bool writing;
     private int page;
     private int depositPage;
+    private int busPage;
     private GameItem? depositTarget;
     private sealed class MoveRejectedException : Exception { internal MoveRejectedException(string message) : base(message) { } }
     private string message = "只读模式；请用独立测试存档。";
 
-    internal GameSession(ModLog log) => this.log = log;
+    internal CableVisuals Visuals { get; }
+    internal GameSession(ModLog log) { this.log = log; Visuals = new CableVisuals(log); }
     // 100-REV3 attaches this inventory to invWindow and wires its MainInvArea callbacks.
     // PlayerStore.GetStoreInventory() returns a different, unattached inventory.
     internal static GameGridInventory? MainInventory() => EmporiumEntry.Instance?.invElement;
-    internal string Id(GameItem item) => identities.GetValue(item, _ => new Token()).Id.ToString("N");
+    internal string Id(GameItem item) => identities.GetValue(item, _ => new Token()).Text;
     internal Guid GuidFor(GameItem item) => identities.GetValue(item, _ => new Token()).Id;
-    internal static bool IsPart(GameItem item) => ModEntry.Parts.Any(p => p.Id == item.identifier);
+    internal static bool IsPart(GameItem item) => item.identifier != null && ModEntry.PartKinds.ContainsKey(item.identifier);
 
     internal void Reset()
     {
         Close();
-        bindings.Clear();
+        Visuals.Detach();
         identities = new ConditionalWeakTable<GameItem, Token>();
         writesEnabled = false;
         writeFault = false;
         writing = false;
         page = 0;
         depositPage = 0;
+        busPage = 0;
         depositTarget = null;
-        message = "已载入游戏；总线选择和写入许可仅在本次会话有效。";
+        message = "已载入游戏；网络目录已重置，写入许可仅在本次会话有效。";
     }
 
     internal void Close()
     {
-        if (CustomUIManager.Instance != null) CustomUIManager.Instance.CloseWindow(WindowId);
+        if (CustomUIManager.Instance != null)
+        {
+            CustomUIManager.Instance.CloseWindow(WindowId);
+            CustomUIManager.Instance.CloseWindow("deepspaceae.part");
+        }
     }
 
     internal static List<GameInventory> Contents(GameItem owner)
@@ -62,7 +73,7 @@ internal sealed class GameSession
         {
             var node = queue.Dequeue();
             if (!visited.Add(node)) continue;
-            if (visited.Count > 2048) throw new InvalidOperationException("容器结构超出测试版读取上限。");
+            if (visited.Count > 2048) throw new InvalidOperationException("Container structure exceeds the observation limit.");
             if (node is GameInventory inventory)
             {
                 if (ReferenceEquals(inventory.GetParentItem(), owner)) result.Add(inventory);
@@ -78,49 +89,101 @@ internal sealed class GameSession
     {
         internal GameGridInventory Root = null!;
         internal List<GameItem> Parts = null!;
-        internal Dictionary<GameItem, List<GameItem>> Candidates = new();
         internal Dictionary<GameItem, GameItem> Owners = new();
         internal Dictionary<Guid, GameItem> Live = new();
+        internal Dictionary<Guid, GameInventory> Sources = new();
         internal TerminalCatalog Catalog = null!;
+        internal InventoryLayout Layout = null!;
+        internal ItemLocation[] Rows = null!;
+        internal HashSet<GameItem> ContainerOwners = new();
+        internal Dictionary<GameItem, List<GameInventory>> Inventories = new();
+        internal GameItem[] Buses = null!;
+        internal GameItem[] ActiveBuses = null!;
+        internal HashSet<GameItem> ActiveBusSet = new();
+        internal GameItem[] Carried = null!;
+        internal string PartSummary = "";
     }
 
     private View Read(GameItem terminal)
     {
-        var root = MainInventory() ?? throw new InvalidOperationException("请先载入存档。");
+        var root = MainInventory() ?? throw new InvalidOperationException("Load a test save first.");
         if (terminal.identifier != "deepspaceae.terminal" || !ReferenceEquals(terminal.parentInventory, root))
-            throw new InvalidOperationException("终端必须直接放在主物品栏。请激活主库存中的 AE 终端。");
-        var view = new View { Root = root, Parts = root.childItems.Where(i => IsPart(i) && GeneralHelper.IsItemEffectivelyOwned(i)).ToList() };
+            throw new InvalidOperationException("The AE terminal must be directly in MAIN, outside bags and boxes.");
+        var layout = new InventoryLayout(root);
+        var view = new View { Root = root, Layout = layout, Parts = layout.Parts };
         foreach (var bus in view.Parts.Where(i => i.identifier == "deepspaceae.item_storage_bus"))
         {
-            var candidates = root.childItems.Where(owner => !IsPart(owner) && GeneralHelper.IsItemEffectivelyOwned(owner)
-                && bus.IsAdjacent(owner) && Contents(owner).Count > 0).ToList();
-            view.Candidates.Add(bus, candidates);
-            if (bindings.TryGetValue(bus, out var selected) && candidates.Contains(selected)) view.Owners.Add(bus, selected);
-            else if (candidates.Count == 1) view.Owners.Add(bus, candidates[0]);
+            var facingOwner = layout.FrontOwner(bus);
+            if (facingOwner != null && !IsPart(facingOwner) && layout.Owned.Contains(facingOwner))
+            {
+                if (!view.Inventories.TryGetValue(facingOwner, out var contents))
+                { contents = Contents(facingOwner); view.Inventories.Add(facingOwner, contents); }
+                if (contents.Count > 0) view.Owners.Add(bus, facingOwner);
+            }
         }
-        var nodes = view.Parts.Select(item => new NetworkNode(Id(item), ModEntry.Parts.First(p => p.Id == item.identifier).Part,
+        var nodes = view.Parts.Select(item => new NetworkNode(Id(item), ModEntry.PartKinds[item.identifier],
             item.identifier == "deepspaceae.item_storage_bus" ? (view.Owners.TryGetValue(item, out var owner) ? Id(owner) : "unbound:" + Id(item)) : null)).ToArray();
-        var edges = new List<NetworkLink>();
-        for (int a = 0; a < view.Parts.Count; a++)
-            for (int b = a + 1; b < view.Parts.Count; b++)
-                if (view.Parts[a].IsAdjacent(view.Parts[b])) edges.Add(new NetworkLink(Id(view.Parts[a]), Id(view.Parts[b])));
-        var topology = PhysicalNetworkProjection.Build(nodes, edges, new ChannelSettings(channels));
+        var topology = PhysicalNetworkProjection.Build(nodes, layout.Edges(Id), new ChannelSettings(channels));
+        var evaluation = new NetworkEvaluation(topology);
+        var terminalConnection = evaluation.Devices[Id(terminal)];
         var snapshots = new List<ContainerSnapshot>();
-        foreach (var owner in view.Owners.Values.Distinct())
+        view.ContainerOwners = new HashSet<GameItem>(view.Owners.Values);
+        var accessibleOwners = new HashSet<GameItem>();
+        if (terminalConnection.Status == DeviceStatus.Online)
+            foreach (var pair in view.Owners)
+            {
+                var connection = evaluation.Devices[Id(pair.Key)];
+                if (connection.Status == DeviceStatus.Online && connection.CoreId == terminalConnection.CoreId) accessibleOwners.Add(pair.Value);
+            }
+        foreach (var owner in accessibleOwners)
         {
             var observed = new List<ItemInstance>();
-            foreach (var inventory in Contents(owner))
+            foreach (var inventory in view.Inventories[owner])
                 foreach (var item in inventory.childItems)
                 {
-                    if (!ReferenceEquals(item.parentInventory, inventory)) throw new InvalidOperationException("容器观测不一致；停止读取。");
+                    if (!ReferenceEquals(item.parentInventory, inventory)) throw new InvalidOperationException("Inconsistent container observation; reading stopped.");
                     var id = GuidFor(item);
                     view.Live.Add(id, item); // Duplicate observations fail closed.
+                    view.Sources.Add(id, inventory);
                     observed.Add(new ItemInstance(id, item.identifier ?? "unknown", $"units={item.unitCount}; runtime={item.uniqueId}"));
                 }
             snapshots.Add(new ContainerSnapshot(Id(owner), observed));
         }
-        view.Catalog = new TerminalCatalog(topology, Id(terminal), snapshots);
+        view.Catalog = new TerminalCatalog(topology, Id(terminal), snapshots, evaluation);
+        view.Rows = view.Catalog.Index.ByInstance.Values.ToArray(); // Native observation order; no full O(M log M) sort per page.
+        view.Buses = view.Parts.Where(item => item.identifier == "deepspaceae.item_storage_bus").ToArray();
+        view.ActiveBuses = view.Owners.Keys.Where(bus => Online(view, bus)).ToArray();
+        view.ActiveBusSet = new HashSet<GameItem>(view.ActiveBuses);
+        view.Carried = view.Layout.Items.Where(item => !IsPart(item) && !view.ContainerOwners.Contains(item)).ToArray();
+        view.PartSummary = Diagnostics.PartCounts(root);
         return view;
+    }
+
+    internal void OpenPart(GameItem part)
+    {
+        if (writing) return;
+        if (part.identifier == "deepspaceae.terminal") { Open(part); return; }
+        try
+        {
+            Visuals.Attach();
+            var root = MainInventory();
+            if (root == null || !ReferenceEquals(part.parentInventory, root))
+                throw new InvalidOperationException("Place the AE part directly in MAIN before opening it.");
+            var kind = ModEntry.PartKinds[part.identifier];
+            var builder = CustomUIManager.Window("deepspaceae.part", "DeepSpaceAE · " + Safe(part.name), CustomUIManager.LAYER_PAPER)
+                .SetSize(550, 330).SetDraggable(true).SetCloseOnEscape(true)
+                .AddLabel("双击打开组件；单击和拖动不会打开窗口。")
+                .AddLabel(kind == NetworkPart.Core ? "核心占格 3×3，提供 32 频道。" : kind == NetworkPart.Pipeline
+                    ? "线缆按实际接触自动切换连接贴图；每段提供 8 频道。"
+                    : "总线箭头面连接真实容器，背面连接核心或线缆。拖拽时使用游戏旋转/翻转操作调整方向。")
+                .AddButton("打开存储终端", () => Open(part)).AddButton("只读诊断", Diagnose);
+            builder.AddButton("关闭", () => CustomUIManager.Instance.CloseWindow("deepspaceae.part")).Show();
+        }
+        catch (Exception error)
+        {
+            log.Error(Diagnostics.ConsoleText(error.ToString()));
+            Diagnostics.Show("DeepSpaceAE - Part open failed", new[] { error.Message });
+        }
     }
 
     internal void Open(GameItem selected)
@@ -131,10 +194,10 @@ internal sealed class GameSession
         {
             if (CustomUIManager.Instance == null) { log.Warning("Game UI is not ready."); return; }
             var root = MainInventory();
-            if (root == null) throw new InvalidOperationException("请先载入存档。");
+            if (root == null) throw new InvalidOperationException("Load a test save first.");
             var terminal = selected.identifier == "deepspaceae.terminal" ? selected
                 : root.childItems.FirstOrDefault(i => i.identifier == "deepspaceae.terminal");
-            if (terminal == null) throw new InvalidOperationException("请先在主库存放置一个 AE 终端。");
+            if (terminal == null) throw new InvalidOperationException("Place an AE terminal directly in MAIN first.");
             Show(terminal);
         }
         catch (Exception error)
@@ -147,13 +210,13 @@ internal sealed class GameSession
         }
     }
 
-    private void Show(GameItem terminal)
+    private void Show(GameItem terminal, View? cached = null)
     {
-        var view = Read(terminal);
+        var view = cached ?? Read(terminal);
         var builder = CustomUIManager.Window(WindowId, "DeepSpaceAE · 存储终端 0.1.0", CustomUIManager.LAYER_PAPER)
             .SetSize(660, 700).SetDraggable(true).SetCloseOnEscape(true)
             .AddLabel($"网络：{view.Catalog.Connection.Status} | 频道 {(channels ? "开：核心32 / 管线8" : "关闭限制")}")
-            .AddLabel("主库存部件：" + Diagnostics.PartCounts(view.Root))
+            .AddLabel("主库存部件：" + view.PartSummary)
             .AddLabel("实际写入许可：" + (writeFault ? "已锁定" : writesEnabled ? "开启" : "关闭（只读）"))
             .AddWarning(message)
             .AddToggle("启用频道限制", channels, enabled => { channels = enabled; Open(terminal); })
@@ -165,59 +228,61 @@ internal sealed class GameSession
             .AddButton("只读诊断", Diagnose).BeginScroll(400);
         if (view.Catalog.Connection.Status == DeviceStatus.ConflictingCores)
             builder.AddWarning("核心冲突：让本终端的连通网络只保留一个核心。关闭频道限制不能解除核心冲突。");
-        foreach (var part in view.Parts)
+        busPage = Math.Max(0, Math.Min(busPage, Math.Max(0, (view.Buses.Length - 1) / 8)));
+        builder.AddHeader($"总线：{view.Buses.Length} · 第 {busPage + 1} 页");
+        if (busPage > 0) builder.AddButton("总线上一页", () => { busPage--; Show(terminal, view); });
+        if ((busPage + 1) * 8 < view.Buses.Length) builder.AddButton("总线下一页", () => { busPage++; Show(terminal, view); });
+        for (int busIndex = busPage * 8; busIndex < Math.Min(view.Buses.Length, (busPage + 1) * 8); busIndex++)
         {
-            if (part.identifier != "deepspaceae.item_storage_bus") continue;
+            var part = view.Buses[busIndex];
             var status = view.Catalog.Network.Devices[Id(part)].Status;
-            var selectedOwner = view.Owners.TryGetValue(part, out var current) ? current.name : "未接入：需侧边接触真实容器";
+            var selectedOwner = view.Owners.TryGetValue(part, out var current) ? current.name : "未接入：箭头面需接触真实容器，背面接线";
             builder.AddHeader($"总线 {Short(part)} · 设备 {status} · {(Online(view, part) ? "本终端可访问" : "本终端不可访问")} · {Safe(selectedOwner)}");
-            foreach (var candidate in view.Candidates[part])
-            {
-                var capturedBus = part;
-                var capturedOwner = candidate;
-                builder.AddButton("接入：" + Safe(candidate.name), () => { bindings[capturedBus] = capturedOwner; Open(terminal); });
-            }
         }
-        var rows = view.Catalog.Index.ByInstance.Values.OrderBy(row => row.ContainerId, StringComparer.Ordinal).ThenBy(row => row.Item.InstanceId).ToArray();
+        var rows = view.Rows;
         page = Math.Max(0, Math.Min(page, Math.Max(0, (rows.Length - 1) / 30)));
         builder.AddHeader($"接入物品：{rows.Length} 个实例 · 第 {page + 1} 页");
-        if (page > 0) builder.AddButton("物品上一页", () => { page--; Open(terminal); });
-        if ((page + 1) * 30 < rows.Length) builder.AddButton("物品下一页", () => { page++; Open(terminal); });
-        foreach (var row in rows.Skip(page * 30).Take(30))
+        if (page > 0) builder.AddButton("物品上一页", () => { page--; Show(terminal, view); });
+        if ((page + 1) * 30 < rows.Length) builder.AddButton("物品下一页", () => { page++; Show(terminal, view); });
+        for (int rowIndex = page * 30; rowIndex < Math.Min(rows.Length, (page + 1) * 30); rowIndex++)
         {
+            var row = rows[rowIndex];
             var item = view.Live[row.Item.InstanceId];
             var captured = item;
+            var expectedSource = view.Sources[row.Item.InstanceId];
             builder.AddLabel($"{Safe(item.name)} ×{item.unitCount} · {Short(item)} · 状态不合并");
-            if (writesEnabled && !writeFault) builder.AddButton("取出整实例", () => Move(terminal, captured, null));
+            if (writesEnabled && !writeFault) builder.AddButton("取出整实例", () => Move(terminal, captured, null, expectedSource, null));
         }
         if (writesEnabled && !writeFault)
         {
             builder.AddHeader("从主库存存入（先选目标总线，再选物品）");
-            var activeBuses = view.Owners.Keys.Where(bus => Online(view, bus)).ToArray();
-            if (depositTarget == null || !activeBuses.Contains(depositTarget)) depositTarget = activeBuses.FirstOrDefault();
-            foreach (var bus in activeBuses)
+            if (depositTarget == null || !view.ActiveBusSet.Contains(depositTarget))
+                depositTarget = view.ActiveBuses.Length > 0 ? view.ActiveBuses[0] : null;
+            for (int busIndex = busPage * 8; busIndex < Math.Min(view.Buses.Length, (busPage + 1) * 8); busIndex++)
             {
-                var capturedBus = bus;
-                builder.AddButton("目标总线 " + Short(bus) + " → " + Safe(view.Owners[bus].name), () => { depositTarget = capturedBus; Open(terminal); });
+                var capturedBus = view.Buses[busIndex];
+                if (!view.ActiveBusSet.Contains(capturedBus)) continue;
+                builder.AddButton("目标总线 " + Short(capturedBus) + " → " + Safe(view.Owners[capturedBus].name), () => { depositTarget = capturedBus; Show(terminal, view); });
             }
             if (depositTarget != null)
             {
                 var capturedBus = depositTarget;
+                var expectedOwner = view.Owners[capturedBus];
                 builder.AddLabel("已选总线 " + Short(capturedBus));
-                var carried = view.Root.childItems.Where(i => !IsPart(i) && !view.Owners.Values.Contains(i)).ToArray();
+                var carried = view.Carried;
                 depositPage = Math.Max(0, Math.Min(depositPage, Math.Max(0, (carried.Length - 1) / 20)));
-                if (depositPage > 0) builder.AddButton("主库存上一页", () => { depositPage--; Open(terminal); });
-                if ((depositPage + 1) * 20 < carried.Length) builder.AddButton("主库存下一页", () => { depositPage++; Open(terminal); });
-                foreach (var item in carried.Skip(depositPage * 20).Take(20))
+                if (depositPage > 0) builder.AddButton("主库存上一页", () => { depositPage--; Show(terminal, view); });
+                if ((depositPage + 1) * 20 < carried.Length) builder.AddButton("主库存下一页", () => { depositPage++; Show(terminal, view); });
+                for (int itemIndex = depositPage * 20; itemIndex < Math.Min(carried.Length, (depositPage + 1) * 20); itemIndex++)
                 {
-                    var captured = item;
-                    builder.AddButton("存入 " + Safe(item.name) + $" ×{item.unitCount} ({Short(item)})", () => Move(terminal, captured, capturedBus));
+                    var captured = carried[itemIndex];
+                    builder.AddButton("存入 " + Safe(captured.name) + $" ×{captured.unitCount} ({Short(captured)})", () => Move(terminal, captured, capturedBus, view.Root, expectedOwner));
                 }
             }
         }
         builder.End().AddButton("关闭", Close).Show();
         log.Log($"Terminal shown: status={view.Catalog.Connection.Status}; visible={rows.Length}; writes={writesEnabled && !writeFault}. "
-            + Diagnostics.PartCounts(view.Root));
+            + view.PartSummary);
     }
 
     internal void Diagnose()
@@ -232,20 +297,24 @@ internal sealed class GameSession
             var legacy = PlayerStore.Instance?.GetStoreInventory(); // Observation only; never a movement target.
             lines.Add("Legacy store same object as MAIN: " + ReferenceEquals(root, legacy));
             if (legacy != null) lines.Add("Legacy store (ignored by network): " + Diagnostics.PartCounts(legacy));
-            var parts = root.childItems.Where(IsPart).ToArray();
-            var buses = parts.Where(item => item.identifier == "deepspaceae.item_storage_bus").ToArray();
-            foreach (var part in parts.Take(100))
+            var layout = new InventoryLayout(root);
+            var facingBuses = new Dictionary<GameItem, List<string>>();
+            foreach (var bus in layout.Parts.Where(item => item.identifier == "deepspaceae.item_storage_bus"))
             {
-                var neighbors = parts.Where(other => !ReferenceEquals(other, part) && part.IsAdjacent(other)).Select(Short);
-                lines.Add($"{Short(part)} {part.identifier}; parent=MAIN:{ReferenceEquals(part.parentInventory, root)}; owned={GeneralHelper.IsItemEffectivelyOwned(part)}; adjacent=[{string.Join(",", neighbors)}]");
+                var owner = layout.FrontOwner(bus);
+                if (owner == null) continue;
+                if (!facingBuses.TryGetValue(owner, out var list)) { list = new List<string>(); facingBuses.Add(owner, list); }
+                list.Add(Short(bus));
             }
-            if (parts.Length > 100) lines.Add("Part detail truncated at 100; MAIN counts above are complete.");
-            var others = root.childItems.Where(item => !IsPart(item)).ToArray();
+            foreach (var part in layout.Parts.Take(100))
+            {
+                var shape = part.modifiedShape;
+                lines.Add($"{Short(part)} {part.identifier}; cell=({shape.minX},{shape.minY}); orientation={shape.orientation}; flip={shape.flipped}; adjacent=[{string.Join(",", layout.Neighbors(part).Select(Short))}]");
+            }
+            if (layout.Parts.Count > 100) lines.Add("Part detail truncated at 100; MAIN counts above are complete.");
+            var others = layout.Items.Where(item => !IsPart(item)).ToArray();
             foreach (var owner in others.Take(60))
-            {
-                var touching = buses.Where(bus => bus.IsAdjacent(owner)).Select(Short);
-                lines.Add($"{Short(owner)} {owner.identifier}; owned={GeneralHelper.IsItemEffectivelyOwned(owner)}; direct inventories={Contents(owner).Count}; adjacent buses=[{string.Join(",", touching)}]");
-            }
+                lines.Add($"{Short(owner)} {owner.identifier}; owned={layout.Owned.Contains(owner)}; direct inventories={Contents(owner).Count}; facing buses=[{(facingBuses.TryGetValue(owner, out var facing) ? string.Join(",", facing) : "")}]");
             if (others.Length > 60) lines.Add("Non-AE detail truncated at 60.");
         }
         catch (Exception error) { lines.Add("Observation stopped: " + error.Message); log.Error(Diagnostics.ConsoleText(error.ToString())); }
@@ -260,34 +329,36 @@ internal sealed class GameSession
             && connection.CoreId == view.Catalog.Connection.CoreId;
     }
 
-    private void Move(GameItem terminal, GameItem item, GameItem? bus)
+    private void Move(GameItem terminal, GameItem item, GameItem? bus, GameInventory expectedSource, GameItem? expectedOwner)
     {
         if (writing) return;
         writing = true;
         bool enteredNative = false;
         try
         {
-            if (!writesEnabled || writeFault) throw new MoveRejectedException("写入未开启或已锁定。");
+            if (!writesEnabled || writeFault) throw new MoveRejectedException("Experimental writes are disabled or locked.");
             var view = Read(terminal);
-            if (view.Catalog.Connection.Status != DeviceStatus.Online) throw new MoveRejectedException("终端离线。");
+            if (view.Catalog.Connection.Status != DeviceStatus.Online) throw new MoveRejectedException("The terminal is offline.");
             var source = item.parentInventory;
+            if (!ReferenceEquals(source, expectedSource)) throw new MoveRejectedException("Source inventory changed since the displayed observation; refresh first.");
             if (source == null || !source.childItems.Any(i => ReferenceEquals(i, item)) || !GeneralHelper.IsItemEffectivelyOwned(item) || IsPart(item))
-                throw new MoveRejectedException("源实例已变化、未拥有或不可移动。");
+                throw new MoveRejectedException("Source instance changed, is not owned, or cannot be moved.");
             int count = item.unitCount;
             List<GameInventory> destinations;
             if (bus == null)
             {
-                if (!view.Catalog.Index.ByInstance.ContainsKey(GuidFor(item))) throw new MoveRejectedException("物品不再位于可访问的总线中。");
+                if (!view.Catalog.Index.ByInstance.ContainsKey(GuidFor(item))) throw new MoveRejectedException("The item is no longer visible through an accessible bus.");
                 destinations = new List<GameInventory> { view.Root };
             }
             else
             {
                 if (!ReferenceEquals(source, view.Root) || !view.Owners.TryGetValue(bus, out var owner) || !Online(view, bus))
-                    throw new MoveRejectedException("总线已断开或源不在主库存。");
+                    throw new MoveRejectedException("Bus disconnected or source is not directly in MAIN.");
+                if (!ReferenceEquals(owner, expectedOwner)) throw new MoveRejectedException("Bus target changed since the displayed observation; refresh first.");
                 destinations = Contents(owner);
             }
             if (!item.MayRemove() || count <= 0 || item.MaxNumRemove() < count || item.unitCount != count)
-                throw new MoveRejectedException("原生移除规则拒绝整实例移动。");
+                throw new MoveRejectedException("Native removal rules reject moving the whole instance.");
             SlotMarker? placement = null;
             foreach (var destination in destinations)
             {
@@ -297,22 +368,23 @@ internal sealed class GameSession
                     && candidate.targetItem == null && candidate.itemGridShape != null && candidate.numTransfer >= count)
                 { placement = candidate; break; }
             }
-            if (placement == null) throw new MoveRejectedException("无可用整实例位置：容量不足、拒收、目标堆叠或自动转入嵌套容器。未移动。");
+            if (placement == null) throw new MoveRejectedException("No whole-instance slot: full, rejected, stacking, or nested placement. Nothing moved.");
             var finalView = Read(terminal);
             bool stillVisible = bus == null ? finalView.Catalog.Index.ByInstance.ContainsKey(GuidFor(item))
                 : finalView.Owners.TryGetValue(bus, out var finalOwner) && Online(finalView, bus)
+                    && ReferenceEquals(finalOwner, expectedOwner)
                     && Contents(finalOwner).Any(inv => ReferenceEquals(inv, placement.inventory));
             if (finalView.Catalog.Connection.Status != DeviceStatus.Online || !ReferenceEquals(finalView.Root, view.Root)
                 || !stillVisible || !ReferenceEquals(item.parentInventory, source) || !source.childItems.Any(i => ReferenceEquals(i, item))
                 || item.unitCount != count || placement.targetItem != null || placement.numTransfer < count)
-                throw new InvalidOperationException("预检期间连接或源归属发生变化；写入已锁定。");
+                throw new InvalidOperationException("Connection or source ownership changed during preflight; writes locked.");
             enteredNative = true;
             int moved = placement.TryAcceptOnce(count);
             if (moved != count || item.unitCount != count || !ReferenceEquals(item.parentInventory, placement.inventory)
                 || !placement.inventory.childItems.Any(i => ReferenceEquals(i, item)) || source.childItems.Any(i => ReferenceEquals(i, item)))
-                throw new InvalidOperationException("搬运结果未知或不完整；停止写入，不自动重试或回滚。");
+                throw new InvalidOperationException("Move result unknown or incomplete; writes locked. No automatic retry or rollback.");
             message = $"已移动整实例 {Short(item)} ×{count}。";
-            log.Log(Diagnostics.ConsoleText(message));
+            log.Log($"Whole instance moved: id={Short(item)}; count={count}.");
         }
         catch (Exception error)
         {
