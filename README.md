@@ -2,7 +2,7 @@
 
 《深空当铺：可能是偷的》的存储网络模组工程。目标依次是高效率、可扩展、高兼容：计划在主物品栏摆放核心、连接件和接口形成网络，首版聚焦真实容器的统一索引与安全取放，自动合成后置。
 
-**当前交付仅为可复现的核心构建与模拟测试骨架，不是可玩的模组。真实游戏 API 尚未核验。** 不宣称游戏兼容、存档安全或跨容器原子事务。本轮没有游戏入口、manifest、Unity 对象替身、网络拓扑、自动合成或游戏文件。
+**当前交付为可运行的存储网络内存原型，不是可玩的游戏模组。真实游戏 API 尚未核验。** 已有核心、管线、存储总线、终端的逻辑拓扑、可配置频道、终端只读索引与测试宿主中的模拟取放，以及原创 SVG 占位图标。尚无游戏入口、manifest、Unity 对象替身、真实库存放置或自动合成；不宣称游戏兼容、存档安全或跨容器原子事务。
 
 ## 工程
 
@@ -10,11 +10,39 @@
 
 | 项目 | 目标框架 | 本轮边界 |
 | --- | --- | --- |
-| `src/DeepSpaceAE.Core` | `netstandard2.1` | 不可变模型、容器观测快照、按实例 ID 的只读统一索引；无游戏依赖 |
+| `src/DeepSpaceAE.Core` | `netstandard2.1` | 不可变模型、显式拓扑、频道分配、终端按实例的统一索引；无游戏依赖 |
 | `src/DeepSpaceAE.GameAdapter` | `netstandard2.1` | 仅依赖检查和边界；默认不参与编译，显式编译会报出依赖/未实现原因 |
-| `tests/DeepSpaceAE.Tests` | `net10.0` | xUnit 测试与测试专用内存容器、顺序搬运模拟器 |
+| `tests/DeepSpaceAE.Tests` | `net10.0` | xUnit 测试、测试专用内存容器、可操作的开发终端（CLI） |
 
 `netstandard2.1` 是库的兼容性目标，不是游戏运行验证。测试进程运行在现代 .NET 10，不是 Unity/Mono。
+
+## 运行终端原型
+
+完成下面的环境安装后：
+
+```bash
+bash scripts/demo.sh --smoke # 自动验证浏览、取出、存入、断线、频道不足与重连
+bash scripts/demo.sh         # 交互终端；输入 help 查看命令，quit 退出
+bash scripts/demo.sh --report artifacts/network-prototype.html # 输出带占位图标的离线快照，文件需尚不存在
+```
+
+默认连接：核心 → 管线 → 终端、总线 A、总线 B。总线 A 接入两节状态不同的电池，总线 B 接入矿石；另一个未接入的容器不可见。示例操作：
+
+```text
+list battery
+take 1111
+inventory
+put 1111 bus-b
+disconnect trunk bus-a
+list
+channels on 1
+status
+channels off
+connect trunk bus-a
+list
+```
+
+`1111` 为实例 ID 前缀，不是物品类型 ID。默认终端和总线各占 1 频道，核心承载 32、每段管线承载 8；可调整或关闭限制。具体规则、算法限制见 [网络原型说明](docs/network-prototype.md)。[占位素材](assets/placeholders/README.md) 用于离线 HTML 快照，尚未导入游戏；CLI 以文字显示设备，不是游戏内 UI。交互中可用 `export artifacts/after-move.html` 导出当前真实模型状态，不存在独立的 JavaScript 网络实现。
 
 ## 云端安装、干净构建与测试
 
@@ -64,4 +92,4 @@ dotnet build src/DeepSpaceAE.GameAdapter/DeepSpaceAE.GameAdapter.csproj -c Relea
 
 这些断言只证明模拟模型，不证明真实游戏已经安全。实际搬运不能以“先删源、再造目标”代替原生入口。下一步优先完成 [真实 API 待验证清单](docs/api-verification.md)，再实现最小只读观测和受约束的原生搬运试验。核心算法可独立推进，但不要立即扩展成完整 AE。
 
-详见 [架构边界](docs/architecture.md)、[本轮验证记录](docs/validation.md)。仓库和构建输出不得包含游戏 DLL、本体、存档或凭据；`.gitignore` 只是第一道防线，提交前仍需审查。三个项目均禁用 NuGet 打包；当前不生成或发布模组包，测试输出也不可作为模组分发。
+详见 [架构边界](docs/architecture.md)、[初始化验证记录](docs/validation.md)、[网络原型与本轮验证](docs/network-prototype.md)。仓库和构建输出不得包含游戏 DLL、本体、存档或凭据；`.gitignore` 只是第一道防线，提交前仍需审查。三个项目均禁用 NuGet 打包；当前不生成或发布模组包，测试输出也不可作为模组分发。
