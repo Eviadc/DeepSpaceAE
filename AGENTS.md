@@ -18,3 +18,5 @@
 - 0.2 存储与供电约束见 docs/storage-features.md。新增真实子库存的节点顺序保持稳定；加载不可重新扣电或预留已结算电池；未知扣电/移动结果保持锁定。开发提示/UI 已按用户要求移除，取放为正式操作，但继续要求每次原生预检和未知结果停止。AE2 素材为 CC BY-NC-SA 3.0，不得沿用早期原创素材的 CC0 声明或漏带署名。
 
 - 0.3 UI 规则见 docs/native-ui.md：控制器用原生机器面板和真实电池槽；总线九列幽灵格，禁止全物品候选枚举；终端展示真实占格投影，不拥有/克隆/暂存真实物品，不添加主栏候选面板。保留旧子库存保存图索引，使用原生 StealPixelElement 借用渲染。原版 TypeHelper.GetTypeDisplayName 本地化公开物品类别。功耗为核心/线缆/总线/终端 2/0/1/1 kJ，迁移只改未扣预算，不重置已扣或未知结算。
+
+- 0.3.1 加载回归见 docs/load-troubleshooting.md：GameItem.Destroy 是 abstract，禁止恢复其 Harmony 目标，仅保留具体 GameItemElement 覆盖。scripts/build-game.sh 必须通过只读 PE 补丁元数据审计；打包校验审计绑定当前 DLL 哈希。显示文案用官方 Localization/en.csv、zh.csv 和 ASCII 键，在工厂/钩子且资源就绪后解析，禁止 Init/OnEnable 解析。补丁/日志问题优先读取 Player.log，不全局静音 TMP 或错误。包白名单另允许 2 CSV、加载诊断说明和独立日志提取脚本。

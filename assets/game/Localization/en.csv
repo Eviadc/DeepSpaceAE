@@ -1,0 +1,93 @@
+item_core_name,AE Controller
+item_pipeline_name,AE Cable
+item_bus_name,AE Storage Bus
+item_terminal_name,AE Terminal
+item_capacity_name,AE Capacity Card
+item_tag_name,AE Category Card
+item_wrench_name,AE Wrench
+item_bus_desc,Connect a container at the arrow and cables at the back. Double-click to configure.
+item_part_desc,Place directly in the main inventory to join the network. Double-click to open.
+item_flavor,Applied energy in deep space.
+item_capacity_desc,Install in a storage bus to add 9 filter slots.
+item_tag_desc,Switch the bus to category filters. One per bus.
+item_wrench_desc,Use on an AE bus to remove one upgrade card.
+error_enter_game,Load a game first.
+error_terminal_main,Terminal inactive: place it directly in the main inventory.
+error_terminal_network,"Terminal inactive: check the controller, cables and channels. Use one controller per network."
+error_network_power,Network unpowered: install a battery with enough energy for the night.
+error_operation,Operation incomplete. Keep the game log and check the network.
+error_part_main,Part inactive: place it directly in the main inventory.
+error_reserve,The battery cannot reserve enough energy for the night.
+error_locked,Operations are locked.
+error_not_owned,You do not own this item.
+error_position_changed,The item location changed.
+error_install_main,Install from the main inventory.
+error_native_remove,The item is locked or native rules prevent removal.
+error_no_slot,The target has no free space for the whole instance.
+error_source_changed,The item location or lock state changed. Refresh first.
+error_transfer_locked,Transfers are locked.
+error_gesture_expired,This drag is no longer valid.
+error_item_gone,The item left its source inventory.
+error_drag_source_changed,The source inventory changed during the drag.
+error_whole_instance,Drag the whole instance. Its count or source changed.
+error_locked_item,The item is locked or cannot be moved.
+error_item_inaccessible,This item is no longer accessible through this terminal.
+error_active_part,Disconnect the active part or container first.
+error_network_no_slot,No matching container has space for the whole instance.
+error_drop_here,The whole instance cannot be placed here.
+error_target_not_owned,You do not own the target container.
+error_source_disconnected,The source connection changed.
+error_power_lost,Network power was lost.
+error_bus_changed,The bus target or filter changed.
+error_move_unknown,Move result unconfirmed. Transfers are locked.
+error_read_failed,Network observation failed. No move was attempted.
+ui_status,Status
+ui_close,Close
+ui_search,Search items
+ui_all_categories,All categories
+ui_native_order,Original order
+ui_name,Name
+ui_quantity,Quantity
+ui_network,Network
+ui_refresh,Refresh
+ui_terminal_title,AE Terminal
+ui_transfer_locked,Transfers locked
+ui_nightly,Per night
+ui_insert_battery,Drag in a battery
+ui_billing_unknown,Billing unconfirmed - locked
+ui_replaceable,Replaceable
+ui_battery_locked,Locked - replace next day
+ui_energy,Stored energy
+ui_hypertech_battery,Hypertech battery
+ui_reserved,Reserved tonight
+ui_channels,Channels
+ui_battery,Battery
+ui_controller,Network controller
+ui_controller_title,AE Network Controller
+ui_cable,Cable
+ui_online,Online
+ui_inactive,Inactive
+ui_access_both,Insert / extract
+ui_access_extract,Extract only
+ui_access_insert,Insert only
+ui_exclude,Exclude
+ui_include,Include
+ui_filter_extract,Filtered extraction
+ui_extract_all,Extract all
+ui_access_mode,Access mode
+ui_match_help,Include or exclude the items / categories in ghost slots
+ui_extract_help,Apply filters to extraction
+ui_priority,Priority
+ui_upgrades,Upgrades
+ui_category_filter,Category filter
+ui_item_filter,Item filter
+ui_bus_title,AE Storage Bus
+ui_set_filter,Drag an item here to set the filter
+ui_click_clear,\nClick to clear
+ui_choose_category,Choose a category from this item
+ui_confirm,Confirm
+ui_back,Back
+ui_battery_data,AE Controller - battery
+ui_upgrade_data,AE Bus - upgrades
+ui_item_count,{0} instances
+ui_part_stat,\n{0} parts\n{1} kJ per part per night

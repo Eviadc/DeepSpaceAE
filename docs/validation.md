@@ -95,3 +95,15 @@ Core 投影布局探针，固定每实例 2×3 六格，预热后 5 次中位数
 | 10000 | 9.524 | 8735504 |
 
 原始结果：忽略目录 artifacts/validation/native-ui-performance.json。对应提交由安装包 build-info.json 记录；[UI 实现边界](native-ui.md) 和 [本地验收](game-test.md) 说明真实运行尚待完成。
+
+
+## 0.3.1 加载阻断修复（2026-10-31，Asia/Shanghai）
+
+- 旧 6d03e55 自有 DLL 对真实 REV3 元数据审计：14 通过、1 **预期失败**；目标 GameItem.Destroy 是 abstract，没有可修补 IL。这是针对已交付包的负向复现，不是假设。
+- 修复后真实引用编译：通过，零警告/零错误；14 个补丁声明的目标方法体、字段/参数元数据检查通过。
+- xUnit：76 通过、0 失败、0 跳过。包含不依赖游戏的抽象/具体 CLR 方法体回归和 93 个双语 CSV 键、占位符检查。
+- Python 日志提取器：4 项通过，覆盖 2 万条 OfficeCodePro/[Text] 警告夹杂真正异常、其他字体/对象/真实错误不误删、缺失翻译保留、输出上限。
+- 43 张授权 PNG 校验通过，图像未改。
+- 游戏内 Harmony 执行、注册菜单、F8 字体渲染、REV5 和实际 UI：**未运行/未核验**。元数据通过不代表 Unity 真正加载通过。
+
+旧负向报告在忽略目录 artifacts/validation/old-6d03e55/patch-audit.txt；当前正向报告为 artifacts/validation/game-patch-audit.json，绑定实际 Adapter SHA-256。打包缺少、失败或过期报告必须拒绝。具体根因、官方依据和不依赖 F8 的取证步骤见 [加载诊断](load-troubleshooting.md)。

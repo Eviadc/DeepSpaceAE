@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="../../assets/placeholders/**/*" Link="assets/placeholders/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../assets/game/Localization/*.csv" Link="assets/game/Localization/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="../../assets/game/Textures/Items/*.png" Link="assets/game/Textures/Items/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

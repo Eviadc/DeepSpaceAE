@@ -13,6 +13,8 @@ files = {
     "DeepSpaceAE/DeepSpaceAE.GameAdapter.dll": root / "src/DeepSpaceAE.GameAdapter/bin/Release/netstandard2.1/DeepSpaceAE.GameAdapter.dll",
     "DeepSpaceAE/manifest.xml": root / "assets/game/manifest.xml",
     "DeepSpaceAE/安装与测试.md": root / "docs/game-test.md",
+    "DeepSpaceAE/加载诊断.md": root / "docs/load-troubleshooting.md",
+    "DeepSpaceAE/extract-load-log.py": root / "scripts/extract-load-log.py",
 }
 keys = ["core", "pipeline", "item-storage-bus", "terminal"] + [f"pipeline-{m}" for m in range(16)]
 keys += [k + "-off" for k in keys.copy()]
@@ -22,6 +24,8 @@ for key in keys:
     files[f"DeepSpaceAE/Textures/Items/{key}.png"] = root / f"assets/game/Textures/Items/{key}.png"
 files["DeepSpaceAE/THIRD-PARTY-NOTICES.md"] = root / "assets/THIRD-PARTY-NOTICES.md"
 files["DeepSpaceAE/artwork-sources.json"] = root / "assets/ae2-source/sources.json"
+for locale in ("en", "zh"):
+    files[f"DeepSpaceAE/Localization/{locale}.csv"] = root / f"assets/game/Localization/{locale}.csv"
 for source in files.values():
     if not source.is_file():
         raise SystemExit(f"Missing package input: {source.name}. Build the game adapter first.")
@@ -39,7 +43,15 @@ for name, path in files.items():
         size = 48 if Path(name).name in ("core.png", "core-off.png") else 16
         assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", data[16:24]) == (size, size)
 version = ET.parse(files["DeepSpaceAE/manifest.xml"]).getroot().findtext("ModVersion")
-assert version == "0.3.0-alpha"
+assert version == "0.3.1-alpha"
+audit_path = root / "artifacts/validation/game-patch-audit.json"
+if not audit_path.is_file():
+    raise SystemExit("Missing game patch metadata audit; run scripts/build-game.sh first.")
+audit = json.loads(audit_path.read_text())
+assert audit["success"] is True and audit["findings"]
+assert all(f["Result"] == "PASS" for f in audit["findings"])
+assert audit["adapterSha256"] == hashlib.sha256(files["DeepSpaceAE/DeepSpaceAE.GameAdapter.dll"].read_bytes()).hexdigest()
+assert audit["gameSha256"] == "0fd3de05d961c8a415758f8f78a8e0a32692b8b45fb34350df885ed8bd5e8eb0"
 output = root / "artifacts/packages" / f"DeepSpaceAE-{version}-100-REV3-{revision[:7]}.zip"
 if output.exists():
     raise SystemExit("Package already exists; refusing to overwrite.")
@@ -51,6 +63,7 @@ info = {
     "steamBuildId": "26284217 (user-reported)",
     "referenceAssemblySha256": "0fd3de05d961c8a415758f8f78a8e0a32692b8b45fb34350df885ed8bd5e8eb0",
     "configuration": "Release",
+    "patchMetadataAudit": {"status": "PASS", "declarations": len(audit["findings"]), "execution": "NOT RUN"},
     "modVersion": version,
     "artworkLicense": "CC-BY-NC-SA-3.0; see THIRD-PARTY-NOTICES.md",
     "targetFramework": "netstandard2.1",

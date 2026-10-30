@@ -67,3 +67,7 @@ Directory.Build.local.props
 !assets/game/Textures/Items/capacity-upgrade.png
 !assets/game/Textures/Items/tag-upgrade.png
 !assets/game/Textures/Items/wrench.png
+
+!assets/game/Localization/
+!assets/game/Localization/en.csv
+!assets/game/Localization/zh.csv

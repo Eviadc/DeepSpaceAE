@@ -46,8 +46,8 @@ internal sealed partial class GameSession
     private void ShowNotice(string text)
     {
         if (RenderHandler.current == null) return;
-        CloseNotice(); noticeWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel("状态", MachineryStack.Vertical(
-            MachineryText.Status("", text), new MachineryButton("关闭", CloseNotice)), "notice", false));
+        CloseNotice(); noticeWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel(UiText.Get("ui_status"), MachineryStack.Vertical(
+            MachineryText.Status("", text), new MachineryButton(UiText.Get("ui_close"), CloseNotice)), "notice", false));
         noticeWindow.closeCallback = CloseNotice; noticeWindow.Show().Center();
     }
     private PixelElement Borrow(GameItem owner)
@@ -80,17 +80,17 @@ internal sealed partial class GameSession
         {
             terminalGrid = new VirtualInventory(terminal, 18, 12);
             terminalGrid.Redraw = RenderTerminal;
-            var query = NativeWidgets.Input("搜索物品", search, value => { if (search == value) return; search = value; page = 0; RenderTerminal(); }, 150);
-            tagField = NativeWidgets.Dropdown(new[] { "全部类别" }, 0, i => { tag = i == 0 ? "" : displayedTags[i - 1]; page = 0; RenderTerminal(); }, 100);
-            var sortField = NativeWidgets.Dropdown(new[] { "原始顺序", "名称", "数量" }, (int)sort, i => { sort = (CatalogSort)i; page = 0; RenderTerminal(); }, 70);
-            terminalStatus = MachineryText.Status("网络", "");
+            var query = NativeWidgets.Input(UiText.Get("ui_search"), search, value => { if (search == value) return; search = value; page = 0; RenderTerminal(); }, 150);
+            tagField = NativeWidgets.Dropdown(new[] { UiText.Get("ui_all_categories") }, 0, i => { tag = i == 0 ? "" : displayedTags[i - 1]; page = 0; RenderTerminal(); }, 100);
+            var sortField = NativeWidgets.Dropdown(new[] { UiText.Get("ui_native_order"), UiText.Get("ui_name"), UiText.Get("ui_quantity") }, (int)sort, i => { sort = (CatalogSort)i; page = 0; RenderTerminal(); }, 70);
+            terminalStatus = MachineryText.Status(UiText.Get("ui_network"), "");
             pageLabel = new MachineryButton("1 / 1", null, 52);
             var paging = MachineryStack.Horizontal(new MachineryButton("<", () => { page = Math.Max(0, page - 1); RenderTerminal(); }, 20), pageLabel,
                 new MachineryButton(">", () => { if (packing != null && page + 1 < packing.PageCount) page++; RenderTerminal(); }, 20),
-                new MachineryButton("刷新", () => Open(terminal), 36));
+                new MachineryButton(UiText.Get("ui_refresh"), () => Open(terminal), 36));
             var body = MachineryStack.Vertical(MachineryStack.Horizontal(query, tagField, sortField),
                 new MachineryIntake(terminalGrid), MachineryStack.Horizontal(terminalStatus, paging));
-            terminalWindow = new PixelWindow(true, "AE 存储终端", WindowStyle.Machinery);
+            terminalWindow = new PixelWindow(true, UiText.Get("ui_terminal_title"), WindowStyle.Machinery);
             terminalWindow.Attach(body); terminalWindow.closeCallback = CloseTerminal;
         }
         var tags = view.Search.Tags.ToArray();
@@ -98,7 +98,7 @@ internal sealed partial class GameSession
         {
             displayedTags = tags;
             int selected = Array.IndexOf(tags, tag) + 1; if (selected == 0) tag = "";
-            tagField!.Control.SetOptions(new[] { "全部类别" }.Concat(tags.Select(NativeWidgets.TagName)).ToArray()).SetIndex(selected);
+            tagField!.Control.SetOptions(new[] { UiText.Get("ui_all_categories") }.Concat(tags.Select(NativeWidgets.TagName)).ToArray()).SetIndex(selected);
         }
         RenderTerminal();
         if (create) terminalWindow!.Show().Center();
@@ -115,7 +115,7 @@ internal sealed partial class GameSession
         page = Math.Max(0, Math.Min(page, packing!.PageCount - 1));
         terminalGrid.Populate(packing, page, displayedView.Live, displayedView.Sources);
         pageLabel!.SetText($"{page + 1} / {packing.PageCount}");
-        terminalStatus!.SetText(writeFault ? "取放已锁定" : string.IsNullOrEmpty(message) ? $"{rows.Count} 件" : message);
+        terminalStatus!.SetText(writeFault ? UiText.Get("ui_transfer_locked") : string.IsNullOrEmpty(message) ? UiText.Get("ui_item_count", rows.Count) : message);
         terminalWindow?.Validate();
     }
     private void ShowCore(GameItem core)
@@ -131,35 +131,35 @@ internal sealed partial class GameSession
         {
             var definition = ModEntry.Parts.First(p => p.Part == kind);
             int column = (int)kind;
-            var icon = new MachineryButton("", null, 32, 32).SetDescription(definition.Name + $"\n{counts[column]} 个\n每晚 {NetworkEvaluation.NightCost(kind)} kJ / 个");
+            var icon = new MachineryButton("", null, 32, 32).SetDescription(UiText.Get(definition.NameKey) + UiText.Get("ui_part_stat", counts[column], NetworkEvaluation.NightCost(kind)));
             var artwork = NativeWidgets.Icon(NativeWidgets.Sprite(definition.Sprite), 28, 28); artwork.handler.SetParent(icon.handler); artwork.rectTransform.anchoredPosition = new Vector2(2, -2);
             stats.AttachPos(icon, column, 0);
             stats.AttachPos(MachineryText.Status("×", counts[column].ToString()), column, 1);
         }
         int used = board.Evaluation.ChannelsUsed.TryGetValue(Id(core), out var u) ? u : 0;
-        var power = MachineryStack.Horizontal(NativeWidgets.Icon(MachineryStyle.IconPower), MachineryText.Status("每晚", cost + " kJ"));
+        var power = MachineryStack.Horizontal(NativeWidgets.Icon(MachineryStyle.IconPower), MachineryText.Status(UiText.Get("ui_nightly"), cost + " kJ"));
         int remaining = battery == null ? 0 : PowerHelper.GetAvailableEnergyFromItem(battery, false);
         bool infinite = battery != null && HypertechBatteryHelper.IsHypertechBattery(battery);
         int maximum = battery == null || infinite ? 0 : battery.GetTagReadonly(PowerHelper.POWER_SOURCE_ITEM_MAX_ENERGY).GetInt();
         var bar = new MachineryProgressBar(infinite ? 1 : Math.Min(1, (float)remaining / Math.Max(1, maximum)), 120);
-        string batteryState = battery == null ? "拖入电池" : lease.Phase == NightPhase.Fault || lease.Phase == NightPhase.DebitStarted ? "结算未确认 · 已锁定" : lease.CanRemove(PartStorage.Day) ? "可更换" : "已锁定 · 次日更换";
+        string batteryState = battery == null ? UiText.Get("ui_insert_battery") : lease.Phase == NightPhase.Fault || lease.Phase == NightPhase.DebitStarted ? UiText.Get("ui_billing_unknown") : lease.CanRemove(PartStorage.Day) ? UiText.Get("ui_replaceable") : UiText.Get("ui_battery_locked");
         var overview = MachineryStack.Vertical(stats, power, bar,
-            MachineryText.Status("储能", infinite ? "超科技电池" : remaining + " / " + maximum + " kJ"),
-            MachineryText.Status("本夜预留", (lease.Phase == NightPhase.Reserved ? lease.Required : 0) + " kJ"),
-            MachineryText.Status("频道", used + " / 32"));
+            MachineryText.Status(UiText.Get("ui_energy"), infinite ? UiText.Get("ui_hypertech_battery") : remaining + " / " + maximum + " kJ"),
+            MachineryText.Status(UiText.Get("ui_reserved"), (lease.Phase == NightPhase.Reserved ? lease.Required : 0) + " kJ"),
+            MachineryText.Status(UiText.Get("ui_channels"), used + " / 32"));
         partWindow = MachineHelper.CreateMachineryWindow(true,
-            new MachineryPanel(MachineryStyle.IconPower, MachineryStack.Vertical(Borrow(core), MachineryText.Status("电池", batteryState)), "power"),
-            MachineHelper.Panel("网络控制器", overview, "network", false));
-        partWindow.SetTitle("AE 网络控制器"); partWindow.closeCallback = ClosePart; partWindow.Show().Center();
+            new MachineryPanel(MachineryStyle.IconPower, MachineryStack.Vertical(Borrow(core), MachineryText.Status(UiText.Get("ui_battery"), batteryState)), "power"),
+            MachineHelper.Panel(UiText.Get("ui_controller"), overview, "network", false));
+        partWindow.SetTitle(UiText.Get("ui_controller_title")); partWindow.closeCallback = ClosePart; partWindow.Show().Center();
     }
     private void ShowCable(GameItem cable)
     {
         ClosePart(); displayedPart = cable;
         var board = ReadBoard();
         bool online = board.Evaluation.ComponentCore.TryGetValue(Id(cable), out var core) && board.Powered.Contains(core);
-        partWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel("线缆", MachineryStack.Vertical(
-            NativeWidgets.Icon(NativeWidgets.Sprite("pipeline")), MachineryText.Status("状态", online ? "在线" : "未激活"),
-            MachineryText.Status("频道", board.Evaluation.ChannelsUsed[Id(cable)] + " / 8")), "cable", false));
+        partWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel(UiText.Get("ui_cable"), MachineryStack.Vertical(
+            NativeWidgets.Icon(NativeWidgets.Sprite("pipeline")), MachineryText.Status(UiText.Get("ui_status"), online ? UiText.Get("ui_online") : UiText.Get("ui_inactive")),
+            MachineryText.Status(UiText.Get("ui_channels"), board.Evaluation.ChannelsUsed[Id(cable)] + " / 8")), "cable", false));
         partWindow.closeCallback = ClosePart; partWindow.Show().Center();
     }
     private void ShowBus(GameItem bus)
@@ -175,18 +175,18 @@ internal sealed partial class GameSession
         void Controls()
         {
             var p = PartStorage.Policy(bus);
-            access.SetText(p.Access == StorageAccess.ReadWrite ? "存入 / 取出" : p.Access == StorageAccess.ExtractOnly ? "仅取出" : "仅存入");
-            matching.SetText(p.Exclude ? "排除" : "包含"); extraction.SetText(p.FilterExtraction ? "筛选取出" : "全部取出");
+            access.SetText(p.Access == StorageAccess.ReadWrite ? UiText.Get("ui_access_both") : p.Access == StorageAccess.ExtractOnly ? UiText.Get("ui_access_extract") : UiText.Get("ui_access_insert"));
+            matching.SetText(p.Exclude ? UiText.Get("ui_exclude") : UiText.Get("ui_include")); extraction.SetText(p.FilterExtraction ? UiText.Get("ui_filter_extract") : UiText.Get("ui_extract_all"));
         }
         access.SetCallback(() => { ConfigureNumber(bus, "access", ((int)PartStorage.Policy(bus).Access + 1) % 3); Controls(); });
         matching.SetCallback(() => { ConfigureNumber(bus, "exclude", PartStorage.Policy(bus).Exclude ? 0 : 1); Controls(); });
         extraction.SetCallback(() => { ConfigureNumber(bus, "extract_filter", PartStorage.Policy(bus).FilterExtraction ? 0 : 1); Controls(); });
-        access.SetDescription("访问模式"); matching.SetDescription("包含或排除幽灵格中的物品 / 类别"); extraction.SetDescription("取出时是否也应用筛选"); Controls();
-        var toolbar = MachineryStack.Vertical(new MachineryButton("优先级", () => ShowPriority(bus), 60, 18), access, matching, extraction);
+        access.SetDescription(UiText.Get("ui_access_mode")); matching.SetDescription(UiText.Get("ui_match_help")); extraction.SetDescription(UiText.Get("ui_extract_help")); Controls();
+        var toolbar = MachineryStack.Vertical(new MachineryButton(UiText.Get("ui_priority"), () => ShowPriority(bus), 60, 18), access, matching, extraction);
         var main = MachineryStack.Horizontal(toolbar, new MachineryIntake(filterGrid));
-        var content = MachineryStack.Vertical(main, new MachineryPanel("升级", Borrow(bus), "upgrades"));
-        partWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel(policy.Tags ? "类别筛选" : "物品筛选", content, "storage_bus", false));
-        partWindow.SetTitle("AE 存储总线"); partWindow.closeCallback = ClosePart;
+        var content = MachineryStack.Vertical(main, new MachineryPanel(UiText.Get("ui_upgrades"), Borrow(bus), "upgrades"));
+        partWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel(policy.Tags ? UiText.Get("ui_category_filter") : UiText.Get("ui_item_filter"), content, "storage_bus", false));
+        partWindow.SetTitle(UiText.Get("ui_bus_title")); partWindow.closeCallback = ClosePart;
         RenderFilters(); partWindow.Show().Center();
     }
     private void RenderFilters()
@@ -206,8 +206,8 @@ internal sealed partial class GameSession
                         : RenderHandler.TryLoadFromAtlas(source[0], source[1]);
                 if (sprite != null) filterSprites[key] = sprite;
             }
-            string name = string.IsNullOrEmpty(key) ? "拖入物品以设置筛选" : policy.Tags ? NativeWidgets.TagName(key) : FilterName(bus, slot, key);
-            filterGrid.GhostTile(i, string.IsNullOrEmpty(key) ? null : sprite, name + "\n单击清除", () => { SetFilter(bus, slot, ""); RenderFilters(); });
+            string name = string.IsNullOrEmpty(key) ? UiText.Get("ui_set_filter") : policy.Tags ? NativeWidgets.TagName(key) : FilterName(bus, slot, key);
+            filterGrid.GhostTile(i, string.IsNullOrEmpty(key) ? null : sprite, name + UiText.Get("ui_click_clear"), () => { SetFilter(bus, slot, ""); RenderFilters(); });
         }
         partWindow?.Validate();
     }
@@ -234,24 +234,24 @@ internal sealed partial class GameSession
         if (tags.Length == 1) { SetFilter(bus, slot, tags[0]); RenderFilters(); return; }
         CloseEditor();
         int chosen = 0;
-        editorWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel("选择此物品的类别", MachineryStack.Vertical(
+        editorWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel(UiText.Get("ui_choose_category"), MachineryStack.Vertical(
             NativeWidgets.Dropdown(tags.Select(NativeWidgets.TagName).ToArray(), 0, i => chosen = i, 140),
-            new MachineryButton("确定", () => { SetFilter(bus, slot, tags[chosen]); CloseEditor(); RenderFilters(); })), "tag", false));
+            new MachineryButton(UiText.Get("ui_confirm"), () => { SetFilter(bus, slot, tags[chosen]); CloseEditor(); RenderFilters(); })), "tag", false));
         editorWindow.closeCallback = CloseEditor; editorWindow.Show().Center();
     }
     private void CloseEditor()
     { if (editorWindow != null) { var w = editorWindow; editorWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); } }
     private void ShowPriority(GameItem bus)
     {
-        CloseEditor(); var field = NativeWidgets.Input("优先级", PartStorage.Policy(bus).Priority.ToString(), v => { if (int.TryParse(v, out var n)) ConfigureNumber(bus, "priority", n); }, 110);
+        CloseEditor(); var field = NativeWidgets.Input(UiText.Get("ui_priority"), PartStorage.Policy(bus).Priority.ToString(), v => { if (int.TryParse(v, out var n)) ConfigureNumber(bus, "priority", n); }, 110);
         void Change(int delta)
         {
             long next = (long)PartStorage.Policy(bus).Priority + delta;
             ConfigureNumber(bus, "priority", (int)Math.Max(int.MinValue, Math.Min(int.MaxValue, next))); field.Control.SetString(PartStorage.Policy(bus).Priority.ToString());
         }
-        editorWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel("优先级", MachineryStack.Vertical(field,
+        editorWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel(UiText.Get("ui_priority"), MachineryStack.Vertical(field,
             MachineryStack.Horizontal(new MachineryButton("-10", () => Change(-10)), new MachineryButton("-1", () => Change(-1)),
-            new MachineryButton("+1", () => Change(1)), new MachineryButton("+10", () => Change(10))), new MachineryButton("返回", CloseEditor)), "priority", false));
+            new MachineryButton("+1", () => Change(1)), new MachineryButton("+10", () => Change(10))), new MachineryButton(UiText.Get("ui_back"), CloseEditor)), "priority", false));
         editorWindow.closeCallback = CloseEditor; editorWindow.Show().Center();
     }
     internal void NativeStorageChanged(GameItem? owner = null)

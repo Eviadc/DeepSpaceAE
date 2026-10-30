@@ -96,13 +96,7 @@ internal static class ProjectionNeverUncheckedPatch
     [HarmonyPrefix]
     private static bool Prefix(SlotMarker __instance) => __instance.inventory is not VirtualInventory;
 }
-[HarmonyPatch(typeof(GameItem), nameof(GameItem.Destroy))]
-internal static class PreserveUnknownProjectionMovePatch
-{
-    [HarmonyPrefix]
-    private static bool Prefix(GameItem __instance) => ModEntry.ActiveSession?.PreserveUncertain(__instance) != true;
-}
-
+// GameItem.Destroy is abstract and cannot be patched. Guard its concrete renderer override only.
 [HarmonyPatch(typeof(GameItemElement), nameof(GameItemElement.Destroy))]
 internal static class PreserveUnknownProjectionElementPatch
 {
@@ -141,21 +135,21 @@ internal sealed partial class GameSession
                 if (marker.numTransfer > 0) target.ConfigureFilter?.Invoke(marker.index, item);
                 return; // A ghost filter copies metadata; never moves the dragged instance.
             }
-            if (writeFault) throw new Rejected("取放已锁定。");
-            if (gesture != null && (gesture.Cancelled || !gesture.Allowed)) throw new Rejected("此拖放已失效。");
-            var source = item.parentInventory ?? throw new Rejected("物品已离开来源库存。");
+            if (writeFault) throw new Rejected(UiText.Get("error_transfer_locked"));
+            if (gesture != null && (gesture.Cancelled || !gesture.Allowed)) throw new Rejected(UiText.Get("error_gesture_expired"));
+            var source = item.parentInventory ?? throw new Rejected(UiText.Get("error_item_gone"));
             if (!ReferenceEquals(NativeDrag.OriginItem, item) || !ReferenceEquals(NativeDrag.OriginSource, source))
-                throw new Rejected("拖拽期间来源库存已变更。");
+                throw new Rejected(UiText.Get("error_drag_source_changed"));
             int count = item.unitCount;
             if (requested != count || (gesture != null && (gesture.Count != count || !ReferenceEquals(gesture.Source, source))))
-                throw new Rejected("请拖放整个物品实例；数量或来源已变更。");
+                throw new Rejected(UiText.Get("error_whole_instance"));
             if (!GeneralHelper.IsItemEffectivelyOwned(item) || !item.MayRemove() || item.MaxNumRemove() < count)
-                throw new Rejected("物品被锁定或无法移动。");
+                throw new Rejected(UiText.Get("error_locked_item"));
             // Validate without calling ValidateProjection while the transaction guard is held.
             if (gesture != null)
             {
                 var visible = Read(gesture.Surface.Owner);
-                if (!visible.Live.TryGetValue(GuidFor(item), out var live) || !ReferenceEquals(live, item)) throw new Rejected("该物品已不可通过此终端访问。");
+                if (!visible.Live.TryGetValue(GuidFor(item), out var live) || !ReferenceEquals(live, item)) throw new Rejected(UiText.Get("error_item_inaccessible"));
             }
             if (target != null && ReferenceEquals(target, gesture?.Surface))
             {
@@ -167,7 +161,7 @@ internal sealed partial class GameSession
             if (target != null)
             {
                 deposit = Read(target.Owner);
-                if ((IsPart(item) && ReferenceEquals(source, deposit.Root)) || deposit.Inventories.ContainsKey(item)) throw new Rejected("请先拆下正在接入的组件或容器。");
+                if ((IsPart(item) && ReferenceEquals(source, deposit.Root)) || deposit.Inventories.ContainsKey(item)) throw new Rejected(UiText.Get("error_active_part"));
                 var policies = deposit.Policies.ToDictionary(p => Id(p.Key), p => p.Value, StringComparer.Ordinal);
                 SlotMarker? found = null;
                 foreach (var busId in StorageRouting.InsertionOrder(policies, item.identifier, PartStorage.Tags(item)))
@@ -177,7 +171,7 @@ internal sealed partial class GameSession
                     catch (Rejected) { continue; }
                     bus = candidate; owner = deposit.Owners[candidate]; break;
                 }
-                placement = found ?? throw new Rejected("没有符合筛选且有完整空位的容器。");
+                placement = found ?? throw new Rejected(UiText.Get("error_network_no_slot"));
             }
             else
             {
@@ -189,29 +183,29 @@ internal sealed partial class GameSession
                 else return; // Cancel over empty screen, preserving the real source.
                 if (placement == null || !ReferenceEquals(placement.item, item) || placement.targetItem != null || placement.itemGridShape == null
                     || placement.numTransfer < count || ReferenceEquals(placement.inventory, source) || placement.inventory.IsInsertLocked()
-                    || GraphUtils.FindParentEquals(placement.inventory, item)) throw new Rejected("此处无法放下整个物品。");
+                    || GraphUtils.FindParentEquals(placement.inventory, item)) throw new Rejected(UiText.Get("error_drop_here"));
                 var destinationOwner = placement.inventory.GetParentItem();
-                if (destinationOwner != null && !GeneralHelper.IsItemEffectivelyOwned(destinationOwner)) throw new Rejected("目标容器不属于你。");
+                if (destinationOwner != null && !GeneralHelper.IsItemEffectivelyOwned(destinationOwner)) throw new Rejected(UiText.Get("error_target_not_owned"));
             }
             if (gesture != null)
             {
                 var current = Read(gesture.Surface.Owner);
-                if (!current.Live.ContainsKey(GuidFor(item)) || !ReferenceEquals(item.parentInventory, source)) throw new Rejected("来源连接已变更。");
-                if (!PartStorage.Powered(current.Core, current.Board.Evaluation.NightCosts[Id(current.Core)], true)) throw new Rejected("网络供电已中断。");
+                if (!current.Live.ContainsKey(GuidFor(item)) || !ReferenceEquals(item.parentInventory, source)) throw new Rejected(UiText.Get("error_source_disconnected"));
+                if (!PartStorage.Powered(current.Core, current.Board.Evaluation.NightCosts[Id(current.Core)], true)) throw new Rejected(UiText.Get("error_power_lost"));
             }
             if (deposit != null && target != null && bus != null)
             {
                 var current = Read(target.Owner);
                 if (!ReferenceEquals(current.Core, deposit.Core) || !current.Owners.TryGetValue(bus, out var currentOwner) || !ReferenceEquals(owner, currentOwner)
                     || !current.Inventories[currentOwner].Contains(placement.inventory) || !current.Policies[bus].CanInsert(item.identifier, PartStorage.Tags(item)))
-                    throw new Rejected("总线目标或筛选已变更。");
-                if (!PartStorage.Powered(current.Core, current.Board.Evaluation.NightCosts[Id(current.Core)], true)) throw new Rejected("网络供电已中断。");
+                    throw new Rejected(UiText.Get("error_bus_changed"));
+                if (!PartStorage.Powered(current.Core, current.Board.Evaluation.NightCosts[Id(current.Core)], true)) throw new Rejected(UiText.Get("error_power_lost"));
             }
             NativeMove(item, source, placement); message = "";
         }
         catch (Exception e)
         {
-            message = e is Rejected ? e.Message : writeFault ? "移动结果未确认，取放已锁定。" : "网络读取失败，此次未执行移动。";
+            message = e is Rejected ? e.Message : writeFault ? UiText.Get("error_move_unknown") : UiText.Get("error_read_failed");
             log.Warning(Diagnostics.ConsoleText(e.ToString()));
         }
         finally

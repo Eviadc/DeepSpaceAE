@@ -8,11 +8,11 @@ namespace DeepSpaceAE.GameAdapter;
 public sealed class ModEntry : IMod
 {
     internal const string ModId = "deepspaceae";
-    internal static readonly (string Id, string Name, string Sprite, NetworkPart Part)[] Parts = {
-        ("deepspaceae.core", "AE 核心", "core", NetworkPart.Core),
-        ("deepspaceae.pipeline", "AE 管线", "pipeline", NetworkPart.Pipeline),
-        ("deepspaceae.item_storage_bus", "AE 物品存储总线", "item-storage-bus", NetworkPart.ItemStorageBus),
-        ("deepspaceae.terminal", "AE 存储终端", "terminal", NetworkPart.Terminal) };
+    internal static readonly (string Id, string NameKey, string Sprite, NetworkPart Part)[] Parts = {
+        ("deepspaceae.core", "item_core_name", "core", NetworkPart.Core),
+        ("deepspaceae.pipeline", "item_pipeline_name", "pipeline", NetworkPart.Pipeline),
+        ("deepspaceae.item_storage_bus", "item_bus_name", "item-storage-bus", NetworkPart.ItemStorageBus),
+        ("deepspaceae.terminal", "item_terminal_name", "terminal", NetworkPart.Terminal) };
     internal static readonly Dictionary<string, NetworkPart> PartKinds = Parts.ToDictionary(part => part.Id, part => part.Part, StringComparer.Ordinal);
     internal static GameSession? ActiveSession { get; private set; }
     private ModLog log = null!;
@@ -20,12 +20,10 @@ public sealed class ModEntry : IMod
 
     public void Init(ModManifest manifest)
     {
-        // ModLog only reads Name. Preserve the actual mod manifest and use an ASCII
-        // log label so F8 does not generate a missing-glyph warning for every log line.
-        log = new ModLog(new ModManifest { Name = "DeepSpaceAE" });
+        log = new ModLog(manifest); // Manifest Name is ASCII; keep official metadata intact.
         session = new GameSession(log);
         ActiveSession = session;
-        log.Log("DeepSpaceAE 0.3.0 / 100-REV3 initialized.");
+        log.Log("DeepSpaceAE 0.3.1 / 100-REV3 initialized.");
     }
 
     public void OnEnable()
@@ -34,7 +32,7 @@ public sealed class ModEntry : IMod
         ModHook.OnModItemDirectoryInit += Register;
         ModHook.OnGameLoadedEarly += Reset;
         ModHook.OnGameLoadedLate += AttachInventory;
-        ModHook.OnModAssetsLoaded += session.Visuals.AssetsLoaded;
+        ModHook.OnModAssetsLoaded += AssetsLoaded;
         ModHook.OnGoingSleepEarly += session.Night;
         ModHook.OnLootTablesLoaded += LootLoaded;
         log.Log("Enabled.");
@@ -45,7 +43,7 @@ public sealed class ModEntry : IMod
         ModHook.OnModItemDirectoryInit -= Register;
         ModHook.OnGameLoadedEarly -= Reset;
         ModHook.OnGameLoadedLate -= AttachInventory;
-        ModHook.OnModAssetsLoaded -= session.Visuals.AssetsLoaded;
+        ModHook.OnModAssetsLoaded -= AssetsLoaded;
         ModHook.OnGoingSleepEarly -= session.Night;
         ModHook.OnLootTablesLoaded -= LootLoaded;
         foreach (var group in lootGroups) ModHelper.RemoveLootGroupEntry(ModId, group, "deepspaceae.scavenging");
@@ -53,6 +51,13 @@ public sealed class ModEntry : IMod
         session.Close();
         session.Visuals.Detach();
         ActiveSession = null;
+    }
+
+    private void AssetsLoaded(LoadedMod mod)
+    {
+        if (mod.Manifest.ID != ModId) return;
+        session.Visuals.AssetsLoaded(mod);
+        log.Log("Assets ready: sprites=" + mod.Sprites.Count + "; locales=" + mod.Localization.Count + ".");
     }
 
     private void Reset()
@@ -69,9 +74,9 @@ public sealed class ModEntry : IMod
             var definition = part;
             directory.Add(definition.Id, () => {
                 var item = ItemDirectory.CreateEmptyItem(definition.Id);
-                item.name = definition.Name;
-                item.shortDescription = definition.Part == NetworkPart.ItemStorageBus ? "箭头面接容器，背面接线。双击设置优先级与筛选。" : "放置于主物品栏接入网络。双击打开。";
-                item.flavorText = "深空中的应用能源。";
+                item.name = UiText.Get(definition.NameKey);
+                item.shortDescription = definition.Part == NetworkPart.ItemStorageBus ? UiText.Get("item_bus_desc") : UiText.Get("item_part_desc");
+                item.flavorText = UiText.Get("item_flavor");
                 item.unitValue = 1;
                 item.SetSpriteAndShapeFromMod(ModId, definition.Sprite + "-off");
                 // Intentional custom part definition, not a guess about other inventory shapes.
@@ -87,18 +92,18 @@ public sealed class ModEntry : IMod
                 return item;
             });
         }
-        foreach (var entry in new[] { (PartStorage.Capacity, "AE 容量升级", "capacity-upgrade"),
-            (PartStorage.Tag, "AE 标签升级", "tag-upgrade"), (PartStorage.Wrench, "AE 扳手", "wrench") })
+        foreach (var entry in new[] { (PartStorage.Capacity, "item_capacity_name", "capacity-upgrade"),
+            (PartStorage.Tag, "item_tag_name", "tag-upgrade"), (PartStorage.Wrench, "item_wrench_name", "wrench") })
         {
             var definition = entry;
             directory.Add(definition.Item1, () => {
                 var item = ItemDirectory.CreateEmptyItem(definition.Item1);
-                item.name = definition.Item2; item.unitValue = 20;
+                item.name = UiText.Get(definition.Item2); item.unitValue = 20;
                 item.SetSpriteAndShapeFromMod(ModId, definition.Item3);
                 item.SetShape(new GridShapeBuilder(1, 1).SetDataFill(1).Build());
                 item.mayStackItemFunc = (_, _) => false;
-                item.shortDescription = definition.Item1 == PartStorage.Capacity ? "安装至存储总线，每张增加 9 个筛选槽。" :
-                    definition.Item1 == PartStorage.Tag ? "将总线筛选切换为标签。每条总线限一张。" : "对 AE 总线使用，拆卸一张升级卡。";
+                item.shortDescription = definition.Item1 == PartStorage.Capacity ? UiText.Get("item_capacity_desc") :
+                    definition.Item1 == PartStorage.Tag ? UiText.Get("item_tag_desc") : UiText.Get("item_wrench_desc");
                 if (definition.Item1 == PartStorage.Wrench)
                 {
                     item.SetGameItemType("TOOL");
@@ -111,7 +116,7 @@ public sealed class ModEntry : IMod
                 return item;
             });
         }
-        log.Log("Registered AE components, upgrades and wrench.");
+        log.Log("Registration complete: 7 AE item factories.");
     }
 
     private readonly HashSet<string> lootGroups = new(StringComparer.Ordinal);

@@ -112,7 +112,7 @@ internal sealed partial class GameSession
     }
     internal Board ReadBoard(bool reserve = false)
     {
-        var root = MainInventory() ?? throw new Rejected("请先进入游戏。");
+        var root = MainInventory() ?? throw new Rejected(UiText.Get("error_enter_game"));
         var board = new Board { Layout = new InventoryLayout(root) };
         foreach (var part in board.Layout.Parts) board.ById.Add(Id(part), part);
         var nodes = board.Layout.Parts.Select(i => new NetworkNode(Id(i), ModEntry.PartKinds[i.identifier],
@@ -138,9 +138,9 @@ internal sealed partial class GameSession
                 if (IsPart(item))
                 {
                     var definition = ModEntry.Parts.First(p => p.Id == item.identifier);
-                    item.name = definition.Name;
-                    item.shortDescription = definition.Part == NetworkPart.ItemStorageBus ? "箭头面接容器，背面接线。双击设置优先级与筛选。" : "放置于主物品栏接入网络。双击打开。";
-                    item.flavorText = "深空中的应用能源。";
+                    item.name = UiText.Get(definition.NameKey);
+                    item.shortDescription = definition.Part == NetworkPart.ItemStorageBus ? UiText.Get("item_bus_desc") : UiText.Get("item_part_desc");
+                    item.flavorText = UiText.Get("item_flavor");
                 }
                 if (IsPart(item) && !ReferenceEquals(item.parentInventory, MainInventory())) Visuals.Inactive(item);
                 if (item.identifier == "deepspaceae.core") PartStorage.RestoreLocks(item);
@@ -180,10 +180,10 @@ internal sealed partial class GameSession
     private View Read(GameItem terminal)
     {
         var board = ReadBoard(); var root = MainInventory()!;
-        if (!ReferenceEquals(terminal.parentInventory, root) || !GeneralHelper.IsItemEffectivelyOwned(terminal)) throw new Rejected("终端未激活：请直接放入主物品栏。");
+        if (!ReferenceEquals(terminal.parentInventory, root) || !GeneralHelper.IsItemEffectivelyOwned(terminal)) throw new Rejected(UiText.Get("error_terminal_main"));
         if (!board.Evaluation.Devices.TryGetValue(Id(terminal), out var connection) || connection.Status != DeviceStatus.Online || connection.CoreId == null)
-            throw new Rejected("终端未激活：检查核心、线缆和频道。每个网络只能有一个核心。");
-        if (!board.Powered.Contains(connection.CoreId)) throw new Rejected("网络未供电：在核心中安装足够供整晚使用的电池。");
+            throw new Rejected(UiText.Get("error_terminal_network"));
+        if (!board.Powered.Contains(connection.CoreId)) throw new Rejected(UiText.Get("error_network_power"));
         var view = new View { Root = root, Board = board, Core = board.ById[connection.CoreId] };
         var ownerPolicies = new Dictionary<GameItem, List<StoragePolicy>>();
         foreach (var bus in board.Layout.Parts.Where(p => p.identifier == "deepspaceae.item_storage_bus"))
@@ -218,7 +218,7 @@ internal sealed partial class GameSession
     private void Error(Exception e)
     {
         log.Warning(Diagnostics.ConsoleText(e.ToString()));
-        ShowNotice(e is Rejected ? Safe(e.Message) : "操作未完成，请保留游戏日志并检查网络状态。");
+        ShowNotice(e is Rejected ? Safe(e.Message) : UiText.Get("error_operation"));
     }
     internal void OpenPart(GameItem part)
     {
@@ -226,7 +226,7 @@ internal sealed partial class GameSession
         try
         {
             if (part.identifier == "deepspaceae.terminal") { Open(part); return; }
-            if (!ReferenceEquals(part.parentInventory, MainInventory()) || !GeneralHelper.IsItemEffectivelyOwned(part)) throw new Rejected("组件未激活：请直接放入主物品栏。");
+            if (!ReferenceEquals(part.parentInventory, MainInventory()) || !GeneralHelper.IsItemEffectivelyOwned(part)) throw new Rejected(UiText.Get("error_part_main"));
             if (part.identifier == "deepspaceae.core") ShowCore(part);
             else if (part.identifier == "deepspaceae.item_storage_bus") ShowBus(part);
             else ShowCable(part);
@@ -239,7 +239,7 @@ internal sealed partial class GameSession
         try
         {
             var view = Read(terminal);
-            if (!PartStorage.Powered(view.Core, view.Board.Evaluation.NightCosts[Id(view.Core)], true)) throw new Rejected("电池无法预留整晚用电。");
+            if (!PartStorage.Powered(view.Core, view.Board.Evaluation.NightCosts[Id(view.Core)], true)) throw new Rejected(UiText.Get("error_reserve"));
             Show(terminal, view);
         }
         catch (Exception e) { CloseTerminal(); CustomUIManager.Instance?.CloseWindow(WindowId); Error(e); }
@@ -268,10 +268,10 @@ internal sealed partial class GameSession
         writing = true;
         try
         {
-            if (writeFault) throw new Rejected("操作已锁定。");
-            if (!GeneralHelper.IsItemEffectivelyOwned(part) || !GeneralHelper.IsItemEffectivelyOwned(item)) throw new Rejected("物品不属于你。");
-            var source = item.parentInventory ?? throw new Rejected("物品位置已变更。");
-            if (ReferenceEquals(destination, PartStorage.Inventory(part)) && !ReferenceEquals(source, MainInventory())) throw new Rejected("请从主物品栏安装。");
+            if (writeFault) throw new Rejected(UiText.Get("error_locked"));
+            if (!GeneralHelper.IsItemEffectivelyOwned(part) || !GeneralHelper.IsItemEffectivelyOwned(item)) throw new Rejected(UiText.Get("error_not_owned"));
+            var source = item.parentInventory ?? throw new Rejected(UiText.Get("error_position_changed"));
+            if (ReferenceEquals(destination, PartStorage.Inventory(part)) && !ReferenceEquals(source, MainInventory())) throw new Rejected(UiText.Get("error_install_main"));
             NativeMove(item, source, Placement(item, new[] { destination }));
         }
         catch (Exception e) { Error(e); }
@@ -281,20 +281,20 @@ internal sealed partial class GameSession
     private SlotMarker Placement(GameItem item, IEnumerable<GameInventory> destinations)
     {
         int count = item.unitCount;
-        if (!item.MayRemove() || count <= 0 || item.MaxNumRemove() < count) throw new Rejected("物品被锁定或原版规则禁止移动。");
+        if (!item.MayRemove() || count <= 0 || item.MaxNumRemove() < count) throw new Rejected(UiText.Get("error_native_remove"));
         foreach (var inv in destinations)
         {
             if (ReferenceEquals(item.parentInventory, inv) || inv.IsInsertLocked() || GraphUtils.FindParentEquals(inv, item)) continue;
             var slot = inv.TryFindOneValidInventorySlot(item);
             if (slot != null && ReferenceEquals(slot.item, item) && ReferenceEquals(slot.inventory, inv) && slot.targetItem == null && slot.itemGridShape != null && slot.numTransfer >= count) return slot;
         }
-        throw new Rejected("目标没有可接收整个物品的空位。");
+        throw new Rejected(UiText.Get("error_no_slot"));
     }
     private void NativeMove(GameItem item, GameInventory source, SlotMarker slot)
     {
         int count = item.unitCount;
         if (!ReferenceEquals(item.parentInventory, source) || !source.childItems.Any(i => ReferenceEquals(i, item)) || !item.MayRemove() || item.MaxNumRemove() < count)
-            throw new Rejected("物品位置或锁定状态已变更，请刷新。");
+            throw new Rejected(UiText.Get("error_source_changed"));
         try
         {
             int moved = slot.TryAcceptOnce(count);

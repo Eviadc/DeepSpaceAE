@@ -57,3 +57,9 @@
 已核对 MachineDnaManipulator 原生机器布局、MachineryPanel/Intake/Stack/ProgressBar、默认 1×1 GameSlotInventory、StealPixelElement（只借用渲染，不改真实父库存）、ItemMouseDragHandler 的按下/开始/结束/预览清理、SlotMarker 两种接收入口和 GameItemElement.Destroy 覆盖。公开物品类别的本地化实际是 TypeHelper.GetTypeDisplayName → Mechanic/type_*，并非直接展示状态标签键或假定 Data 表。实现及边界见 [原生 UI 迁移](native-ui.md)。
 
 这些签名已使用用户现有 REV3 引用构建，不代表 REV5 核验。新 UI 实际比例、鼠标事件顺序和旧存档往返仍未在云端运行。
+
+## 0.3.1 加载排查
+
+发现真实 GameItem.Destroy 是 abstract，旧 6d03e55 的 Harmony 声明不可修补，发生在 ModLoader 调用 Init/OnEnable 之前。已删除该目标，仅保留 GameItemElement.Destroy 的受管覆盖。新增只读元数据审计：旧 DLL 14 通过/1 预期失败，新 DLL 14 通过/0 失败；不等同 Harmony 真正运行。
+
+语言键与字体另行区分：原生机器 UI 选择当前 locale 的 Noto_Sans，OfficeCodePro/[Text] 缺字需要原始日志定位。自有显示参数中的中文为合法纯文本，并无中文作为 GetLocalized 键的证据；现改为官方 Localization/en.csv、zh.csv 和 UiText ASCII 键。完整证据、官方链接和免 F8 日志步骤见 [加载诊断](load-troubleshooting.md)。

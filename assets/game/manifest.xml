@@ -3,7 +3,7 @@
   <ID>deepspaceae</ID>
   <Name>DeepSpaceAE</Name>
   <Author>Eviadc</Author>
-  <ModVersion>0.3.0-alpha</ModVersion>
+  <ModVersion>0.3.1-alpha</ModVersion>
   <Description>主物品栏存储网络：电池供电、频道、定向总线、搜索终端、筛选升级与扳手。</Description>
   <GameVersions><Version>100-REV3</Version></GameVersions>
   <Prerequisites />

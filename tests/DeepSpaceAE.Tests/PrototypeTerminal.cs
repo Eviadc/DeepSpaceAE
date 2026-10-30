@@ -14,6 +14,7 @@ internal static class PrototypeTerminal
         try
         {
             if (args.Length == 1 && args[0] == "--smoke") return Smoke(Console.Out);
+            if ((args.Length == 3 || args.Length == 4) && args[0] == "--audit-game") return GamePatchAudit.Run(args[1], args[2], args.Length == 4 ? args[3] : null);
             if (args.Length == 1 && args[0] == "--benchmark") return PerformanceProbe.Run();
             if (args.Length == 2 && args[0] == "--report")
             {

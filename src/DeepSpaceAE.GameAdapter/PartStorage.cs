@@ -63,7 +63,7 @@ internal static class PartStorage
                 Save(item, lease); Number(item, "power_policy_revision", 2); slot.LockInv();
                 ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item);
             };
-            var window = new PixelWindow(true, "AE 核心 · 电池"); window.Attach(slot); item.SetContentWindow(window);
+            var window = new PixelWindow(true, UiText.Get("ui_battery_data")); window.Attach(slot); item.SetContentWindow(window);
         }
         else if (item.identifier == "deepspaceae.item_storage_bus")
         {
@@ -76,7 +76,7 @@ internal static class PartStorage
             grid.mayInventoryRemoveItemFunc = (_, _) => data.RemovingUpgrade;
             grid.onSlotAddItemEndFunc += (_, _, _) => { ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item); };
             grid.onSlotRemoveItemEndFunc += (_, _, _) => { ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item); };
-            var window = new PixelWindow(true, "AE 总线 · 升级"); window.Attach(grid); item.SetContentWindow(window);
+            var window = new PixelWindow(true, UiText.Get("ui_upgrade_data")); window.Attach(grid); item.SetContentWindow(window);
         }
     }
     internal static void WithUpgradeRemoval(GameItem bus, Action action)

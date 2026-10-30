@@ -1,0 +1,93 @@
+item_core_name,AE 核心
+item_pipeline_name,AE 管线
+item_bus_name,AE 物品存储总线
+item_terminal_name,AE 存储终端
+item_capacity_name,AE 容量升级
+item_tag_name,AE 标签升级
+item_wrench_name,AE 扳手
+item_bus_desc,箭头面接容器，背面接线。双击设置优先级与筛选。
+item_part_desc,放置于主物品栏接入网络。双击打开。
+item_flavor,深空中的应用能源。
+item_capacity_desc,安装至存储总线，每张增加 9 个筛选槽。
+item_tag_desc,将总线筛选切换为标签。每条总线限一张。
+item_wrench_desc,对 AE 总线使用，拆卸一张升级卡。
+error_enter_game,请先进入游戏。
+error_terminal_main,终端未激活：请直接放入主物品栏。
+error_terminal_network,终端未激活：检查核心、线缆和频道。每个网络只能有一个核心。
+error_network_power,网络未供电：在核心中安装足够供整晚使用的电池。
+error_operation,操作未完成，请保留游戏日志并检查网络状态。
+error_part_main,组件未激活：请直接放入主物品栏。
+error_reserve,电池无法预留整晚用电。
+error_locked,操作已锁定。
+error_not_owned,物品不属于你。
+error_position_changed,物品位置已变更。
+error_install_main,请从主物品栏安装。
+error_native_remove,物品被锁定或原版规则禁止移动。
+error_no_slot,目标没有可接收整个物品的空位。
+error_source_changed,物品位置或锁定状态已变更，请刷新。
+error_transfer_locked,取放已锁定。
+error_gesture_expired,此拖放已失效。
+error_item_gone,物品已离开来源库存。
+error_drag_source_changed,拖拽期间来源库存已变更。
+error_whole_instance,请拖放整个物品实例；数量或来源已变更。
+error_locked_item,物品被锁定或无法移动。
+error_item_inaccessible,该物品已不可通过此终端访问。
+error_active_part,请先拆下正在接入的组件或容器。
+error_network_no_slot,没有符合筛选且有完整空位的容器。
+error_drop_here,此处无法放下整个物品。
+error_target_not_owned,目标容器不属于你。
+error_source_disconnected,来源连接已变更。
+error_power_lost,网络供电已中断。
+error_bus_changed,总线目标或筛选已变更。
+error_move_unknown,移动结果未确认，取放已锁定。
+error_read_failed,网络读取失败，此次未执行移动。
+ui_status,状态
+ui_close,关闭
+ui_search,搜索物品
+ui_all_categories,全部类别
+ui_native_order,原始顺序
+ui_name,名称
+ui_quantity,数量
+ui_network,网络
+ui_refresh,刷新
+ui_terminal_title,AE 存储终端
+ui_transfer_locked,取放已锁定
+ui_nightly,每晚
+ui_insert_battery,拖入电池
+ui_billing_unknown,结算未确认 · 已锁定
+ui_replaceable,可更换
+ui_battery_locked,已锁定 · 次日更换
+ui_energy,储能
+ui_hypertech_battery,超科技电池
+ui_reserved,本夜预留
+ui_channels,频道
+ui_battery,电池
+ui_controller,网络控制器
+ui_controller_title,AE 网络控制器
+ui_cable,线缆
+ui_online,在线
+ui_inactive,未激活
+ui_access_both,存入 / 取出
+ui_access_extract,仅取出
+ui_access_insert,仅存入
+ui_exclude,排除
+ui_include,包含
+ui_filter_extract,筛选取出
+ui_extract_all,全部取出
+ui_access_mode,访问模式
+ui_match_help,包含或排除幽灵格中的物品 / 类别
+ui_extract_help,取出时是否也应用筛选
+ui_priority,优先级
+ui_upgrades,升级
+ui_category_filter,类别筛选
+ui_item_filter,物品筛选
+ui_bus_title,AE 存储总线
+ui_set_filter,拖入物品以设置筛选
+ui_click_clear,\n单击清除
+ui_choose_category,选择此物品的类别
+ui_confirm,确定
+ui_back,返回
+ui_battery_data,AE 核心 · 电池
+ui_upgrade_data,AE 总线 · 升级
+ui_item_count,{0} 件
+ui_part_stat,\n{0} 个\n每晚 {1} kJ / 个
