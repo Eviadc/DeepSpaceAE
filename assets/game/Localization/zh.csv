@@ -121,3 +121,16 @@ ui_liquid_insert_only,仅存入
 ui_liquid_count,{0} 个液体容器 · 按原版选中容器后点击目标倒液
 error_liquid_access,存储总线当前规则不允许此方向的液体操作。
 error_liquid_use_native,液体使用原版交互：选中容器后点击目标倒液。
+item_import_name,AE 输入总线
+item_export_name,AE 输出总线
+item_io_desc,线缆升级。输入总线将机器出料收回网络；输出总线将网络物品送入机器进料槽。采用原版槽位与料斗夜间阶段。
+ui_io_import,机器出料 → 网络
+ui_io_export,网络 → 机器进料
+ui_io_enabled,夜间自动传输
+ui_io_order,料斗顺序（1-15）
+ui_io_run,立即传输
+ui_io_offline,网络离线或供电不足
+ui_io_no_slots,未找到兼容的机器进料/出料槽
+ui_io_moved,已传输 {0} 件
+ui_io_idle,没有可传物品或目标满/锁定
+ui_io_error,传输已停止，请检查日志

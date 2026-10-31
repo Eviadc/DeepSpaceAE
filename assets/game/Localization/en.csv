@@ -121,3 +121,16 @@ ui_liquid_insert_only,Insert only
 ui_liquid_count,{0} liquid containers - use native select then target to pour
 error_liquid_access,The storage bus does not allow this liquid action.
 error_liquid_use_native,Use the native select-container then click-target action to pour liquid.
+item_import_name,AE Import Bus
+item_export_name,AE Export Bus
+item_io_desc,Cable upgrade. Import takes machine output into the network; export feeds machine input. Uses native machine roles and hopper night windows.
+ui_io_import,Machine output -> network
+ui_io_export,Network -> machine input
+ui_io_enabled,Night automation
+ui_io_order,Hopper order (1-15)
+ui_io_run,Transfer now
+ui_io_offline,Network offline / no power
+ui_io_no_slots,No compatible machine input/output slot
+ui_io_moved,Transferred {0} units
+ui_io_idle,No eligible transfer / full or locked
+ui_io_error,Transfer stopped - check log

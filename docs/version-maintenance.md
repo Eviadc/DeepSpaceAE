@@ -44,3 +44,13 @@ LiquidStorage / LiquidComposition 读取原生化学成分，GameSession.Read �
 新增六项具体补丁：ItemSelectHandler.SelectItem、OnEventReset，GameItem.Target，WaterHelper.TransferLiquid，GameItemElement.GetTooltip、GetTooltipAdvanced（总计 37）。升级须复查原生 Target 回调及空滴管反向语义、TransferLiquid 的比例/过滤/温度/水质副作用和 skipValidate 更新时机。不能将旧 LiquidContainerHelper.TransferLiquid(target,source) 与现代 WaterHelper.TransferLiquid(source,target) 混用。
 
 TreeNodeRender.RaycastElement 的首次非空 element 决定原生目标。液体卡片文字必须用以真实容器为命中身份的纯渲染树，不能直接嵌独立 MachineryText 拦截原生目标；Tooltip 在液体镜像下局部替换，源主栏仍用原版提示。UI 与倒液实机用例为 LIQ-*。
+
+## 0.7 机器输入输出维护
+
+IoBus.MachineSlots 按真实 MachineryPanel.role 遍历到直属机器的 GameInventory，分别只认 output/input；未知角色停止，不回退到整机 Contents。新增机器适配必须确认真实角色、NO_HOPPER、MayRemove/MaxNumRemove 和准入回调，再补 IO 用例；不要把电池/模块/便签槽当料槽。
+
+Automation.RunAutomation 以原生 HopperHelper.RunWindow Postfix 驱动，手动入口复用同一路径。每批一次网络评估和每核心一份候选观测；根物品/部件结构或配置变化使批次停止，每项实际写入仍复查原生来源、锁、数量、政策和槽。每总线 8 次/全批 64 次，禁止每帧重建网络补货。
+
+AutomationMove 调用 SlotMarker.TryAcceptOnce 并验证原实例在源中的剩余量或完整移除结果，允许原生拆分与堆叠；异常结果锁写，保留 slot.item 可能产生的孤立分裂实例。升级时复核来源对象销毁/数量清理语义，不能套用终端“整实例不变”的检查到料斗。
+
+PartPower 的夜间分支只承认同日、同源、已结算且不超已付预算，避免先扣完电池后把已付网络当成没电，也不能绕过未付/未知扣费。新增 IO 类型只追加 NetworkPart 枚举，保存图不修改既有节点顺序。新增 20 PNG，总白名单 87。

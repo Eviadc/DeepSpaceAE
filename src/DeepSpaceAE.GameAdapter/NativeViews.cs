@@ -207,20 +207,28 @@ internal sealed partial class GameSession
         var policy = PartStorage.Policy(bus);
         filterGrid = new GhostFilterInventory(9, policy.Slots / 9);
         filterGrid.ConfigureFilter = (index, item) => CaptureGhost(bus, index, item);
-        var access = NativeWidgets.Dropdown(new[] { UiText.Get("ui_access_both"), UiText.Get("ui_access_extract"), UiText.Get("ui_access_insert") },
+        bool io=IoBus.IsIo(bus);
+        var access = io?null:NativeWidgets.Dropdown(new[] { UiText.Get("ui_access_both"), UiText.Get("ui_access_extract"), UiText.Get("ui_access_insert") },
             (int)policy.Access, value => ConfigureNumber(bus, "access", value), 110);
         var matching = NativeWidgets.Dropdown(new[] { UiText.Get("ui_include"), UiText.Get("ui_exclude") }, policy.Exclude ? 1 : 0,
             value => ConfigureNumber(bus, "exclude", value), 110);
-        var extraction = NativeWidgets.Toggle(UiText.Get("ui_filter_extract"), policy.FilterExtraction,
+        var extraction = io?null:NativeWidgets.Toggle(UiText.Get("ui_filter_extract"), policy.FilterExtraction,
             value => ConfigureNumber(bus, "extract_filter", value ? 1 : 0), 110);
-        var options = MachineryStack.Vertical(NativeWidgets.Text(UiText.Get("ui_access_mode")), access,
-            NativeWidgets.Text(UiText.Get("ui_filter_matching")), matching, extraction,
+        var options = io?MachineryStack.Vertical(NativeWidgets.Text(UiText.Get(bus.identifier==IoBus.Import?"ui_io_import":"ui_io_export")),
+            NativeWidgets.Toggle(UiText.Get("ui_io_enabled"),PartStorage.Int(bus,"io_enabled",1)!=0,v=>ConfigureNumber(bus,"io_enabled",v?1:0)),
+            NativeWidgets.Input(UiText.Get("ui_io_order"),IoBus.Order(bus).ToString(),v=>{ if(int.TryParse(v,out int n) && n>=1 && n<=15) ConfigureNumber(bus,"io_order",n); },110),
+            NativeWidgets.Text(UiText.Get("ui_filter_matching")),matching,
+            new MachineryButton(UiText.Get("ui_priority"),()=>ShowPriority(bus),110,18),
+            new MachineryButton(UiText.Get("ui_io_run"),()=>{ RunAutomation(0,bus); ShowBus(bus); },110,18),
+            NativeWidgets.Text(UiText.Get(string.IsNullOrEmpty(PartStorage.Text(bus,"io_status"))?"ui_io_idle":PartStorage.Text(bus,"io_status"),PartStorage.Int(bus,"io_moved")))):
+            MachineryStack.Vertical(NativeWidgets.Text(UiText.Get("ui_access_mode")), access!,
+            NativeWidgets.Text(UiText.Get("ui_filter_matching")), matching, extraction!,
             new MachineryButton(UiText.Get("ui_priority"), () => ShowPriority(bus), 110, 18));
         partWindow = MachineHelper.CreateMachineryWindow(true,
             new MachineryPanel(UiText.Get("ui_bus_settings"), options, "settings"),
             MachineHelper.Panel(policy.Tags ? UiText.Get("ui_category_filter") : UiText.Get("ui_item_filter"), filterGrid, "storage_bus"),
             new MachineryPanel(UiText.Get("ui_upgrades"), Borrow(bus), "upgrades"));
-        partWindow.SetTitle(UiText.Get("ui_bus_title") + " - " + FaceName(PartStorage.Int(bus, "cable_face"))); partWindow.closeCallback = ClosePart;
+        partWindow.SetTitle((io?bus.name:UiText.Get("ui_bus_title")) + " - " + FaceName(PartStorage.Int(bus, "cable_face"))); partWindow.closeCallback = ClosePart;
         RenderFilters(); partWindow.Show().Center();
     }
     private void RenderFilters()
@@ -288,8 +296,9 @@ internal sealed partial class GameSession
             new MachineryButton("+1", () => Change(1)), new MachineryButton("+10", () => Change(10))), new MachineryButton(UiText.Get("ui_back"), CloseEditor)), "priority", false));
         editorWindow.closeCallback = CloseEditor; editorWindow.Show().Center();
     }
-    internal void NativeStorageChanged(GameItem? owner = null)
+    internal void NativeStorageChanged(GameItem? owner = null,bool topology=false)
     {
+        if(topology) AutomationStructureChanged();
         if (owner != null) StructureChanged(owner);
         if (owner == null || ReferenceEquals(owner, displayedPart) || (displayedPart != null && ReferenceEquals(PartStorage.BusHost(displayedPart), owner))) RefreshPartLater();
     }

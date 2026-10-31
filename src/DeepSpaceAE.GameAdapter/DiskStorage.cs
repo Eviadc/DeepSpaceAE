@@ -40,7 +40,7 @@ internal static class DiskStorage
             slot.SetBackgroundFadeSprite("Items/items_hydroponic_plant","dna_disk_black_full");
             slot.mayInventoryAddItemFunc=(disk,_)=>IsDisk(disk) && disk.unitCount==1 && GeneralHelper.IsItemEffectivelyOwned(disk)
                 && GeneralHelper.IsItemEffectivelyOwned(drive) && ReferenceEquals(drive.parentInventory,GameSession.MainInventory());
-            void Changed(GameItem _,GameInventory __,SlotMarker ___) { ModEntry.ActiveSession?.NativeStorageChanged(drive); }
+            void Changed(GameItem _,GameInventory __,SlotMarker ___) { ModEntry.ActiveSession?.NativeStorageChanged(drive,true); }
             slot.onSlotAddItemEndFunc+=Changed; slot.onSlotRemoveItemEndFunc+=Changed;
             slots[i]=slot; grid.AttachPos(slot,i%3,i/3);
         }

@@ -1,5 +1,15 @@
 # API 核验与剩余未知
 
+## 0.7.0 原版料斗与机器槽（2026-11-01）
+
+仍为同一 Rev6 真实程序集。HopperHelper.RunUnguarded 在真实 parentInventory 之间，先 GraphUtils.CanAccept 再 TryAcceptAll；后者内部最多 40 次 SlotMarker.TryAcceptOnce，返回的是剩余量。不能把返回值误读为移动量。SlotMarker 原生负责拆分、堆叠及进出库存回调。
+
+MachineryPanel.role 为公开字段；熔炉/打印机实际使用 input / output，power/module/chip/note 另列；搅拌机的液体容器是 container，不能当通用 output。NO_HOPPER_INVENTORY_TAG 用于排除不可放料斗的库存，本模组同样排除。料斗物品自身可借 MayBypassGridRules 放入槽，但本模组不伪造该标签来绕过真实原料规则。
+
+HopperHelper.WindowOf 把 1–5/6–10/11–15 映射到三个夜间阶段。新补丁位于具体静态 RunWindow(int) 的 Postfix，共 38 项元数据审计；本模组批次在每段原生料斗之后，不声称按 order 与原生料斗逐项合并排序。夜间供电复用当天已核验结算预算，不调用第二次扣电。
+
+102 项模型/贴图测试覆盖 AE2 方向、频道成本、已付夜间预算、拆分/堆叠来源后置条件和四面 alpha 命中几何。机器收料、加工副作用、夜间顺序和存档必须按 IO 用例验收，静态元数据不证明 Harmony 执行成功。
+
 ## 0.6.0 液体增量（2026-11-01）
 
 仍绑定同一 Rev6 / Build 26337366 DLL。真实反编译与编译核验：现代 WaterHelper 以 LIQUID_CONTAINER_CAPACITY 与 Liquid.Liquids 的 CURRENT_PART_* 整数存储，单位为 μl。TransferLiquid(source,target) 按接收空间和源体积取较小值，SplitProportionally 分配后经 HandleFilter、HandleReceiveLiquidTemp 和水质回调；不是可重复的纯函数，也不保证跨容器原子性。

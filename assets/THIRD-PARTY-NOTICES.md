@@ -13,7 +13,7 @@ Per-file source URLs and SHA-256: assets/ae2-source/sources.json in the source r
 
 Changes by DeepSpaceAE contributors: controller scaled to 48×48 with 12 sampled
 light frames; storage-bus model up faces projected with their original/default UVs into four directional
-profiles with internal glass-cable connectors; terminal layers composited; glass-cable model up faces and their UVs projected into four-port shapes;
+profiles with internal glass-cable connectors; blue/orange tinted derivatives distinguish import/export buses; terminal layers composited; glass-cable model up faces and their UVs projected into four-port shapes;
 inactive variants darkened/desaturated; fuzzy-card texture adapted with a tag symbol.
 Disk-drive rack and 1x2 storage disks are new pixel compositions derived from the
 controller and capacity-card textures. Capacity card and certus-quartz wrench textures are retained. Derivative artwork is

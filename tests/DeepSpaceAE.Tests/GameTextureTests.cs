@@ -15,7 +15,7 @@ public sealed class GameTextureTests
     [Fact]
     public void CoreTextureCoversAllNineCellsAndWhitelistContainsAllActiveAndInactiveImages()
     {
-        Assert.Equal(67, Directory.GetFiles(Root, "*.png").Length);
+        Assert.Equal(87, Directory.GetFiles(Root, "*.png").Length);
         foreach (var name in new[] { "core", "terminal", "item-storage-bus", "pipeline" })
             Assert.True(File.Exists(Path.Combine(Root, name + "-off.png")));
         for (int mask = 0; mask < 16; mask++) Assert.True(File.Exists(Path.Combine(Root, $"pipeline-{mask}-off.png")));
@@ -26,6 +26,17 @@ public sealed class GameTextureTests
             foreach (int x in new[] { 8, 24, 40 }) Assert.Equal(255, pixels[(y * width + x) * 4 + 3]);
     }
 
+    [Fact]
+    public void IoBusProfilesKeepTheExistingFourFaceHitGeometry()
+    {
+        foreach(var kind in new[]{"import","export"})
+            for(int side=0;side<4;side++) foreach(var suffix in new[]{"","-off"})
+            {
+                var original=Decode($"bus-face-{side}{suffix}.png"); var profile=Decode($"{kind}-face-{side}{suffix}.png");
+                Assert.Equal(original.Width,profile.Width); Assert.Equal(original.Height,profile.Height);
+                for(int i=3;i<original.Pixels.Length;i+=4) Assert.Equal(original.Pixels[i],profile.Pixels[i]);
+            }
+    }
     [Fact]
     public void DriveAndDisksHaveTheirActualCellDimensions()
     {

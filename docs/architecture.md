@@ -1,6 +1,6 @@
 # 架构边界
 
-> 当前 0.6.0 行为以 [完整功能规格](feature-spec.md)、[用例矩阵](functional-cases.md) 为准。下文按版本保留历史实现背景，不能恢复旧终端渲染借用、独立总线或旧电源策略。
+> 当前 0.7.0 行为以 [完整功能规格](feature-spec.md)、[用例矩阵](functional-cases.md) 为准。下文按版本保留历史实现背景，不能恢复旧终端渲染借用、独立总线或旧电源策略。
 
 ## 目标与阶段
 
@@ -59,3 +59,7 @@ PartPower 从 PartStorage 拆出供电逻辑，NightReservation 新增 Shortfall
 GameSession.Read 同时发现总线前方化学液体容器，不要求 GameInventory 子图；独立液体目录以真实来源容器为身份，LiquidComposition 保存完整微升数值及精确比例签名，不汇总来源。VirtualInventory 仅增加固定卡片布局与镜像文字，支持模式切换，拒绝液体卡片的物理搬运。选择、Target、取消、转移及提示通过六个局部补丁桥接；普通源窗口和物品模式继续走原有原生路径。
 
 液体目标/来源操作只在已打开液体终端相关来源上进行额外射线命中检查，平时不轮询场景或构建候选液体对象。原生转移和可观察成分/温度/容量数值变化触发合并目录刷新；不存在自有液体保存格式。
+
+## 0.7 机器自动化
+
+ImportBus / ExportBus 是追加的频道叶子，沿用线缆四面升级与独立五卡槽保存图。IoBus 用机器原生 input/output 面板角色确定端口；Automation 复用 GameSession.ReadStorage 的当前网络候选并独立于终端运行，实际移动仍经原生槽校验。原生料斗夜间窗口触发一次有界批次，不增加每帧扫描。已付预算的夜间网络使用权由 AutomationRules/PartPower 检查，保持一次扣费与未知结果锁定。

@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace DeepSpaceAE.Core.Network;
 
-public enum NetworkPart { Core, Pipeline, ItemStorageBus, Terminal, DiskDrive }
+public enum NetworkPart { Core, Pipeline, ItemStorageBus, Terminal, DiskDrive, ImportBus, ExportBus }
 
 /// <summary>Logical model node. No grid coordinates, game types or rotation assumptions.</summary>
 public sealed class NetworkNode
@@ -13,7 +13,7 @@ public sealed class NetworkNode
     public string Id { get; }
     public NetworkPart Part { get; }
     public string? ContainerId { get; }
-    public bool ConsumesChannel => Part == NetworkPart.Terminal || Part == NetworkPart.ItemStorageBus || Part == NetworkPart.DiskDrive;
+    public bool ConsumesChannel => Part != NetworkPart.Core && Part != NetworkPart.Pipeline;
 
     public NetworkNode(string id, NetworkPart part, string? containerId = null)
     {

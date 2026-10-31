@@ -25,7 +25,8 @@ keys += ["capacity-upgrade", "tag-upgrade", "wrench"]
 keys += [f"core-{i}" for i in range(12)]
 keys += [f"bus-face-{side}{suffix}" for side in range(4) for suffix in ("", "-off")]
 keys += ["drive", "drive-off", "disk-small", "disk-large"]
-assert len(keys) == len(set(keys)) == 67
+keys += [f"{kind}-{part}{suffix}" for kind in ("import","export") for part in ("bus",*(f"face-{side}" for side in range(4))) for suffix in ("","-off")]
+assert len(keys) == len(set(keys)) == 87
 for key in keys:
     files[f"DeepSpaceAE/Textures/Items/{key}.png"] = root / f"assets/game/Textures/Items/{key}.png"
 files["DeepSpaceAE/THIRD-PARTY-NOTICES.md"] = root / "assets/THIRD-PARTY-NOTICES.md"
@@ -50,7 +51,7 @@ for name, path in files.items():
         dimensions = (48,48) if stem == "core" or stem.startswith("core-") else (32,32) if stem in ("drive","drive-off") else (16,32) if stem in ("disk-small","disk-large") else (16,16)
         assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", data[16:24]) == dimensions
 version = ET.parse(files["DeepSpaceAE/manifest.xml"]).getroot().findtext("ModVersion")
-assert version == "0.6.0-alpha"
+assert version == "0.7.0-alpha"
 audit_path = root / "artifacts/validation/game-patch-audit.json"
 if not audit_path.is_file():
     raise SystemExit("Missing game patch metadata audit; run scripts/build-game.ps1 (Windows) or scripts/build-game.sh first.")

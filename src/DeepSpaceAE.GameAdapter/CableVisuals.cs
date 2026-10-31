@@ -69,13 +69,14 @@ internal sealed class CableVisuals
         foreach (var bus in PartStorage.CableBuses(cable))
         {
             int face = PartStorage.Int(bus, "cable_face", -1);
-            var sprite = face >= 0 && face < 4 ? NativeWidgets.Sprite("bus-face-" + face + suffix) : null;
+            var sprite = face >= 0 && face < 4 ? NativeWidgets.Sprite(IoBus.FacePrefix(bus) + face + suffix) : null;
             if (sprite != null) result.Add(new ItemSpriteModifier(sprite, Vector2.zero));
         }
         return result;
     }
     private void Changed(GameItem item, GameInventory inventory, SlotMarker slot)
     {
+        session.AutomationStructureChanged();
         if (GameSession.IsPart(item) && !ReferenceEquals(item.parentInventory, root)) Inactive(item);
         poses.Remove(item); Invalidate(); session.NativeStorageChanged();
     }
@@ -88,7 +89,7 @@ internal sealed class CableVisuals
         if (root == null) return;
         if (ReferenceEquals(item.parentInventory, root))
         {
-            if (!poses.TryGetValue(item, out var old) || old != Pose(item)) { Invalidate(); session.StructureChanged(item); session.NativeStorageChanged(); }
+            if (!poses.TryGetValue(item, out var old) || old != Pose(item)) { session.AutomationStructureChanged(); Invalidate(); session.StructureChanged(item); session.NativeStorageChanged(); }
         }
         else if(item.parentInventory is DiskAreaInventory area)
         {
@@ -123,6 +124,11 @@ internal sealed class CableVisuals
                     {
                         var owner = layout.FrontOwner(item);
                         active = owner != null && layout.Owned.Contains(owner) && !GameSession.IsPart(owner) && (LiquidStorage.IsContainer(owner) || GameSession.Contents(owner).Count > 0);
+                    }
+                    if(active && IoBus.IsIo(item))
+                    {
+                        var machine=layout.FrontOwner(item);
+                        active=machine!=null && layout.Owned.Contains(machine) && IoBus.MachineSlots(machine,item.identifier==IoBus.Import).Count>0;
                     }
                     string path = item.identifier == "deepspaceae.pipeline" ? "pipeline-" + layout.CableMask(item) : Base(item);
                     Apply(item, path + (active ? "" : "-off"));

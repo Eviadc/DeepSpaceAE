@@ -13,7 +13,9 @@ public sealed class ModEntry : IMod
         ("deepspaceae.pipeline", "item_pipeline_name", "pipeline", NetworkPart.Pipeline),
         ("deepspaceae.item_storage_bus", "item_bus_name", "item-storage-bus", NetworkPart.ItemStorageBus),
         ("deepspaceae.terminal", "item_terminal_name", "terminal", NetworkPart.Terminal),
-        (DiskStorage.Drive, "item_drive_name", "drive", NetworkPart.DiskDrive) };
+        (DiskStorage.Drive, "item_drive_name", "drive", NetworkPart.DiskDrive),
+        (IoBus.Import,"item_import_name","import-bus",NetworkPart.ImportBus),
+        (IoBus.Export,"item_export_name","export-bus",NetworkPart.ExportBus) };
     internal static readonly Dictionary<string, NetworkPart> PartKinds = Parts.ToDictionary(part => part.Id, part => part.Part, StringComparer.Ordinal);
     internal static GameSession? ActiveSession { get; private set; }
     private ModLog log = null!;
@@ -24,7 +26,7 @@ public sealed class ModEntry : IMod
         log = new ModLog(manifest); // Manifest Name is ASCII; keep official metadata intact.
         session = new GameSession(log);
         ActiveSession = session;
-        log.Log("DeepSpaceAE 0.6.0 / 100-Rev6 initialized.");
+        log.Log("DeepSpaceAE 0.7.0 / 100-Rev6 initialized.");
     }
 
     public void OnEnable()
@@ -78,7 +80,7 @@ public sealed class ModEntry : IMod
             directory.Add(definition.Id, () => {
                 var item = ItemDirectory.CreateEmptyItem(definition.Id);
                 item.name = UiText.Get(definition.NameKey);
-                item.shortDescription = definition.Part == NetworkPart.ItemStorageBus ? UiText.Get("item_bus_desc") : definition.Part == NetworkPart.Pipeline ? UiText.Get("item_cable_desc") : UiText.Get("item_part_desc");
+                item.shortDescription = IoBus.IsBus(item) ? UiText.Get(IoBus.IsIo(item)?"item_io_desc":"item_bus_desc") : definition.Part == NetworkPart.Pipeline ? UiText.Get("item_cable_desc") : UiText.Get("item_part_desc");
                 item.flavorText = UiText.Get("item_flavor");
                 item.unitValue = 1;
                 item.SetSpriteAndShapeFromMod(ModId, definition.Sprite + "-off");
@@ -114,8 +116,8 @@ public sealed class ModEntry : IMod
                     item.SetGameItemType("TOOL");
                     item.maySelectSlotItemFunc = (_, _, _) => true;
                     item.canSelectSlotItemFunc = (_, _, _) => true;
-                    item.mayThisTargetItemFunc = (_, target) => (target.identifier == "deepspaceae.item_storage_bus" || target.identifier == "deepspaceae.pipeline");
-                    item.canThisTargetItemFunc = (_, target) => (target.identifier == "deepspaceae.item_storage_bus" || target.identifier == "deepspaceae.pipeline") && PartStorage.Inventory(target).childItems.Count > 0;
+                    item.mayThisTargetItemFunc = (_, target) => (IoBus.IsBus(target) || target.identifier == "deepspaceae.pipeline");
+                    item.canThisTargetItemFunc = (_, target) => (IoBus.IsBus(target) || target.identifier == "deepspaceae.pipeline") && PartStorage.Inventory(target).childItems.Count > 0;
                     item.onThisTargetItemFunc = (tool, target) => session.UseWrench(tool, target);
                 }
                 return item;
@@ -132,7 +134,7 @@ public sealed class ModEntry : IMod
                 DiskStorage.CreateDisk(item); return item;
             });
         }
-        log.Log("Registration complete: 10 AE item factories.");
+        log.Log("Registration complete: 12 AE item factories.");
     }
 
     private readonly HashSet<string> lootGroups = new(StringComparer.Ordinal);
@@ -141,6 +143,7 @@ public sealed class ModEntry : IMod
         const string table = "deepspaceae.scavenging";
         if (!LootRegistry.HasTable(table)) ModHelper.RegisterLootTable(ModId, table, ("deepspaceae.core", 1f), ("deepspaceae.pipeline", 8f),
             ("deepspaceae.item_storage_bus", 3f), ("deepspaceae.terminal", 2f),
+            (IoBus.Import,2f),(IoBus.Export,2f),
             (PartStorage.Capacity, 2f), (PartStorage.Tag, 1f), (PartStorage.Wrench, 3f),
             (DiskStorage.Drive, 1f), (DiskStorage.Small, 2f), (DiskStorage.Large, 0.5f));
         foreach (var group in LootRegistry.GroupIds.ToArray())

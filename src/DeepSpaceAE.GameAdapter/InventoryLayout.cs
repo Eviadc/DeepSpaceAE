@@ -22,7 +22,7 @@ internal sealed class InventoryLayout
         foreach (var item in Items)
         {
             if (!ReferenceEquals(item.parentInventory, root)) throw new InvalidOperationException("Inconsistent MAIN inventory observation.");
-            var part = GameSession.IsPart(item) && item.identifier != "deepspaceae.item_storage_bus";
+            var part = GameSession.IsPart(item) && !IoBus.IsBus(item);
             if (partsOnly && !part) continue;
             if (GeneralHelper.IsItemEffectivelyOwned(item)) Owned.Add(item);
             if (part && Owned.Contains(item)) { Parts.Add(item); partSet.Add(item); }
@@ -69,7 +69,7 @@ internal sealed class InventoryLayout
 
     private static bool Allows(GameItem item, GridCell toward)
     {
-        if (item.identifier != "deepspaceae.pipeline") return item.identifier != "deepspaceae.item_storage_bus";
+        if (item.identifier != "deepspaceae.pipeline") return !IoBus.IsBus(item);
         foreach (var bus in PartStorage.CableBuses(item))
         {
             int face = PartStorage.Int(bus, "cable_face", -1);

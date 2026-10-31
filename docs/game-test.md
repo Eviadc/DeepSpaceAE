@@ -1,6 +1,6 @@
-# DeepSpaceAE 0.6.0-alpha · 安装和联合验收
+# DeepSpaceAE 0.7.0-alpha · 安装和联合验收
 
-编译目标为本机真实安装的 100-Rev6 / Steam Build 26337366，Windows x64。新阶段游戏行为、存档往返及夜间现金扣费仍须联合测试。97 项模型/贴图测试及 37 项 PE 补丁审计不是 Unity/Harmony 实际运行证据。
+编译目标为本机真实安装的 100-Rev6 / Steam Build 26337366，Windows x64。新阶段游戏行为、存档往返及夜间现金扣费仍须联合测试。102 项模型/贴图测试及 38 项 PE 补丁审计不是 Unity/Harmony 实际运行证据。
 
 ## 安装和本地开发
 
@@ -17,7 +17,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-game.ps1
 
 默认游戏目录 G:\SteamLibrary\steamapps\common\Probably Stolen，部署位置为其 Mods\DeepSpaceAE。部署脚本发现游戏运行会停止，不强制结束游戏。旧版备份位于仓库 artifacts/mod-backups，安装包位于 artifacts/packages。
 
-包内仅两个自有 DLL、67 张授权 PNG、2 CSV、manifest、说明、来源/许可、日志提取脚本及构建记录，不含游戏引用、测试宿主、存档或凭据。源码完整说明见 docs/feature-spec.md、docs/functional-cases.md、docs/version-maintenance.md；包内另附“功能规格.md”“功能用例.md”“版本维护.md”。
+包内仅两个自有 DLL、87 张授权 PNG、2 CSV、manifest、说明、来源/许可、日志提取脚本及构建记录，不含游戏引用、测试宿主、存档或凭据。源码完整说明见 docs/feature-spec.md、docs/functional-cases.md、docs/version-maintenance.md；包内另附“功能规格.md”“功能用例.md”“版本维护.md”。
+
+## 0.7 机器总线测试入口
+
+输入/输出总线都是线缆侧面升级。方向按 AE2：输入从机器 output 收回网络，输出向机器 input 补料。双击对应侧面配置九列筛选、夜间开关和 1–15 原版顺序，或点“立即传输”。默认输出在加工前、输入在全部夜间处理后运行；空筛选匹配全部合法物品，导出前可先指定类型。可用熔炉/打印机验证，不需要先开终端。没有明确槽位角色时会提示不支持；不会遍历投放到电池或升级槽。夜间先扣一次当天峰值，再使用已付预算运行自动化。重点验收 IO-02、03、06、09、11、12、16，原生堆叠/加工/保存均待实机。
 
 ## 0.6 液体测试入口
 

@@ -64,7 +64,7 @@ internal static partial class PartStorage
             slot.onSlotAddItemFunc += (_, _, _) => AudioManager.Instance.Play3("battery_insert");
             slot.onSlotRemoveItemFunc += (_, _, _) => AudioManager.Instance.Play3("battery_removed");
             slot.mayInventoryAddItemFunc = (battery, _) => CanInstall(item, battery);
-            slot.onSlotRemoveItemEndFunc += (_, _, _) => { ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item); };
+            slot.onSlotRemoveItemEndFunc += (_, _, _) => { ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item,true); };
             slot.maxSlotRemoveItemFunc = (_, _, _) => CanRemovePower(item) ? int.MaxValue : 0;
             slot.onSlotAddItemEndFunc += (battery, _, _) => {
                 if (ModEntry.ActiveSession?.Loading != false || item.parentInventory == null) { RestoreLocks(item); return; }
@@ -73,7 +73,7 @@ internal static partial class PartStorage
                 if (!lease.Reserve(Day, cost, battery.uniqueId, n => CanSupply(battery, n)))
                     throw new InvalidOperationException("Battery reservation failed after native insertion.");
                 Save(item, lease); Number(item, "power_policy_revision", 3); slot.LockInv();
-                ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item);
+                ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item,true);
             };
             var window = new PixelWindow(true, UiText.Get("ui_battery_data")); window.Attach(slot); item.SetContentWindow(window);
         }
@@ -82,7 +82,7 @@ internal static partial class PartStorage
             var grid = new GameGridInventory(4, 1); var data = new Slots { Inventory = grid }; slots.Add(item, data);
             grid.mayInventoryAddItemFunc = (bus, _) => ReferenceEquals(item.parentInventory, GameSession.MainInventory())
                 && GeneralHelper.IsItemEffectivelyOwned(item) && GeneralHelper.IsItemEffectivelyOwned(bus)
-                && bus.identifier == "deepspaceae.item_storage_bus" && bus.unitCount == 1 && grid.childItems.Count < 4;
+                && IoBus.IsBus(bus) && bus.unitCount == 1 && grid.childItems.Count < 4;
             grid.maxSlotRemoveItemFunc = (_, _, _) => data.RemovingUpgrade ? int.MaxValue : 0;
             grid.mayInventoryRemoveItemFunc = (_, _) => data.RemovingUpgrade;
             grid.onSlotAddItemEndFunc += (bus, _, _) => {
@@ -96,15 +96,15 @@ internal static partial class PartStorage
                     if (chosen < 0) throw new InvalidOperationException("Cable has no free bus face.");
                     Number(bus, "cable_face", chosen);
                 }
-                ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item);
+                ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item,true);
             };
             grid.onSlotRemoveItemEndFunc += (bus, _, _) => {
                 if (ModEntry.ActiveSession?.Loading == false) Number(bus, "cable_face", -1);
-                ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item);
+                ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item,true);
             };
             var window = new PixelWindow(true, UiText.Get("ui_cable_bus_data")); window.Attach(grid); item.SetContentWindow(window);
         }
-        else if (item.identifier == "deepspaceae.item_storage_bus")
+        else if (IoBus.IsBus(item))
         {
             var grid = new GameGridInventory(5, 1);
             var data = new Slots { Inventory = grid };
@@ -113,8 +113,8 @@ internal static partial class PartStorage
                 && (card.identifier == Capacity || (card.identifier == Tag && !grid.childItems.Any(c => c.identifier == Tag)));
             grid.maxSlotRemoveItemFunc = (_, _, _) => data.RemovingUpgrade ? int.MaxValue : 0;
             grid.mayInventoryRemoveItemFunc = (_, _) => data.RemovingUpgrade;
-            grid.onSlotAddItemEndFunc += (_, _, _) => { ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item); };
-            grid.onSlotRemoveItemEndFunc += (_, _, _) => { ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item); };
+            grid.onSlotAddItemEndFunc += (_, _, _) => { ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item,true); };
+            grid.onSlotRemoveItemEndFunc += (_, _, _) => { ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item,true); };
             var window = new PixelWindow(true, UiText.Get("ui_upgrade_data")); window.Attach(grid); item.SetContentWindow(window);
         }
     }

@@ -63,6 +63,13 @@ def assets():
     faces = [face, face.transpose(Image.Transpose.ROTATE_270), face.transpose(Image.Transpose.ROTATE_180), face.transpose(Image.Transpose.ROTATE_90)]
     for side, sprite in enumerate(faces): result[f'bus-face-{side}.png'] = sprite
     result['item-storage-bus.png'] = raw_icon
+    # Direction-specific AE2-derived bus profiles; alpha/hit footprint stays exact.
+    for kind,color in [('import',(100,185,255)),('export',(255,173,78))]:
+        def tint(sprite):
+            colored=ImageChops.multiply(ImageOps.grayscale(sprite).convert('RGB'),Image.new('RGB',sprite.size,color)).convert('RGBA')
+            colored.putalpha(sprite.getchannel('A')); return colored
+        result[f'{kind}-bus.png']=tint(raw_icon)
+        for side,sprite in enumerate(faces): result[f'{kind}-face-{side}.png']=tint(sprite)
     terminal=Image.new('RGBA',(16,16))
     # AE2 model north-face UV is [2,2,14,14]; each mask needs its own cable-color tint.
     for name,color in [('terminal_dark.png',(24,44,33)),('terminal_medium.png',(76,139,86)),('terminal_bright.png',(151,252,132))]:

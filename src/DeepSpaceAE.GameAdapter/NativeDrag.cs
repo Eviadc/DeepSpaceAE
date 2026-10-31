@@ -196,7 +196,7 @@ internal sealed partial class GameSession
             if (target != null)
             {
                 deposit = Read(target.Owner);
-                if ((IsPart(item) && item.identifier != "deepspaceae.item_storage_bus" && ReferenceEquals(source, deposit.Root)) || deposit.Inventories.ContainsKey(item)) throw new Rejected(UiText.Get("error_active_part"));
+                if ((IsPart(item) && !IoBus.IsBus(item) && ReferenceEquals(source, deposit.Root)) || deposit.Inventories.ContainsKey(item)) throw new Rejected(UiText.Get("error_active_part"));
                 var policies = deposit.Policies.ToDictionary(p => Id(p.Key), p => p.Value, StringComparer.Ordinal);
                 SlotMarker? found = null;
                 foreach (var busId in StorageRouting.InsertionOrder(policies, item.identifier, PartStorage.Tags(item)))

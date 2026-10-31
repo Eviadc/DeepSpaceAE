@@ -36,8 +36,8 @@ public sealed class PlaceholderAssetTests
         var root = Path.Combine(AppContext.BaseDirectory, "assets", "placeholders");
         using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "parts.json")));
         var parts = document.RootElement.GetProperty("parts").EnumerateArray().ToArray();
-        Assert.Equal(5, parts.Length);
-        Assert.Equal(5, parts.Select(p => p.GetProperty("id").GetString()).Distinct().Count());
+        Assert.Equal(7, parts.Length);
+        Assert.Equal(7, parts.Select(p => p.GetProperty("id").GetString()).Distinct().Count());
         Assert.Equal(Enum.GetValues<NetworkPart>().OrderBy(p => p), parts.Select(p => Enum.Parse<NetworkPart>(p.GetProperty("part").GetString()!)).OrderBy(p => p));
         foreach (var part in parts)
         {

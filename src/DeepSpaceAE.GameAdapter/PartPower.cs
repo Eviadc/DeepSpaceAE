@@ -39,6 +39,13 @@ internal static partial class PartStorage
     internal static bool Powered(GameItem core,int cost,bool reserve=false)
     {
         if(ModEntry.ActiveSession?.Loading!=false) return false;
+        if(ModEntry.ActiveSession.NightAutomation)
+        {
+            var paid=Lease(core); var battery=Battery(core);
+            return battery!=null && battery.unitCount==1 && GeneralHelper.IsItemEffectivelyOwned(battery) && !GridUnpaid(core)
+                && (!IsGrid(battery) || CanSupply(battery,cost))
+                && AutomationRules.PaidNightPower(Day,paid.Day,paid.Phase==NightPhase.Settled,paid.Battery,battery.uniqueId,paid.Required,cost);
+        }
         var lease=Lease(core); string before=Stamp(lease); lease.ObservePeak(Day,Math.Max(2,cost));
         var source=Battery(core); bool powered=false;
         if(source!=null && !GridUnpaid(core))
