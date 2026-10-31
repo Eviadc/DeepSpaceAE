@@ -6,7 +6,7 @@ if ($running) { throw 'Close the game before deploying.' }
 & "$PSScriptRoot/build-game.ps1" -GameDir $GameDir
 & "$PSScriptRoot/package-game.ps1"
 $revision = (& git -C $RepoRoot rev-parse --short=7 HEAD).Trim()
-[xml]$manifest = Get-Content "$RepoRoot/assets/game/manifest.xml"
+[xml]$manifest = Get-Content -LiteralPath "$RepoRoot/assets/game/manifest.xml" -Raw -Encoding UTF8
 $label = $manifest.Manifest.GameVersions.Version
 $package = Join-Path $RepoRoot "artifacts/packages/DeepSpaceAE-$($manifest.Manifest.ModVersion)-$label-$revision.zip"
 $stage = Join-Path $RepoRoot ('artifacts/deploy/' + [guid]::NewGuid().ToString('N'))
