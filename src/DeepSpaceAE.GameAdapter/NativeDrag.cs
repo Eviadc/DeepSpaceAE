@@ -32,7 +32,7 @@ internal static class ProjectionPressPatch
         NativeDrag.Gesture = null;
         var position = ___lastMouseClickedPosition;
         // Use the actual tile and the pointer captured by the native input handler.
-        // The native item renderer is borrowed beneath this non-owning layout tile.
+        // Mirror hit nodes resolve to the real item without moving its renderer.
         var tile = RenderHandler.RaycastFindParentElement<VirtualInventory.ItemTile>(position);
         var surface = tile?.Surface;
         if (surface == null || surface.Ghost) return;
@@ -64,6 +64,7 @@ internal static class ProjectionStartPatch
         { NativeDrag.OriginItem = ___currentItem; NativeDrag.OriginSource = ___currentItem.parentInventory; }
         var g = NativeDrag.Gesture;
         if (g == null || !g.Allowed || !__instance.IsDraggingItem) return;
+        g.Surface.handler.FindParentWindow()?.ToFront();
         ___currentRemove = g.Count; ___currentItem.UpdateFakeReal(g.Count);
         var p = ___currentItem.fakeMiddle.parent.rectTransform.InverseTransformPoint(___lastMouseClickedPosition);
         ___currentItem.SetCenteredPosition(p.x, p.y);
@@ -274,13 +275,24 @@ internal static class ClearNativeDragOriginPatch
     }
 }
 
-// Native validation may reset the root to its source coordinates. Only render offsets
-// are reapplied; no inventory or saved shape is changed.
-[HarmonyPatch(typeof(GameItemElement), nameof(GameItemElement.UpdateRectTransform))]
-internal static class NativeTerminalRenderPatch
+// Refresh view-only snapshots after native visuals have settled, coalesced per item.
+[HarmonyPatch(typeof(GameItemElement), nameof(GameItemElement.ValidateSelect))]
+internal static class NativeTerminalViewChangedPatch
 {
     [HarmonyPostfix]
-    private static void Postfix(GameItemElement __instance) => VirtualInventory.ItemTile.Align(__instance);
+    private static void Postfix(GameItemElement __instance) => VirtualInventory.ItemTile.Changed(__instance);
+}
+[HarmonyPatch(typeof(GameItemElement), nameof(GameItemElement.ApplyAnimationFrame))]
+internal static class NativeTerminalAnimationChangedPatch
+{
+    [HarmonyPostfix]
+    private static void Postfix(GameItemElement __instance) => VirtualInventory.ItemTile.Changed(__instance);
+}
+[HarmonyPatch(typeof(GameItemElement), nameof(GameItemElement.ValidatePartialSprite))]
+internal static class NativeTerminalSpriteChangedPatch
+{
+    [HarmonyPostfix]
+    private static void Postfix(GameItemElement __instance) => VirtualInventory.ItemTile.Changed(__instance);
 }
 
 // The native scroller derives its extent from owned items. Our non-owning directory
@@ -311,4 +323,23 @@ internal static class TerminalScrollBarDragGuardPatch
     [HarmonyPrefix]
     private static bool Prefix(GameGridScrollableInventory __instance) => __instance is not VirtualInventory
         || (ItemMouseDragHandler.current?.IsDraggingItem != true && ItemMultiSelectHandler.current?.IsGroupDragging != true);
+}
+
+[HarmonyPatch(typeof(GameItemElement), nameof(GameItemElement.HandleModSprite))]
+internal static class NativeTerminalModSpriteChangedPatch
+{
+    [HarmonyPostfix]
+    private static void Postfix(GameItemElement __instance) => VirtualInventory.ItemTile.Changed(__instance);
+}
+[HarmonyPatch(typeof(GameItemElement), nameof(GameItemElement.HandleInnateModSprite))]
+internal static class NativeTerminalInnateSpriteChangedPatch
+{
+    [HarmonyPostfix]
+    private static void Postfix(GameItemElement __instance) => VirtualInventory.ItemTile.Changed(__instance);
+}
+[HarmonyPatch(typeof(GameItemElement), nameof(GameItemElement.RefreshPlayingFrame))]
+internal static class NativeTerminalPlayingFrameChangedPatch
+{
+    [HarmonyPostfix]
+    private static void Postfix(GameItemElement __instance) => VirtualInventory.ItemTile.Changed(__instance);
 }

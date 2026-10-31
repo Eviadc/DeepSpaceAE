@@ -52,7 +52,7 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
         foreach (var entry in itemTiles) if (!keep.Contains(entry.Key)) removed.Add(entry.Key);
         foreach (var id in removed)
         {
-            var tile = itemTiles[id]; tile.Return();
+            var tile = itemTiles[id]; tile.DisposeView();
             tile.handler.gameObject.SetActive(false); UnityEngine.Object.Destroy(tile.handler.gameObject);
             tiles.Remove(tile.handler); itemTiles.Remove(id);
         }
@@ -62,7 +62,7 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
     }
     internal void ClearTiles()
     {
-        foreach (var tile in itemTiles.Values) tile.Return();
+        foreach (var tile in itemTiles.Values) tile.DisposeView();
         foreach (var tile in tiles) { tile.gameObject.SetActive(false); UnityEngine.Object.Destroy(tile.gameObject); }
         tiles.Clear();
         itemTiles.Clear();
@@ -75,11 +75,10 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
         tile.handler.SetParent(inner);
         tile.rectTransform.anchorMin = tile.rectTransform.anchorMax = tile.rectTransform.pivot = new Vector2(0, 1);
         MachineryStyle.Place(tile.handler, x * cell, y * cell, shape.globalWidth * cell, shape.globalHeight * cell);
-        // Borrow the actual native renderer, not a sprite or a second GameItem.
-        // Its graph parent, shape and saved coordinates remain in the real container.
-        tile.Borrow();
+        // Independent native UI nodes resolve to the one real item. The source renderer is untouched.
         tiles.Add(tile.handler);
         itemTiles.Add(id, tile);
+        tile.CreateView();
     }
     internal void GhostTile(int index, Sprite? sprite, string description, Action clear)
     {
@@ -124,29 +123,37 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
     internal sealed class ItemTile : EmptyPixelElement, TooltipListener
     {
         private readonly GameItem item;
-        private static readonly Dictionary<GameItemElement, ItemTile> borrowed = new();
-        internal void Borrow()
+        private static readonly Dictionary<GameItemElement, ItemTile> views = new();
+        private TreeNodeRender? mirror;
+        private bool queued, disposed;
+        internal void CreateView()
         {
             if (item is not GameItemElement element) return;
-            borrowed[element] = this;
-            element.handler.SetParent(handler);
-            Align(element);
+            views.Add(element, this);
+            Rebuild(element);
         }
-        internal static void Align(GameItemElement element)
+        internal static void Changed(GameItemElement element)
         {
-            if (!borrowed.TryGetValue(element, out var tile) || element.handler.parent != tile.handler) return;
-            element.handler.rectTransform.anchoredPosition = -element.middle.rectTransform.anchoredPosition;
+            if (!views.TryGetValue(element, out var tile) || tile.queued || tile.disposed) return;
+            tile.queued = true;
+            LetterboxManager.RunNextUpdate(() => {
+                tile.queued = false;
+                if (!tile.disposed && tile.handler != null && !element.IsDestroyed()) tile.Rebuild(element);
+            });
         }
-        internal void Return()
+        private void Rebuild(GameItemElement element)
         {
-            if (item is not GameItemElement element || !borrowed.Remove(element) || element.IsDestroyed()) return;
-            // A successful move may already have reparented the native renderer.
-            if (element.handler.parent == handler)
-            {
-                if (element.parentInventory is PixelElement source) element.handler.SetParent(source.inner);
-                else element.handler.ResetParent();
-                element.Validate();
-            }
+            // Instantiate only native render prefabs. No GameItem constructor, Unity object
+            // clone, source callbacks or source transform mutation is involved.
+            if (mirror == null) mirror = NativeItemMirror.Copy(element.middle, handler, element);
+            else NativeItemMirror.Sync(element.middle, mirror);
+            mirror.rectTransform.anchoredPosition = Vector2.zero;
+        }
+        internal void DisposeView()
+        {
+            disposed = true;
+            if (item is GameItemElement element) views.Remove(element);
+            // The enclosing layout owns only mirror nodes. Nothing needs to be returned.
         }
         internal readonly VirtualInventory Surface;
         internal readonly Guid Instance;
