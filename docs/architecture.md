@@ -40,7 +40,7 @@ ModEntry 注册四种供电节点、容量卡、标签卡、扳手和原生拾�
 
 ## 分发边界
 
-IsPackable=false；游戏 ZIP 使用 scripts/package-game.py 逐文件白名单：两个自有 DLL、43 张授权 PNG、manifest、安装验收说明、素材署名/来源与构建记录。检查干净提交、二进制内嵌提交、PNG 头、逐文件哈希和 ZIP CRC。游戏/Unity/Harmony/Steam DLL、测试宿主、存档和凭据不得进入 Git 或安装包。源素材是公开 AE2 代码库的资产子集，许可 CC BY-NC-SA 3.0，随包保留署名，不与早期原创 CC0 占位 SVG 混淆。
+IsPackable=false；游戏 ZIP 使用 scripts/package-game.py 逐文件白名单：两个自有 DLL、55 张授权 PNG、manifest、安装验收说明、素材署名/来源与构建记录。检查干净提交、二进制内嵌提交、PNG 头、逐文件哈希和 ZIP CRC。游戏/Unity/Harmony/Steam DLL、测试宿主、存档和凭据不得进入 Git 或安装包。源素材是公开 AE2 代码库的资产子集，许可 CC BY-NC-SA 3.0，随包保留署名，不与早期原创 CC0 占位 SVG 混淆。
 
 源码修复按用户授权直接推送；附件交付需真实上传工具或用户指定渠道，不把 /workspace 或虚构 Library ID 当成下载链接。不操作本地电脑、不登录 Steam、不安装 Unity/Wine。
 

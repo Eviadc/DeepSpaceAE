@@ -26,15 +26,25 @@ internal static class ProjectionPressPatch
 {
     [HarmonyPostfix]
     private static void Postfix(ItemMouseDragHandler __instance, ISet<KeyCode> keysPressed,
-        ref GameItemElement ___currentItem, Vector3 ___lastMouseClickedPosition)
+        ref GameItemElement ___currentItem, Vector3 ___lastMouseClickedPosition, ref KeyCode ___lastMouseClickedKey)
     {
         if (__instance.IsDraggingItem || ItemPinHelper.BlocksClicks || !keysPressed.Contains(__instance.key)) return;
         NativeDrag.Gesture = null;
-        var surface = RenderHandler.RaycastFindParentElement<VirtualInventory>(___lastMouseClickedPosition);
-        if (surface == null || surface.Ghost || surface.At(___lastMouseClickedPosition) is not GameItemElement item || item.parentInventory == null) return;
-        var observedSource = surface.SourceAt(___lastMouseClickedPosition);
+        var position = ___lastMouseClickedPosition;
+        // Use the actual tile and the pointer captured by the native input handler.
+        // A non-owning projection is deliberately not a native GameItemElement.
+        var tile = RenderHandler.RaycastFindParentElement<VirtualInventory.ItemTile>(position);
+        var surface = tile?.Surface;
+        if (surface == null || surface.Ghost) return;
+        var (x, y) = surface.Cell(position);
+        if (surface.Layout?.At(surface.PageIndex, x, y) != tile!.Instance) return;
+        if (surface.At(position) is not GameItemElement item || item.parentInventory == null) return;
+        var observedSource = surface.SourceAt(position);
         if (observedSource == null || !ReferenceEquals(observedSource, item.parentInventory)) return;
+        surface.Select(tile.Instance);
+        surface.handler.FindParentWindow()?.ToFront();
         ___currentItem = item;
+        ___lastMouseClickedKey = __instance.key;
         NativeDrag.Gesture = new ProjectionGesture { Surface = surface, Item = item, Source = observedSource, Count = item.unitCount };
     }
 }
@@ -241,5 +251,8 @@ internal static class ClearNativeDragOriginPatch
 {
     [HarmonyFinalizer]
     private static void Finalizer()
-    { NativeDrag.OriginItem = null; NativeDrag.OriginSource = null; }
+    {
+        NativeDrag.OriginItem = null; NativeDrag.OriginSource = null;
+        ModEntry.ActiveSession?.DragEnded();
+    }
 }

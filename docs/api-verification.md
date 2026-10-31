@@ -65,3 +65,9 @@
 2026-10-31（Asia/Shanghai）实际读取用户上传的 Player.log：加载器报告 DeepSpaceAE v0.3.0-alpha，Harmony.PatchAll 对抽象 GameItem.Destroy 抛出 BadImageFormatException: Method has no body，随后 Init failed、running=False。故旧版加载阻断已有实机失败证据；修复版 0.3.1 的实机结果仍未知。该日志的入口名为 ModLoader.LoadModDll，不将它与现有 REV3 的 LoadModAssembly 混同，也不据此声称 REV5 全部 API 兼容。原日志不入库，关键行及范围见加载诊断。
 
 语言键与字体另行区分：原生机器 UI 选择当前 locale 的 Noto_Sans，OfficeCodePro/[Text] 缺字需要原始日志定位。自有显示参数中的中文为合法纯文本，并无中文作为 GetLocalized 键的证据；现改为官方 Localization/en.csv、zh.csv 和 UiText ASCII 键。完整证据、官方链接和免 F8 日志步骤见 [加载诊断](load-troubleshooting.md)。
+
+## 0.3.2 槽位、输入与动画核验
+
+新增静态核对：MachineryContainerUtils.Refresh/TryResize 只自动调用 MachineryContainer/MachineryWidget，StealPixelElement 本身不在该范围且 Attach 保留位置。修订借用包装以主动传播真实槽尺寸并归还位置，保持原始库存保存父图。TreeNodeRender.FindParentElement<T> 沿渲染祖先查找；终端仅命中自有投影片，再将原生按下状态指向实际来源实例。
+
+CustomUIMachineryStyle.SCALE=2，Reskin 会替换所有 Image，输入/下拉依赖原版 prefab；本版使用正确缩放并保留其子装饰。SpriteAnimationHelper 的显式帧列表通过 GameItemElement.ResolveSpriteByName 读取本模组精灵，原生管理器 Tick 调用 ApplyAnimationFrame，不改占格。现复用此接口播放 12 帧灯光，离线移除自有动画。这些依据均来自现有真实 REV3 引用，未据 APIChanges 假定 REV5 签名相同。实现、成本及用户侧复测项见 [UI 修订](native-ui.md#032-本地反馈修订)。

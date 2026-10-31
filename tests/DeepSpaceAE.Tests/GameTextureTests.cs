@@ -2,6 +2,7 @@ using System;
 using System.Buffers.Binary;
 using System.IO;
 using System.IO.Compression;
+using System.Collections.Generic;
 using Xunit;
 
 namespace DeepSpaceAE.Tests;
@@ -13,7 +14,7 @@ public sealed class GameTextureTests
     [Fact]
     public void CoreTextureCoversAllNineCellsAndWhitelistContainsAllActiveAndInactiveImages()
     {
-        Assert.Equal(43, Directory.GetFiles(Root, "*.png").Length);
+        Assert.Equal(55, Directory.GetFiles(Root, "*.png").Length);
         foreach (var name in new[] { "core", "terminal", "item-storage-bus", "pipeline" })
             Assert.True(File.Exists(Path.Combine(Root, name + "-off.png")));
         for (int mask = 0; mask < 16; mask++) Assert.True(File.Exists(Path.Combine(Root, $"pipeline-{mask}-off.png")));
@@ -25,9 +26,25 @@ public sealed class GameTextureTests
     }
 
     [Fact]
+    public void ControllerAnimationKeepsTheCanvasAndOccupancyWhileChangingItsLights()
+    {
+        var (width, height, original) = Decode("core.png");
+        var distinct = new HashSet<string>(StringComparer.Ordinal);
+        for (int i = 0; i < 12; i++)
+        {
+            var frame = Decode($"core-{i}.png");
+            Assert.Equal(width, frame.Width); Assert.Equal(height, frame.Height);
+            for (int pixel = 0; pixel < width * height; pixel++)
+                Assert.Equal(original[pixel * 4 + 3], frame.Pixels[pixel * 4 + 3]);
+            Assert.Equal(original[..4], frame.Pixels[..4]); // chassis corner remains fixed
+            Assert.True(distinct.Add(Convert.ToBase64String(frame.Pixels)), "Repeated light frame.");
+            if (i == 0) Assert.Equal(original, frame.Pixels);
+        }
+    }
+
+    [Fact]
     public void AllCableTexturesExposeExactlyTheirNamedPorts()
     {
-        var edges = new[] { (7, 0), (15, 7), (7, 15), (0, 7) };
         for (int mask = 0; mask < 16; mask++)
         {
             var (width, height, pixels) = Decode($"pipeline-{mask}.png");
@@ -35,10 +52,19 @@ public sealed class GameTextureTests
             Assert.Equal(16, height);
             for (int side = 0; side < 4; side++)
             {
-                var (x, y) = edges[side];
-                Assert.Equal((mask & (1 << side)) != 0, pixels[(y * width + x) * 4 + 3] == 255);
+                // AE glass has transparent holes. Inspect the whole boundary, rather than
+                // requiring one opaque center pixel that is not part of the source texture.
+                bool visible = false;
+                for (int cell = 0; cell < 16; cell++)
+                {
+                    var (x, y) = side switch { 0 => (cell, 0), 1 => (15, cell), 2 => (cell, 15), _ => (0, cell) };
+                    visible |= pixels[(y * width + x) * 4 + 3] > 0;
+                }
+                Assert.Equal((mask & (1 << side)) != 0, visible);
             }
-            Assert.Equal(255, pixels[(7 * width + 7) * 4 + 3]);
+            bool hasCenter = false;
+            for (int y = 6; y < 10; y++) for (int x = 6; x < 10; x++) hasCenter |= pixels[(y * width + x) * 4 + 3] > 0;
+            Assert.True(hasCenter);
         }
     }
 

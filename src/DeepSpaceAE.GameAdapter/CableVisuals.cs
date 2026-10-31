@@ -17,6 +17,8 @@ internal sealed class CableVisuals
     private readonly ModLog log;
     private readonly GameSession session;
     private Dictionary<string, Sprite>? sprites;
+    private readonly HashSet<GameItem> animatedCores = new();
+    private static readonly List<string> coreFrames = Enumerable.Range(0, 12).Select(i => "core-" + i).ToList();
     private readonly Dictionary<GameItem, (int, int, int, int, int, bool, bool)> poses = new();
     internal CableVisuals(ModLog log, GameSession session) { this.log = log; this.session = session; }
     internal void AssetsLoaded(LoadedMod mod) { if (mod.Manifest.ID == ModEntry.ModId) { sprites = mod.Sprites; Invalidate(); } }
@@ -30,11 +32,27 @@ internal sealed class CableVisuals
     }
     internal void Detach()
     {
+        foreach (var core in animatedCores.ToArray()) StopAnimation(core);
         if (root != null) { root.onSlotAddItemEndFunc -= Changed; root.onSlotRemoveItemEndFunc -= Changed; }
         root = null; generation++; queued = false; poses.Clear();
     }
     private static string Base(GameItem part) => ModEntry.Parts.First(p => p.Id == part.identifier).Sprite;
-    internal void Inactive(GameItem part) { if (GameSession.IsPart(part)) Apply(part, Base(part) + "-off"); }
+    internal void Inactive(GameItem part)
+    { if (GameSession.IsPart(part)) { StopAnimation(part); Apply(part, Base(part) + "-off"); } }
+    private void StopAnimation(GameItem core)
+    {
+        if (!animatedCores.Remove(core)) return;
+        if (core is GameItemElement element && !element.IsDestroyed()) SpriteAnimationHelper.RemoveSpriteAnimation(core);
+    }
+    private void Animate(GameItem core, bool active)
+    {
+        if (!active) { StopAnimation(core); return; }
+        if (sprites == null || coreFrames.Any(frame => !sprites.ContainsKey(frame))) return;
+        if (animatedCores.Add(core))
+            // AE2 controller_lights metadata: 25 Minecraft ticks at 50ms per tick.
+            // Native animation only changes sprites; no textures or network scans per frame.
+            SpriteAnimationHelper.InitSpriteAnimation(core, coreFrames, 500);
+    }
     private void Apply(GameItem part, string path)
     {
         if (part.spritePath == path || sprites == null || !sprites.TryGetValue(path, out var sprite)) return;
@@ -87,6 +105,7 @@ internal sealed class CableVisuals
                     }
                     string path = item.identifier == "deepspaceae.pipeline" ? "pipeline-" + layout.CableMask(item) : Base(item);
                     Apply(item, path + (active ? "" : "-off"));
+                    if (item.identifier == "deepspaceae.core") Animate(item, active);
                 }
             }
             catch (Exception e)

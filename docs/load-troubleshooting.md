@@ -66,7 +66,7 @@ python extract-load-log.py "完整的Player.log路径" --output "新的诊断报
 
 提取器只从报告副本省略 OfficeCodePro / [Text] 的同类缺字警告，保留首例与总数；不修改原始日志，不排除其他字体、其他对象、真正 Error/Exception 或缺失翻译提示。输出有上限并明确标记截断，重复字体行不会消耗真正异常的后续上下文。
 
-新包应能看到 ASCII 阶段日志：`initialized`、`Enabled.`、`Assets ready: sprites=43; locales=2.`，进入相应目录初始化后为 `Registration complete: 7 AE item factories.`。缺少哪一阶段可以缩小失败位置；这些消息只证明阶段执行，不证明整套存储功能安全。
+新包应能看到 ASCII 阶段日志：`initialized`、`Enabled.`、`Assets ready: sprites=55; locales=2.`，进入相应目录初始化后为 `Registration complete: 7 AE item factories.`。缺少哪一阶段可以缩小失败位置；这些消息只证明阶段执行，不证明整套存储功能安全。
 
 ## 构建新增门禁与执行结果
 

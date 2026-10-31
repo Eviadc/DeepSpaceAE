@@ -19,7 +19,8 @@ files = {
 keys = ["core", "pipeline", "item-storage-bus", "terminal"] + [f"pipeline-{m}" for m in range(16)]
 keys += [k + "-off" for k in keys.copy()]
 keys += ["capacity-upgrade", "tag-upgrade", "wrench"]
-assert len(keys) == len(set(keys)) == 43
+keys += [f"core-{i}" for i in range(12)]
+assert len(keys) == len(set(keys)) == 55
 for key in keys:
     files[f"DeepSpaceAE/Textures/Items/{key}.png"] = root / f"assets/game/Textures/Items/{key}.png"
 files["DeepSpaceAE/THIRD-PARTY-NOTICES.md"] = root / "assets/THIRD-PARTY-NOTICES.md"
@@ -40,10 +41,10 @@ for name, path in files.items():
         raise SystemExit(f"{path.name} does not contain the current source revision. Rebuild after committing.")
     if name.endswith(".png"):
         data = path.read_bytes()
-        size = 48 if Path(name).name in ("core.png", "core-off.png") else 16
+        size = 48 if Path(name).stem == "core" or Path(name).stem.startswith("core-") else 16
         assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", data[16:24]) == (size, size)
 version = ET.parse(files["DeepSpaceAE/manifest.xml"]).getroot().findtext("ModVersion")
-assert version == "0.3.1-alpha"
+assert version == "0.3.2-alpha"
 audit_path = root / "artifacts/validation/game-patch-audit.json"
 if not audit_path.is_file():
     raise SystemExit("Missing game patch metadata audit; run scripts/build-game.sh first.")

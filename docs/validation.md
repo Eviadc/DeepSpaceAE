@@ -120,3 +120,14 @@ Core 投影布局探针，固定每实例 2×3 六格，预热后 5 次中位数
 - 修复版游戏加载、真实终端拖放/存档、REV5 对应引用：**未运行/未核验**。按用户要求搁置字体问题；不把旧日志当作新版通过证据。
 
 实际源码提交和包内逐文件校验以对应安装包的 build-info.json 为准。兼容范围和真实游戏验收仍遵守 [API 核验](api-verification.md) 与 [安装验收](game-test.md)，不跳过失败的安全补丁来宣称兼容新版本。
+
+## 0.3.2 终端输入、原生槽布局与外观修订（2026-10-31，Asia/Shanghai）
+
+- 用户侧报告：上一版终端物品无法选中/拖出、机器槽布局不正确。修订版的实机结果：**未运行**，不将静态核对写成已在游戏修好。
+- 真实 REV3 静态核对：MachineryContainerUtils、StealPixelElement、原版 DNA 机器/PowerPanel、CustomUIMachineryStyle.SCALE/Reskin、TreeNodeRender、原生拖拽状态和 SpriteAnimationHelper。核验文件保留在仓库外；没有执行游戏代码或安装 Unity。
+- 环境安装与锁定还原：通过。`bash scripts/verify.sh` 干净构建零警告/零错误；最终 xUnit **77 通过、0 失败、0 跳过**。新增 12 帧尺寸、透明度占格和灯光差异检查。
+- 中间素材回归曾有 1 项失败：旧测试要求线缆边缘中心像素不透明，而原 AE 玻璃纹理在那里有透明孔洞。现改为检查整个边界的可见性，未连接边仍必须全透明；全部 16 掩码通过，不向纹理填假色绕过测试。
+- `GameManagedDir=/workspace/.deepspaceae/game-references/100-REV3 bash scripts/build-game.sh`：通过，零警告/零错误；14 项 Harmony 目标及字段/参数元数据审计通过。首次开发构建的 Input/IsDestroyed 类型绑定错误已改为读取原生捕获坐标和具体 GameItemElement，没有新增或伪造游戏引用。
+- `python3 scripts/generate-game-assets.py --check`：55 PNG 重现及全部来源哈希通过；控制器 12 帧与 16 线缆掩码的接触表已在云端查看。该图只是素材核验，不是游戏 UI 截图。
+- `python3 scripts/test-extract-load-log.py`：4 通过。`git diff --check`：通过。
+- 终端实际鼠标路由、UI 视觉比例、借用槽拖放/存档往返、动画的游戏显示及 REV5 全部兼容性：**未运行/未核验**。本次未改 Core 拓扑算法，不把旧模型性能数据作为本次 Unity 帧率结果。

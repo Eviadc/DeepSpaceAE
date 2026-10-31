@@ -24,6 +24,21 @@ def image(name): return Image.open(SOURCE / name).convert('RGBA')
 def inactive(img):
     result = ImageOps.grayscale(img).point(lambda x: x*2//5).convert('RGBA'); result.putalpha(img.getchannel('A')); return result
 
+def project_top(model_name, texture):
+    """Orthographic x/z up faces with the AE2 model's own UVs; no drawn cable arms."""
+    result = Image.new('RGBA', (16, 16))
+    model = json.loads((SOURCE/model_name).read_text())
+    for element in sorted(model['elements'], key=lambda e: e['to'][1]):
+        if 'up' not in element['faces']: continue
+        x0, _, z0 = map(int, element['from']); x1, _, z1 = map(int, element['to'])
+        u0, v0, u1, v1 = element['faces']['up']['uv']
+        for z in range(z0, z1):
+            for x in range(x0, x1):
+                u = min(15, max(0, int(u0+(x-x0+0.5)*(u1-u0)/(x1-x0))))
+                v = min(15, max(0, int(v0+(z-z0+0.5)*(v1-v0)/(z1-z0))))
+                result.putpixel((x, z), texture.getpixel((u, v)))
+    return result
+
 def assets():
     metadata = json.loads((SOURCE/'sources.json').read_text())
     for entry in metadata['files']:
@@ -54,20 +69,27 @@ def assets():
         colored.putalpha(layer.getchannel('A')); terminal.alpha_composite(colored)
     terminal.alpha_composite(image('monitor_front.png'))
     result['terminal.png']=terminal
-    # Cable geometry is our four-port grid projection; pixels sampled from AE2 glass cable.
-    cable=image('transparent.png')
+    # AE2 glass cable top projection, including all connection pixels and model UVs.
+    cable=image('glass_cable_connection.png')
+    center=project_top('glass_cable_center.json', cable)
+    north=project_top('glass_cable_connection.json', cable)
+    straight=project_top('glass_cable_straight.json', cable)
+    arms=[north, north.transpose(Image.Transpose.ROTATE_270), north.transpose(Image.Transpose.ROTATE_180), north.transpose(Image.Transpose.ROTATE_90)]
     for mask in range(16):
-        img=Image.new('RGBA',(16,16)); draw=ImageDraw.Draw(img)
-        for bit, rect in enumerate([(6,0,9,7),(8,6,15,9),(6,8,9,15),(0,6,7,9)]):
-            if mask & (1<<bit): draw.rectangle(rect,fill=(122,195,211,255))
-        draw.rectangle((5,5,10,10), fill=(63,87,99,255))
-        for y in range(6,10):
-            for x in range(6,10):
-                p=cable.getpixel((x,y)); img.putpixel((x,y),p if p[3] else (122,195,211,255))
+        img=center.copy()
+        for bit, arm in enumerate(arms):
+            if mask & (1<<bit): img.alpha_composite(arm)
+        if mask==5: img=straight.copy()
+        elif mask==10: img=straight.transpose(Image.Transpose.ROTATE_90)
         result[f'pipeline-{mask}.png']=img
     result['pipeline.png']=result['pipeline-15.png']
     for name,img in list(result.items()):
         if not name.endswith('-off.png') and name[:-4]+'-off.png' not in result: result[name[:-4]+'-off.png']=inactive(img)
+    lights=image('controller_lights.png')
+    for frame in range(lights.height//16):
+        controller=image('controller_powered.png')
+        controller.alpha_composite(lights.crop((0,frame*16,16,(frame+1)*16)))
+        result[f'core-{frame}.png']=controller.resize((48,48),Image.Resampling.NEAREST)
     result['capacity-upgrade.png']=image('card_capacity.png')
     tag=image('card_fuzzy.png'); draw=ImageDraw.Draw(tag)
     for x in (6,9): draw.line((x,5,x,11),fill=(208,255,194,255))

@@ -91,3 +91,5 @@ ui_battery_data,AE 核心 · 电池
 ui_upgrade_data,AE 总线 · 升级
 ui_item_count,{0} 件
 ui_part_stat,\n{0} 个\n每晚 {1} kJ / 个
+ui_filter_matching,筛选规则
+ui_bus_settings,设置

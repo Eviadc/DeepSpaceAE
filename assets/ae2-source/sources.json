@@ -116,6 +116,31 @@
       "file": "monitor_sides.png",
       "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/monitor_sides.png",
       "sha256": "7f801e1df17b380a42ae7501c89ceeb2fbcf5338e68cb5c32e986cd915dcac7e"
+    },
+    {
+      "file": "glass_cable_center.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/part/cable/glass/center.json",
+      "sha256": "ef4cd2cbef55def50874b669294f58c9f5c7a8b9780cefe14ae20de136886314"
+    },
+    {
+      "file": "glass_cable_connection.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/part/cable/glass/connection.json",
+      "sha256": "e5929f8d8b692bbfeea55339bdbf4965f37c95e042a5006682855f91e4b89f7b"
+    },
+    {
+      "file": "glass_cable_straight.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/part/cable/glass/straight.json",
+      "sha256": "c4bb7f1ae4f59a6906c7d1d4fee399fc33f05943f910024f0bb87237af854537"
+    },
+    {
+      "file": "glass_cable_connection.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/cable/glass/transparent.png",
+      "sha256": "42f01d60366d4a9424a9cabffa558f6fbe70db4c3b9217c3c7475b5db703ad0c"
+    },
+    {
+      "file": "controller_lights.png.mcmeta",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/block/controller_lights.png.mcmeta",
+      "sha256": "4305c24530716e5424b661590eaf7e32c3847737a337d4716e4e4647f8b90f28"
     }
   ]
 }

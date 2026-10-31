@@ -16,8 +16,15 @@ internal sealed class VirtualInventory : GameGridInventory
     private IReadOnlyDictionary<Guid, GameItem> items = new Dictionary<Guid, GameItem>();
     private IReadOnlyDictionary<Guid, GameInventory> sources = new Dictionary<Guid, GameInventory>();
     private readonly List<TreeNodeRender> tiles = new();
+    private readonly Dictionary<Guid, ItemTile> itemTiles = new();
+    private Guid? selected;
     internal VirtualInventory(GameItem owner, int width, int height, bool ghost = false) : base(width, height)
-    { Owner = owner; Ghost = ghost; SetMachineryStyle(); }
+    {
+        Owner = owner; Ghost = ghost; SetMachineryStyle();
+        rectTransform.anchorMin = rectTransform.anchorMax = rectTransform.pivot = new Vector2(0, 1);
+        inner.rectTransform.anchorMin = inner.rectTransform.anchorMax = inner.rectTransform.pivot = new Vector2(0, 1);
+        inner.rectTransform.anchoredPosition = Vector2.zero;
+    }
     internal void Populate(VirtualInventoryLayout layout, int page, IReadOnlyDictionary<Guid, GameItem> live, IReadOnlyDictionary<Guid, GameInventory> observedSources)
     {
         ClearTiles(); Layout = layout; PageIndex = page; items = live; sources = observedSources;
@@ -28,13 +35,15 @@ internal sealed class VirtualInventory : GameGridInventory
     {
         foreach (var tile in tiles) { tile.gameObject.SetActive(false); UnityEngine.Object.Destroy(tile.gameObject); }
         tiles.Clear();
+        itemTiles.Clear();
     }
     private void AddTile(Guid id, int x, int y, GameItem item)
     {
         int cell = UISettings.current.gridSize;
         var shape = item.modifiedShape;
-        var tile = new ItemTile(item, shape.globalWidth * cell, shape.globalHeight * cell);
+        var tile = new ItemTile(this, id, item, shape.globalWidth * cell, shape.globalHeight * cell);
         tile.handler.SetParent(inner);
+        tile.rectTransform.anchorMin = tile.rectTransform.anchorMax = tile.rectTransform.pivot = new Vector2(0, 1);
         MachineryStyle.Place(tile.handler, x * cell, y * cell, shape.globalWidth * cell, shape.globalHeight * cell);
         var image = TreeNodeRender.Instantiate().SetParent(tile.handler);
         var sprite = (item as GameItemElement)?.ResolveSpriteByName(item.spritePath);
@@ -56,9 +65,13 @@ internal sealed class VirtualInventory : GameGridInventory
             {
                 var (gx, gy) = shape.ForwardTransform(lx, ly);
                 var hit = TreeNodeRender.Instantiate().SetParent(tile.handler);
-                MachineryStyle.SetFlat(hit, new Color(0, 0, 0, 0));
+                // An actual occupied-cell hit surface; it remains raycastable when the
+                // item's sprite has transparent pixels. Never use a rectangular item clone.
+                MachineryStyle.SetFlat(hit, new Color(1, 1, 1, 0.01f));
+                hit.rectTransform.anchorMin = hit.rectTransform.anchorMax = hit.rectTransform.pivot = new Vector2(0, 1);
                 MachineryStyle.Place(hit, (gx - minX) * cell, (gy - minY) * cell, cell, cell);
                 hit.InitEventHandler();
+                tile.Hits.Add(hit);
             }
         if (item.unitCount > 1)
         {
@@ -66,6 +79,14 @@ internal sealed class VirtualInventory : GameGridInventory
             count.handler.SetParent(tile.handler); count.rectTransform.anchoredPosition = new Vector2(0, -(shape.globalHeight * cell - count.heightPixels));
         }
         tiles.Add(tile.handler);
+        itemTiles.Add(id, tile); tile.Select(selected == id);
+    }
+    internal void Select(Guid? instance)
+    {
+        if (selected == instance) return;
+        if (selected.HasValue && itemTiles.TryGetValue(selected.Value, out var previous)) previous.Select(false);
+        selected = instance;
+        if (selected.HasValue && itemTiles.TryGetValue(selected.Value, out var next)) next.Select(true);
     }
     internal void GhostTile(int index, Sprite? sprite, string description, Action clear)
     {
@@ -106,10 +127,16 @@ internal sealed class VirtualInventory : GameGridInventory
         return new SlotMarker { item = item, inventory = this, itemGridShape = shape, index = y * 9 + x,
             numTransfer = x >= 0 && y >= 0 && x < inventoryShape.width && y < inventoryShape.height && requestedNum >= item.unitCount ? item.unitCount : 0 };
     }
-    private sealed class ItemTile : EmptyPixelElement, TooltipListener
+    internal sealed class ItemTile : EmptyPixelElement, TooltipListener
     {
         private readonly GameItem item;
-        internal ItemTile(GameItem item, int width, int height) : base(width, height) { this.item = item; }
+        internal readonly VirtualInventory Surface;
+        internal readonly Guid Instance;
+        internal readonly List<TreeNodeRender> Hits = new();
+        internal ItemTile(VirtualInventory surface, Guid instance, GameItem item, int width, int height) : base(width, height)
+        { Surface = surface; Instance = instance; this.item = item; }
+        internal void Select(bool selected)
+        { foreach (var hit in Hits) MachineryStyle.SetFlat(hit, selected ? new Color(0.3f, 0.9f, 0.6f, 0.22f) : new Color(1, 1, 1, 0.01f)); }
         public bool HasTooltip() => true;
         public RichText GetTooltip() => item is GameItemElement element ? element.GetTooltip() : new RichTextBuilder().Add(item.name).Build();
         public RichText GetTooltipAdvanced() => item is GameItemElement element ? element.GetTooltipAdvanced() : GetTooltip();

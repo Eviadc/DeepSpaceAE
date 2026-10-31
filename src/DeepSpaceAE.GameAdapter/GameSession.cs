@@ -42,7 +42,8 @@ internal sealed partial class GameSession
     private ConditionalWeakTable<GameItem, Observation> observations = new();
     private readonly ModLog log;
     internal bool Loading { get; private set; } = true;
-    private bool writeFault, writing, refreshQueued;
+    private bool writeFault, writing, refreshQueued, terminalDirty;
+    private int terminalGeneration;
     private int page;
     private CatalogSort sort = CatalogSort.Name;
     private string search = "", tag = "", message = "";
@@ -63,7 +64,7 @@ internal sealed partial class GameSession
     private void Unobserve()
     {
         foreach (var inv in observed) { inv.onSlotAddItemEndFunc -= Changed; inv.onSlotRemoveItemEndFunc -= Changed; inv.onSlotChangeAmountItemFunc -= Changed; }
-        observed.Clear(); openTerminal = null;
+        observed.Clear(); openTerminal = null; terminalDirty = false; refreshQueued = false; terminalGeneration++;
     }
     internal void Close()
     {
@@ -73,11 +74,24 @@ internal sealed partial class GameSession
     }
     private void Changed(GameItem item, GameInventory inventory, SlotMarker slot)
     {
-        if (refreshQueued || openTerminal == null) { RefreshPartLater(); return; }
+        terminalDirty = openTerminal != null;
+        ScheduleTerminalRefresh(); RefreshPartLater();
+    }
+    private void ScheduleTerminalRefresh()
+    {
+        if (refreshQueued || !terminalDirty || openTerminal == null) return;
         refreshQueued = true;
         var current = openTerminal;
-        LetterboxManager.RunNextUpdate(() => { refreshQueued = false; if (ReferenceEquals(openTerminal, current) && !writing && ItemMouseDragHandler.current?.IsDraggingItem != true) Open(current); RefreshPartLater(); });
+        int expected = terminalGeneration;
+        LetterboxManager.RunNextUpdate(() => {
+            if (expected != terminalGeneration) return;
+            refreshQueued = false;
+            if (!ReferenceEquals(openTerminal, current) || !terminalDirty) return;
+            if (writing || ItemMouseDragHandler.current?.IsDraggingItem == true) return; // retain dirty until release
+            terminalDirty = false; Open(current);
+        });
     }
+    internal void DragEnded() { ScheduleTerminalRefresh(); RefreshPartLater(); }
     internal void ItemChanged(GameItem item)
     {
         if (item.parentInventory != null && observed.Contains(item.parentInventory)

@@ -9,13 +9,13 @@ internal sealed partial class GameSession
 {
     private PixelWindow? terminalWindow, partWindow, editorWindow, noticeWindow;
     private VirtualInventory? terminalGrid, filterGrid;
-    private StealPixelElement? borrowedStorage;
+    private BorrowedInventoryView? borrowedStorage;
     private GameItem? displayedPart;
     private View? displayedView;
     private IReadOnlyList<CatalogRecord>? packedRows;
     private VirtualInventoryLayout? packing;
     private MachineryText? terminalStatus;
-    private MachineryButton? pageLabel;
+    private MachineryText? pageLabel;
     private NativeWidgets.Field? tagField;
     private string[] displayedTags = Array.Empty<string>();
     private bool partRefreshQueued;
@@ -25,12 +25,13 @@ internal sealed partial class GameSession
     {
         if (NativeDrag.Gesture != null && ReferenceEquals(NativeDrag.Gesture.Surface.Owner, openTerminal)) NativeDrag.Gesture.Cancelled = true;
         Unobserve(); displayedView = null; terminalGrid = null; packedRows = null; packing = null;
+        terminalStatus = null; pageLabel = null; tagField = null; displayedTags = Array.Empty<string>();
         if (terminalWindow != null) { var w = terminalWindow; terminalWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); }
     }
     private void ClosePart()
     {
         if (editorWindow != null) { var w = editorWindow; editorWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); }
-        borrowedStorage?.UnStealItem(); borrowedStorage = null; displayedPart = null; filterGrid = null;
+        borrowedStorage?.Return(); borrowedStorage = null; displayedPart = null; filterGrid = null;
         if (partWindow != null) { var w = partWindow; partWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); }
     }
     internal void NativeWindowHidden(PixelWindow window)
@@ -55,7 +56,7 @@ internal sealed partial class GameSession
         var storage = (PixelElement)PartStorage.Inventory(owner);
         if (storage is GameSlotInventory slot) slot.SetMachineryStyle();
         if (storage is GameGridInventory grid) grid.SetMachineryStyle();
-        borrowedStorage = new StealPixelElement(false); borrowedStorage.Attach(storage);
+        borrowedStorage = new BorrowedInventoryView(storage);
         return new MachineryIntake(borrowedStorage, true, false);
     }
     private static DisplayFootprint Footprint(Guid id, GameItem item)
@@ -81,17 +82,17 @@ internal sealed partial class GameSession
             terminalGrid = new VirtualInventory(terminal, 18, 12);
             terminalGrid.Redraw = RenderTerminal;
             var query = NativeWidgets.Input(UiText.Get("ui_search"), search, value => { if (search == value) return; search = value; page = 0; RenderTerminal(); }, 150);
-            tagField = NativeWidgets.Dropdown(new[] { UiText.Get("ui_all_categories") }, 0, i => { tag = i == 0 ? "" : displayedTags[i - 1]; page = 0; RenderTerminal(); }, 100);
+            tagField = NativeWidgets.Dropdown(new[] { UiText.Get("ui_all_categories") }, 0, i => { tag = i > 0 && i <= displayedTags.Length ? displayedTags[i - 1] : ""; page = 0; RenderTerminal(); }, 100);
             var sortField = NativeWidgets.Dropdown(new[] { UiText.Get("ui_native_order"), UiText.Get("ui_name"), UiText.Get("ui_quantity") }, (int)sort, i => { sort = (CatalogSort)i; page = 0; RenderTerminal(); }, 70);
-            terminalStatus = MachineryText.Status(UiText.Get("ui_network"), "");
-            pageLabel = new MachineryButton("1 / 1", null, 52);
+            terminalStatus = NativeWidgets.Text("").SetFillWidth(false);
+            pageLabel = NativeWidgets.Text("1 / 1").SetFillWidth(false);
             var paging = MachineryStack.Horizontal(new MachineryButton("<", () => { page = Math.Max(0, page - 1); RenderTerminal(); }, 20), pageLabel,
-                new MachineryButton(">", () => { if (packing != null && page + 1 < packing.PageCount) page++; RenderTerminal(); }, 20),
-                new MachineryButton(UiText.Get("ui_refresh"), () => Open(terminal), 36));
-            var body = MachineryStack.Vertical(MachineryStack.Horizontal(query, tagField, sortField),
-                new MachineryIntake(terminalGrid), MachineryStack.Horizontal(terminalStatus, paging));
-            terminalWindow = new PixelWindow(true, UiText.Get("ui_terminal_title"), WindowStyle.Machinery);
-            terminalWindow.Attach(body); terminalWindow.closeCallback = CloseTerminal;
+                new MachineryButton(">", () => { if (packing != null && page + 1 < packing.PageCount) page++; RenderTerminal(); }, 20));
+            var searchBar = MachineryStack.Horizontal(query, tagField, sortField).SetMainAlign(MachineryStack.Align.Start);
+            var body = MachineryStack.Vertical(searchBar, new MachineryIntake(terminalGrid),
+                MachineryStack.Horizontal(terminalStatus, paging));
+            terminalWindow = MachineHelper.CreateMachineryWindow(true, new MachineryPanel(UiText.Get("ui_network"), body, "terminal"));
+            terminalWindow.SetTitle(UiText.Get("ui_terminal_title")); terminalWindow.closeCallback = CloseTerminal;
         }
         var tags = view.Search.Tags.ToArray();
         if (!displayedTags.SequenceEqual(tags) || create)
@@ -131,10 +132,10 @@ internal sealed partial class GameSession
         {
             var definition = ModEntry.Parts.First(p => p.Part == kind);
             int column = (int)kind;
-            var icon = new MachineryButton("", null, 32, 32).SetDescription(UiText.Get(definition.NameKey) + UiText.Get("ui_part_stat", counts[column], NetworkEvaluation.NightCost(kind)));
-            var artwork = NativeWidgets.Icon(NativeWidgets.Sprite(definition.Sprite), 28, 28); artwork.handler.SetParent(icon.handler); artwork.rectTransform.anchoredPosition = new Vector2(2, -2);
+            var icon = NativeWidgets.Icon(NativeWidgets.Sprite(definition.Sprite), 32, 32,
+                UiText.Get(definition.NameKey) + UiText.Get("ui_part_stat", counts[column], NetworkEvaluation.NightCost(kind)));
             stats.AttachPos(icon, column, 0);
-            stats.AttachPos(MachineryText.Status("×", counts[column].ToString()), column, 1);
+            stats.AttachPos(NativeWidgets.Text("× " + counts[column]), column, 1);
         }
         int used = board.Evaluation.ChannelsUsed.TryGetValue(Id(core), out var u) ? u : 0;
         var power = MachineryStack.Horizontal(NativeWidgets.Icon(MachineryStyle.IconPower), MachineryText.Status(UiText.Get("ui_nightly"), cost + " kJ"));
@@ -146,9 +147,9 @@ internal sealed partial class GameSession
         var overview = MachineryStack.Vertical(stats, power, bar,
             MachineryText.Status(UiText.Get("ui_energy"), infinite ? UiText.Get("ui_hypertech_battery") : remaining + " / " + maximum + " kJ"),
             MachineryText.Status(UiText.Get("ui_reserved"), (lease.Phase == NightPhase.Reserved ? lease.Required : 0) + " kJ"),
-            MachineryText.Status(UiText.Get("ui_channels"), used + " / 32"));
+            MachineryText.Status(UiText.Get("ui_channels"), used + " / 32"), NativeWidgets.Text(batteryState));
         partWindow = MachineHelper.CreateMachineryWindow(true,
-            new MachineryPanel(MachineryStyle.IconPower, MachineryStack.Vertical(Borrow(core), MachineryText.Status(UiText.Get("ui_battery"), batteryState)), "power"),
+            MachineHelper.IconPanel(MachineryStyle.IconPower, Borrow(core), "power"),
             MachineHelper.Panel(UiText.Get("ui_controller"), overview, "network", false));
         partWindow.SetTitle(UiText.Get("ui_controller_title")); partWindow.closeCallback = ClosePart; partWindow.Show().Center();
     }
@@ -169,23 +170,19 @@ internal sealed partial class GameSession
         filterGrid = new VirtualInventory(bus, 9, policy.Slots / 9, true);
         filterGrid.ConfigureFilter = (index, item) => CaptureGhost(bus, index, item);
         filterGrid.Redraw = RenderFilters;
-        var access = new MachineryButton("", null, 60, 18);
-        var matching = new MachineryButton("", null, 60, 18);
-        var extraction = new MachineryButton("", null, 60, 18);
-        void Controls()
-        {
-            var p = PartStorage.Policy(bus);
-            access.SetText(p.Access == StorageAccess.ReadWrite ? UiText.Get("ui_access_both") : p.Access == StorageAccess.ExtractOnly ? UiText.Get("ui_access_extract") : UiText.Get("ui_access_insert"));
-            matching.SetText(p.Exclude ? UiText.Get("ui_exclude") : UiText.Get("ui_include")); extraction.SetText(p.FilterExtraction ? UiText.Get("ui_filter_extract") : UiText.Get("ui_extract_all"));
-        }
-        access.SetCallback(() => { ConfigureNumber(bus, "access", ((int)PartStorage.Policy(bus).Access + 1) % 3); Controls(); });
-        matching.SetCallback(() => { ConfigureNumber(bus, "exclude", PartStorage.Policy(bus).Exclude ? 0 : 1); Controls(); });
-        extraction.SetCallback(() => { ConfigureNumber(bus, "extract_filter", PartStorage.Policy(bus).FilterExtraction ? 0 : 1); Controls(); });
-        access.SetDescription(UiText.Get("ui_access_mode")); matching.SetDescription(UiText.Get("ui_match_help")); extraction.SetDescription(UiText.Get("ui_extract_help")); Controls();
-        var toolbar = MachineryStack.Vertical(new MachineryButton(UiText.Get("ui_priority"), () => ShowPriority(bus), 60, 18), access, matching, extraction);
-        var main = MachineryStack.Horizontal(toolbar, new MachineryIntake(filterGrid));
-        var content = MachineryStack.Vertical(main, new MachineryPanel(UiText.Get("ui_upgrades"), Borrow(bus), "upgrades"));
-        partWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel(policy.Tags ? UiText.Get("ui_category_filter") : UiText.Get("ui_item_filter"), content, "storage_bus", false));
+        var access = NativeWidgets.Dropdown(new[] { UiText.Get("ui_access_both"), UiText.Get("ui_access_extract"), UiText.Get("ui_access_insert") },
+            (int)policy.Access, value => ConfigureNumber(bus, "access", value), 110);
+        var matching = NativeWidgets.Dropdown(new[] { UiText.Get("ui_include"), UiText.Get("ui_exclude") }, policy.Exclude ? 1 : 0,
+            value => ConfigureNumber(bus, "exclude", value), 110);
+        var extraction = NativeWidgets.Toggle(UiText.Get("ui_filter_extract"), policy.FilterExtraction,
+            value => ConfigureNumber(bus, "extract_filter", value ? 1 : 0), 110);
+        var options = MachineryStack.Vertical(NativeWidgets.Text(UiText.Get("ui_access_mode")), access,
+            NativeWidgets.Text(UiText.Get("ui_filter_matching")), matching, extraction,
+            new MachineryButton(UiText.Get("ui_priority"), () => ShowPriority(bus), 110, 18));
+        partWindow = MachineHelper.CreateMachineryWindow(true,
+            new MachineryPanel(UiText.Get("ui_bus_settings"), options, "settings"),
+            MachineHelper.Panel(policy.Tags ? UiText.Get("ui_category_filter") : UiText.Get("ui_item_filter"), filterGrid, "storage_bus"),
+            new MachineryPanel(UiText.Get("ui_upgrades"), Borrow(bus), "upgrades"));
         partWindow.SetTitle(UiText.Get("ui_bus_title")); partWindow.closeCallback = ClosePart;
         RenderFilters(); partWindow.Show().Center();
     }

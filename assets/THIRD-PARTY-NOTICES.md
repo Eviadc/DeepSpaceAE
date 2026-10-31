@@ -11,9 +11,9 @@ Source: https://github.com/AppliedEnergistics/Applied-Energistics-2
 Pinned revision: 629d953f987f37a768fbf96551c97d3dfd07b7ee.
 Per-file source URLs and SHA-256: assets/ae2-source/sources.json in the source repository.
 
-Changes by DeepSpaceAE contributors: controller scaled to 48×48 with a sampled
-light frame; storage-bus model projected from above and marked with an east-facing
-arrow; terminal layers composited; cable pixels sampled into four-port shapes;
+Changes by DeepSpaceAE contributors: controller scaled to 48×48 with 12 sampled
+light frames; storage-bus model projected from above and marked with an east-facing
+arrow; terminal layers composited; glass-cable model up faces and their UVs projected into four-port shapes;
 inactive variants darkened/desaturated; fuzzy-card texture adapted with a tag symbol.
 Capacity card and certus-quartz wrench textures are retained. Derivative artwork is
 also CC BY-NC-SA 3.0: retain this notice and attribution, share adaptations under the

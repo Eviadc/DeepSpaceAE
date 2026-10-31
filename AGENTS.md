@@ -5,7 +5,7 @@
 - 在 Linux x64 云端执行 `bash scripts/install-env.sh` 和 `bash scripts/verify.sh`。使用 `global.json` 固定的 SDK 和锁定还原；不要无故更新依赖。
 - Core 保持 `netstandard2.1` 且不依赖游戏对象。Tests 使用现代 .NET，模拟容器仅位于测试项目。
 - 存储网络内存原型见 docs/network-prototype.md；运行 `bash scripts/demo.sh --smoke` 验证终端闭环。显式拓扑、单连接叶子及频道默认值是原型策略，不能视为游戏 API。不要把测试宿主作为模组发布。
-- GameAdapter 默认不随解决方案编译。已有针对用户提供 100-REV3 引用的实际绑定；使用 `GameManagedDir=<批准的仓库外目录> bash scripts/build-game.sh` 显式构建，缺引用或游戏程序集哈希不符必须失败。不能伪造游戏接口或跳过门禁来声称兼容。打包用 `python scripts/package-game.py`，仅允许两个自有 DLL、43 张授权 AE2 衍生 PNG、清单、许可/来源和说明；不得携带游戏引用。说明见 docs/game-test.md。
+- GameAdapter 默认不随解决方案编译。已有针对用户提供 100-REV3 引用的实际绑定；使用 `GameManagedDir=<批准的仓库外目录> bash scripts/build-game.sh` 显式构建，缺引用或游戏程序集哈希不符必须失败。不能伪造游戏接口或跳过门禁来声称兼容。打包用 `python scripts/package-game.py`，仅允许两个自有 DLL、55 张授权 AE2 衍生 PNG、清单、许可/来源和说明；不得携带游戏引用。说明见 docs/game-test.md。
 - 用户已明确授权上传来自其合法安装、目标版本 100-REV3（Steam Build 26284217）的必要游戏编译引用，用于云端 API 核验和开发。此授权取代此前对这些引用上传的禁止，仅限开发使用；接收后放在 checkout 外，不提交、不随模组或源码包分发。不自行登录 Steam 或获取游戏本体、资源、存档、凭据。
 - 已核验的真实 API 与剩余未知见 docs/api-verification.md。静态 API 核验/编译通过不等于游戏运行通过；真实加载、移动副作用和存档往返仍须本地测试。APIChanges 中开发中内容不能单凭文档当成已发布接口。
 - 100-REV3 的屏幕主库存是 EmporiumEntry.Instance.invElement，由 GameSession.MainInventory() 统一取得。不要把 PlayerStore.GetStoreInventory() 当成主库存：它返回另一份独立且未挂主窗口的库存，原包 c5d6faa 已因此出现不可见生成和错误网络观测；详见 docs/game-runtime-feedback.md。禁止靠改计数、重复过滤或自动销毁物品掩盖错误根库存。
@@ -20,3 +20,5 @@
 - 0.3 UI 规则见 docs/native-ui.md：控制器用原生机器面板和真实电池槽；总线九列幽灵格，禁止全物品候选枚举；终端展示真实占格投影，不拥有/克隆/暂存真实物品，不添加主栏候选面板。保留旧子库存保存图索引，使用原生 StealPixelElement 借用渲染。原版 TypeHelper.GetTypeDisplayName 本地化公开物品类别。功耗为核心/线缆/总线/终端 2/0/1/1 kJ，迁移只改未扣预算，不重置已扣或未知结算。
 
 - 0.3.1 加载回归见 docs/load-troubleshooting.md：GameItem.Destroy 是 abstract，禁止恢复其 Harmony 目标，仅保留具体 GameItemElement 覆盖。scripts/build-game.sh 必须通过只读 PE 补丁元数据审计；打包校验审计绑定当前 DLL 哈希。显示文案用官方 Localization/en.csv、zh.csv 和 ASCII 键，在工厂/钩子且资源就绪后解析，禁止 Init/OnEnable 解析。补丁/日志问题优先读取 Player.log，不全局静音 TMP 或错误。包白名单另允许 2 CSV、加载诊断说明和独立日志提取脚本。
+
+- 0.3.2 修订见 docs/native-ui.md：借用槽包装必须参与原生 MachineryWidget 尺寸刷新、清除旧偏移并在关闭归还，不改保存图；终端无手动刷新，拖拽期间的 dirty 事件不得丢弃。原版 CustomUI 控件设计比例为 2，要整体缩放并保留下拉/勾选图形。素材现为 55 PNG；核心 12 帧复用真实 SpriteAnimationHelper，离线/停用停止，不每帧扫描网络。

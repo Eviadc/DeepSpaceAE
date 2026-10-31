@@ -23,7 +23,7 @@ public sealed class ModEntry : IMod
         log = new ModLog(manifest); // Manifest Name is ASCII; keep official metadata intact.
         session = new GameSession(log);
         ActiveSession = session;
-        log.Log("DeepSpaceAE 0.3.1 / 100-REV3 initialized.");
+        log.Log("DeepSpaceAE 0.3.2 / 100-REV3 initialized.");
     }
 
     public void OnEnable()

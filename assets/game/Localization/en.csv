@@ -91,3 +91,5 @@ ui_battery_data,AE Controller - battery
 ui_upgrade_data,AE Bus - upgrades
 ui_item_count,{0} instances
 ui_part_stat,\n{0} parts\n{1} kJ per part per night
+ui_filter_matching,Filter matching
+ui_bus_settings,Settings
