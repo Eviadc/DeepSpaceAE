@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using DeepSpaceAE.Core.Network;
 using UnityEngine;
 namespace DeepSpaceAE.GameAdapter;
@@ -107,6 +108,45 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
         if (Layout == null) return null;
         var (x, y) = Cell(position); var id = Layout.At(PageIndex, x, y);
         return id.HasValue && sources.TryGetValue(id.Value, out var source) ? source : null;
+    }
+    // The terminal is a network destination, not a physically placed item slot.
+    // Use viewport-local cells so scrolling deep into a large catalog never allocates
+    // highlight nodes for every preceding row.
+    private readonly List<TreeNodeRender> dropHighlights = new();
+    private static readonly PropertyInfo imageProperty = typeof(TreeNodeRender).GetProperty("image")!;
+    private static readonly MethodInfo setHighlight = typeof(RenderHandler).GetMethod("SetHighlightColor")!;
+    private static PropertyInfo? imageEnabled;
+    public override List<TreeNodeRender> HighlightSlot(SlotMarker slot, RenderHandler.BackgroundColor color, bool doReplace)
+        => Ghost ? base.HighlightSlot(slot, color, doReplace) : HighlightDropArea(color);
+    public override List<TreeNodeRender> HighlightWholeInventory(RenderHandler.BackgroundColor color)
+        => Ghost ? base.HighlightWholeInventory(color) : HighlightDropArea(color);
+    private List<TreeNodeRender> HighlightDropArea(RenderHandler.BackgroundColor color)
+    {
+        int cell = UISettings.current.gridSize;
+        int rows = GetVisibleHeight(); int count = width * rows;
+        while (dropHighlights.Count < count)
+        {
+            var node = TreeNodeRender.Instantiate().SetParent(handler);
+            node.transform.SetSiblingIndex(1); // above the grid background, below native item views
+            var image = imageProperty.GetValue(node)!;
+            image.GetType().GetProperty("raycastTarget")!.SetValue(image, false);
+            imageEnabled ??= image.GetType().GetProperty("enabled")!;
+            dropHighlights.Add(node);
+        }
+        for (int i = 0; i < dropHighlights.Count; i++)
+        {
+            var node = dropHighlights[i]; var image = imageProperty.GetValue(node)!;
+            if (i >= count) { imageEnabled!.SetValue(image, false); continue; }
+            node.rectTransform.anchorMin = node.rectTransform.anchorMax = node.rectTransform.pivot = new Vector2(0, 1);
+            MachineryStyle.Place(node, i % width * cell, i / width * cell, cell, cell);
+            setHighlight.Invoke(RenderHandler.current, new object[] { image, color, RenderHandler.BackgroundType.Grid });
+        }
+        return dropHighlights.GetRange(0, count);
+    }
+    public override void ClearHighlight()
+    {
+        base.ClearHighlight();
+        foreach (var node in dropHighlights) imageEnabled!.SetValue(imageProperty.GetValue(node), false);
     }
     // False selects native sequential bulk insertion, not spatial formation placement.
     public override bool SupportsGroupPlacement => false;
