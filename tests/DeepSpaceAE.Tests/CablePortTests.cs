@@ -8,6 +8,14 @@ namespace DeepSpaceAE.Tests;
 public sealed class CablePortTests
 {
     [Fact]
+    public void OnlyInstalledModelFacesOpenAndCenterDoesNotOpenCableUi()
+    {
+        Assert.Equal(0,CablePorts.FaceAt(15,8,0.5f)); Assert.Equal(1,CablePorts.FaceAt(15,15.5f,8));
+        Assert.Equal(2,CablePorts.FaceAt(15,8,15.5f)); Assert.Equal(3,CablePorts.FaceAt(15,0.5f,8));
+        Assert.Equal(-1,CablePorts.FaceAt(15,8,8)); Assert.Equal(-1,CablePorts.FaceAt(14,8,0.5f));
+        Assert.Equal(-1,CablePorts.FaceAt(15,0,0)); Assert.Equal(-1,CablePorts.FaceAt(15,16,8));
+    }
+    [Fact]
     public void InstallPrefersDisconnectedFacesThenCutsOneConnectedFace()
     {
         Assert.Equal(1,CablePorts.ChooseFace(0,13));

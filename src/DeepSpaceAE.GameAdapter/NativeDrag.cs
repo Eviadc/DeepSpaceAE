@@ -244,8 +244,8 @@ internal sealed partial class GameSession
         finally
         {
             writing = false; Visuals.Invalidate();
-            var terminal = openTerminal;
-            LetterboxManager.RunNextUpdate(() => { if (terminal != null && ReferenceEquals(openTerminal, terminal)) Open(terminal); RefreshPartLater(); });
+            terminalDirty = openTerminal != null;
+            ScheduleTerminalRefresh(); RefreshPartLater();
         }
     }
 }

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <Version>0.4.0</Version>
+    <Version>0.4.1</Version>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
@@ -10,13 +10,14 @@
     <Reference Include="Assembly-CSharp" HintPath="$(GameManagedDir)/Assembly-CSharp.dll" Private="false" />
     <Reference Include="UnityEngine" HintPath="$(GameManagedDir)/UnityEngine.dll" Private="false" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(GameManagedDir)/UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.InputLegacyModule" HintPath="$(GameManagedDir)/UnityEngine.InputLegacyModule.dll" Private="false" />
     <Reference Include="0Harmony" HintPath="$(GameManagedDir)/0Harmony.dll" Private="false" />
   </ItemGroup>
   <Target Name="RequireVerifiedGameBindings" BeforeTargets="PrepareForBuild">
     <Error Condition="'$(GameManagedDir)' == ''" Code="EAE001"
            Text="GameAdapter requires real assemblies from the matching, legally available game version. GameManagedDir is unset. No game files are downloaded by this project. See docs/api-verification.md." />
     <ItemGroup>
-      <RequiredGameAssembly Include="$(GameManagedDir)/Assembly-CSharp.dll;$(GameManagedDir)/UnityEngine.dll;$(GameManagedDir)/UnityEngine.CoreModule.dll;$(GameManagedDir)/0Harmony.dll" />
+      <RequiredGameAssembly Include="$(GameManagedDir)/Assembly-CSharp.dll;$(GameManagedDir)/UnityEngine.dll;$(GameManagedDir)/UnityEngine.CoreModule.dll;$(GameManagedDir)/0Harmony.dll;$(GameManagedDir)/UnityEngine.InputLegacyModule.dll" />
     </ItemGroup>
     <Error Condition="!Exists('%(RequiredGameAssembly.Identity)')" Code="EAE002"
            Text="Missing real game reference: %(RequiredGameAssembly.Identity). No stubs are provided." />

@@ -248,7 +248,7 @@ internal sealed partial class GameSession
             }
             if (!ReferenceEquals(part.parentInventory, MainInventory()) || !GeneralHelper.IsItemEffectivelyOwned(part)) throw new Rejected(UiText.Get("error_part_main"));
             if (part.identifier == "deepspaceae.core") ShowCore(part);
-            else ShowCable(part);
+            // Cables have no independent UI; double-click is routed by hit face.
         }
         catch (Exception e) { Error(e); }
     }
@@ -277,7 +277,12 @@ internal sealed partial class GameSession
     internal void UseWrench(GameItem tool, GameItem bus)
     {
         if (writing || !GeneralHelper.IsItemEffectivelyOwned(tool) || !GeneralHelper.IsItemEffectivelyOwned(bus)) return;
-        if (bus.identifier == "deepspaceae.pipeline") { ShowCableRemoval(tool, bus); return; }
+        if (bus.identifier == "deepspaceae.pipeline")
+        {
+            var selected = CableBusAt(bus, UnityEngine.Input.mousePosition);
+            if (selected != null) PartStorage.WithUpgradeRemoval(bus, () => ConfigureMove(bus, selected, MainInventory()!));
+            return;
+        }
         if (bus.identifier != "deepspaceae.item_storage_bus") return;
         var card = PartStorage.Inventory(bus).childItems.LastOrDefault();
         if (card == null) return;

@@ -62,22 +62,16 @@ internal sealed class CableVisuals
             if (part.identifier == "deepspaceae.pipeline") element.HandleInnateModSprite();
         }
     }
-    private static readonly Dictionary<bool, Sprite> markers = new();
     internal static List<ItemSpriteModifier> BusMarkers(GameItem cable)
     {
         var result = new List<ItemSpriteModifier>();
-        bool off = cable.spritePath.EndsWith("-off", StringComparison.Ordinal);
-        if (!markers.TryGetValue(off, out var marker))
-        {
-            var sprite = NativeWidgets.Sprite(off ? "item-storage-bus-off" : "item-storage-bus");
-            if (sprite == null) return result;
-            // Reuse a 4x4 region of the licensed bus texture; no new texture or PNG.
-            marker = Sprite.Create(sprite.texture, new Rect(sprite.rect.x + 6, sprite.rect.y + 6, 4, 4), new Vector2(0, 1));
-            markers.Add(off, marker);
-        }
-        var positions = new[] { new Vector2(6, 0), new Vector2(12, -6), new Vector2(6, -12), new Vector2(0, -6) };
+        string suffix = cable.spritePath.EndsWith("-off", StringComparison.Ordinal) ? "-off" : "";
         foreach (var bus in PartStorage.CableBuses(cable))
-        { int face = PartStorage.Int(bus, "cable_face", -1); if (face >= 0 && face < 4) result.Add(new ItemSpriteModifier(marker, positions[face])); }
+        {
+            int face = PartStorage.Int(bus, "cable_face", -1);
+            var sprite = face >= 0 && face < 4 ? NativeWidgets.Sprite("bus-face-" + face + suffix) : null;
+            if (sprite != null) result.Add(new ItemSpriteModifier(sprite, Vector2.zero));
+        }
         return result;
     }
     private void Changed(GameItem item, GameInventory inventory, SlotMarker slot)

@@ -1,4 +1,5 @@
 using HarmonyLib;
+using UnityEngine;
 
 namespace DeepSpaceAE.GameAdapter;
 
@@ -7,10 +8,11 @@ namespace DeepSpaceAE.GameAdapter;
 internal static class DoubleClickPatch
 {
     [HarmonyPrefix]
-    private static bool Prefix(GameItem __0)
+    private static bool Prefix(GameItem __0, Vector2 __1)
     {
         if (__0 == null || __0.isDebugMenu || !GameSession.IsPart(__0) || ModEntry.ActiveSession == null) return true;
-        ModEntry.ActiveSession.OpenPart(__0);
+        if (__0.identifier == "deepspaceae.pipeline") ModEntry.ActiveSession.OpenCableBusAt(__0, __1);
+        else ModEntry.ActiveSession.OpenPart(__0);
         return false;
     }
 }
@@ -54,4 +56,12 @@ internal static class DayStartedPatch
 {
     [HarmonyPostfix]
     private static void Postfix() => ModEntry.ActiveSession?.DayStarted();
+}
+
+// The cable's native content window is a hidden save-graph host, never a user-facing UI.
+[HarmonyPatch(typeof(ItemMouseDoubleClickHandler), nameof(ItemMouseDoubleClickHandler.OpenContentAction))]
+internal static class CableContentWindowPatch
+{
+    [HarmonyPrefix]
+    private static bool Prefix(GameItem __0) => __0?.identifier != "deepspaceae.pipeline";
 }

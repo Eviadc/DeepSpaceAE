@@ -71,3 +71,6 @@ Directory.Build.local.props
 !assets/game/Localization/
 !assets/game/Localization/en.csv
 !assets/game/Localization/zh.csv
+
+!assets/game/Textures/Items/bus-face-[0-3].png
+!assets/game/Textures/Items/bus-face-[0-3]-off.png

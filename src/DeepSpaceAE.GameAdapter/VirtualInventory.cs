@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Linq;
 using DeepSpaceAE.Core.Network;
 using UnityEngine;
 namespace DeepSpaceAE.GameAdapter;
@@ -31,6 +32,7 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
         RefreshVisible();
     }
     private bool visibilityQueued;
+    private int previousTop = -1;
     internal void QueueVisibility()
     {
         if (visibilityQueued) return;
@@ -45,6 +47,8 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
         if (Layout == null || ItemMouseDragHandler.current?.IsDraggingItem == true
             || ItemMultiSelectHandler.current?.IsGroupDragging == true) return;
         int top = (int)Math.Round(inner.rectTransform.anchoredPosition.y / UISettings.current.gridSize);
+        if (previousTop >= 0 && previousTop != top) TerminalSelection.Cancel(this);
+        previousTop = top;
         var visible = Layout.Visible(top, GetVisibleHeight() + 1);
         var keep = new HashSet<Guid>();
         foreach (var placement in visible) keep.Add(placement.Footprint.Instance);
@@ -62,6 +66,7 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
     }
     internal void ClearTiles()
     {
+        TerminalSelection.Cancel(this);
         foreach (var tile in itemTiles.Values) tile.DisposeView();
         foreach (var tile in tiles) { tile.gameObject.SetActive(false); UnityEngine.Object.Destroy(tile.gameObject); }
         tiles.Clear();
@@ -98,6 +103,81 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
         var (x, y) = Cell(position); var id = Layout.At(PageIndex, x, y);
         return id.HasValue && sources.TryGetValue(id.Value, out var source) ? source : null;
     }
+    private readonly List<TreeNodeRender> selectionCells = new();
+    private static Rect Bounds(RectTransform transform)
+    {
+        var corners = new Vector3[4]; transform.GetWorldCorners(corners);
+        float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
+        foreach (var corner in corners) { x0 = Math.Min(x0, corner.x); y0 = Math.Min(y0, corner.y); x1 = Math.Max(x1, corner.x); y1 = Math.Max(y1, corner.y); }
+        return Rect.MinMaxRect(x0, y0, x1, y1);
+    }
+    private static Rect Intersect(Rect a, Rect b) => Rect.MinMaxRect(Math.Max(a.xMin, b.xMin), Math.Max(a.yMin, b.yMin), Math.Min(a.xMax, b.xMax), Math.Min(a.yMax, b.yMax));
+    private IEnumerable<(int X,int Y,Guid Id)> ViewCells()
+    {
+        if(Layout==null) yield break;
+        int top=Math.Max(0,(int)Math.Round(inner.rectTransform.anchoredPosition.y/UISettings.current.gridSize));
+        for(int y=top;y<Math.Min(Layout.Height,top+GetVisibleHeight()+1);y++) for(int x=0;x<Layout.Width;x++)
+        {
+            var id=Layout.At(0,x,y);
+            if(id.HasValue && itemTiles.ContainsKey(id.Value)) yield return (x,y,id.Value);
+        }
+    }
+    private Rect CellBounds(int x,int y)
+    {
+        int cell=UISettings.current.gridSize;
+        var a=inner.rectTransform.TransformPoint(new Vector3(x*cell,-y*cell));
+        var b=inner.rectTransform.TransformPoint(new Vector3((x+1)*cell,-(y+1)*cell));
+        return Rect.MinMaxRect(Math.Min(a.x,b.x),Math.Min(a.y,b.y),Math.Max(a.x,b.x),Math.Max(a.y,b.y));
+    }
+    internal List<GameItemElement> BandItems(Rect band)
+    {
+        var result=new List<GameItemElement>(); var found=new HashSet<Guid>(); var eligibility=new Dictionary<Guid,bool>();
+        if(handler==null || !handler.gameObject.activeInHierarchy) return result;
+        var clip=Bounds(inner.parent.rectTransform); var window=handler.FindParentWindow();
+        foreach(var cell in ViewCells())
+        {
+            if(found.Contains(cell.Id) || items[cell.Id] is not GameItemElement item) continue;
+            var rectangle=Intersect(Intersect(CellBounds(cell.X,cell.Y),clip),band);
+            if(rectangle.width<=0 || rectangle.height<=0) continue;
+            if(!eligibility.TryGetValue(cell.Id,out var eligible))
+            {
+                eligible=!item.IsDestroyed() && !item.isDebugMenu && item.unitCount>0 && item.MayRemove()
+                    && item.MaxNumRemove()>=item.unitCount && !ItemPinHelper.IsPinned(item)
+                    && sources.TryGetValue(cell.Id,out var source) && ReferenceEquals(source,item.parentInventory);
+                eligibility.Add(cell.Id,eligible);
+            }
+            if(eligible && ReferenceEquals(RenderHandler.RaycastFindParentElement<PixelWindow>(rectangle.center),window))
+            { found.Add(cell.Id); result.Add(item); }
+        }
+        return result;
+    }
+    internal Vector3 ItemCenter(GameItemElement item)
+    {
+        var tile = itemTiles[ModEntry.ActiveSession!.GuidFor(item)];
+        return tile.rectTransform.TransformPoint(new Vector3(tile.widthPixels / 2f, -tile.heightPixels / 2f));
+    }
+    internal List<TreeNodeRender> HighlightSelection(IReadOnlyCollection<GameItemElement> selected)
+    {
+        int count=0,cellSize=UISettings.current.gridSize; var selectedSet=new HashSet<GameItemElement>(selected);
+        foreach(var cell in ViewCells())
+        {
+            if(items[cell.Id] is not GameItemElement item || !selectedSet.Contains(item)) continue;
+            if(count==selectionCells.Count)
+            {
+                var node=TreeNodeRender.Instantiate().SetParent(inner); node.transform.SetSiblingIndex(1);
+                var image=imageProperty.GetValue(node)!; image.GetType().GetProperty("raycastTarget")!.SetValue(image,false);
+                imageEnabled ??= image.GetType().GetProperty("enabled")!; selectionCells.Add(node);
+            }
+            var target=selectionCells[count++];
+            target.rectTransform.anchorMin=target.rectTransform.anchorMax=target.rectTransform.pivot=new Vector2(0,1);
+            MachineryStyle.Place(target,cell.X*cellSize,cell.Y*cellSize,cellSize,cellSize);
+            setHighlight.Invoke(RenderHandler.current,new object[]{imageProperty.GetValue(target)!,RenderHandler.BackgroundColor.Blue,RenderHandler.BackgroundType.Grid});
+        }
+        for(int i=count;i<selectionCells.Count;i++) imageEnabled!.SetValue(imageProperty.GetValue(selectionCells[i]),false);
+        return selectionCells.GetRange(0,count);
+    }
+    internal void ClearSelectionVisuals()
+    { foreach(var node in selectionCells) if(node!=null) imageEnabled!.SetValue(imageProperty.GetValue(node),false); }
     // The terminal is a network destination, not a physically placed item slot.
     // Use viewport-local cells so scrolling deep into a large catalog never allocates
     // highlight nodes for every preceding row.
@@ -152,6 +232,7 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
     internal sealed class ItemTile : EmptyPixelElement, TooltipListener
     {
         private readonly GameItem item;
+        internal GameItem Item => item;
         private static readonly Dictionary<GameItemElement, ItemTile> views = new();
         private TreeNodeRender? mirror;
         private bool queued, disposed;

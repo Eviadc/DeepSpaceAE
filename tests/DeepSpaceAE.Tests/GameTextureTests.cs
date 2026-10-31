@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Collections.Generic;
 using Xunit;
+using DeepSpaceAE.Core.Network;
 
 namespace DeepSpaceAE.Tests;
 
@@ -14,7 +15,7 @@ public sealed class GameTextureTests
     [Fact]
     public void CoreTextureCoversAllNineCellsAndWhitelistContainsAllActiveAndInactiveImages()
     {
-        Assert.Equal(55, Directory.GetFiles(Root, "*.png").Length);
+        Assert.Equal(63, Directory.GetFiles(Root, "*.png").Length);
         foreach (var name in new[] { "core", "terminal", "item-storage-bus", "pipeline" })
             Assert.True(File.Exists(Path.Combine(Root, name + "-off.png")));
         for (int mask = 0; mask < 16; mask++) Assert.True(File.Exists(Path.Combine(Root, $"pipeline-{mask}-off.png")));
@@ -65,6 +66,26 @@ public sealed class GameTextureTests
             bool hasCenter = false;
             for (int y = 6; y < 10; y++) for (int x = 6; x < 10; x++) hasCenter |= pixels[(y * width + x) * 4 + 3] > 0;
             Assert.True(hasCenter);
+        }
+    }
+
+    [Fact]
+    public void BusFaceHitRegionsCoverTheirActualModelPixelsAndLeaveCenterFree()
+    {
+        for(int side=0;side<4;side++)
+        {
+            var (width,height,pixels)=Decode($"bus-face-{side}.png");
+            var inactive=Decode($"bus-face-{side}-off.png");
+            Assert.Equal(16,width); Assert.Equal(16,height); int visible=0;
+            for(int y=0;y<height;y++) for(int x=0;x<width;x++)
+            {
+                int index=(y*width+x)*4+3;
+                Assert.Equal(pixels[index],inactive.Pixels[index]);
+                if(pixels[index]==0) continue;
+                visible++; Assert.Equal(side,CablePorts.FaceAt(1<<side,x+0.5f,y+0.5f));
+            }
+            Assert.True(visible>0); Assert.Equal(-1,CablePorts.FaceAt(15,8,8));
+            Assert.Equal(-1,CablePorts.FaceAt(0,8,0.5f));
         }
     }
 

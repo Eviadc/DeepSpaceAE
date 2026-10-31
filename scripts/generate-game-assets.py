@@ -31,7 +31,7 @@ def project_top(model_name, texture):
     for element in sorted(model['elements'], key=lambda e: e['to'][1]):
         if 'up' not in element['faces']: continue
         x0, _, z0 = map(int, element['from']); x1, _, z1 = map(int, element['to'])
-        u0, v0, u1, v1 = element['faces']['up']['uv']
+        u0, v0, u1, v1 = element['faces']['up'].get('uv', [x0, z0, x1, z1])
         for z in range(z0, z1):
             for x in range(x0, x1):
                 u = min(15, max(0, int(u0+(x-x0+0.5)*(u1-u0)/(x1-x0))))
@@ -42,25 +42,27 @@ def project_top(model_name, texture):
 def assets():
     metadata = json.loads((SOURCE/'sources.json').read_text())
     for entry in metadata['files']:
-        assert hashlib.sha256((SOURCE/entry['file']).read_bytes()).hexdigest() == entry['sha256'], entry['file']
+        data = (SOURCE/entry['file']).read_bytes()
+        # Git for Windows may check out text models with CRLF; binary assets stay exact.
+        valid = hashlib.sha256(data).hexdigest() == entry['sha256']
+        if not valid and Path(entry['file']).suffix in ('.json', '.mcmeta'):
+            valid = hashlib.sha256(data.replace(b'\r\n', b'\n')).hexdigest() == entry['sha256']
+        assert valid, entry['file']
     result = {}
     core = image('controller_powered.png'); core.alpha_composite(image('controller_lights.png').crop((0,0,16,16)))
     result['core.png'] = core.resize((48,48), Image.Resampling.NEAREST)
     result['core-off.png'] = inactive(image('controller.png')).resize((48,48), Image.Resampling.NEAREST)
-    # Orthographic top (world x/z) projection of AE2 storage_bus_base.json up faces.
-    # Rotate axes so the front/north face points to local east, matching native bus rules.
-    bus = Image.new('RGBA',(16,16)); texture = image('storage_bus_sides.png')
-    model = json.loads((SOURCE/'storage_bus_base.json').read_text())
-    for element in sorted(model['elements'], key=lambda e:e['to'][1]):
-        if 'up' not in element['faces']: continue
-        x0,y0,z0=element['from']; x1,y1,z1=element['to']
-        for x in range(x0,x1):
-            for z in range(z0,z1): bus.putpixel((15-z,x), texture.getpixel((x,z)))
-    draw = ImageDraw.Draw(bus)
-    draw.rectangle((0,6,11,9), fill=(80,84,95,255))
-    draw.line((1,7,13,7),fill=(237,194,72,255),width=2)
-    draw.polygon([(12,4),(15,7),(12,10)],fill=(237,194,72,255))
-    result['item-storage-bus.png'] = bus
+    # AE2 storage_bus_base up faces with Minecraft's default up-face UVs.
+    # Keep the thin ribbed face and rear stem: no hand-drawn arrow or center badge.
+    face = project_top('storage_bus_base.json', image('storage_bus_sides.png'))
+    raw_icon = face.transpose(Image.Transpose.ROTATE_270)
+    # The multipart bus ends at z=4; connect it to the cable center at z=6.
+    # Only the internal 4..6 segment is rendered, not an external transmissive port.
+    connector = project_top('glass_cable_connection.json', image('glass_cable_connection.png'))
+    face.alpha_composite(connector.crop((6,4,10,6)), (6,4))
+    faces = [face, face.transpose(Image.Transpose.ROTATE_270), face.transpose(Image.Transpose.ROTATE_180), face.transpose(Image.Transpose.ROTATE_90)]
+    for side, sprite in enumerate(faces): result[f'bus-face-{side}.png'] = sprite
+    result['item-storage-bus.png'] = raw_icon
     terminal=Image.new('RGBA',(16,16))
     # AE2 model north-face UV is [2,2,14,14]; each mask needs its own cable-color tint.
     for name,color in [('terminal_dark.png',(24,44,33)),('terminal_medium.png',(76,139,86)),('terminal_bright.png',(151,252,132))]:

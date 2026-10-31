@@ -21,6 +21,8 @@ internal sealed partial class GameSession
     private bool partRefreshQueued;
     private readonly Dictionary<string, Sprite> filterSprites = new(StringComparer.Ordinal);
 
+    internal VirtualInventory? BandSurface(GameInventory inventory, PixelWindow window)
+        => terminalGrid != null && (ReferenceEquals(inventory,terminalGrid) || ReferenceEquals(window,terminalWindow)) ? terminalGrid : null;
     private void CloseTerminal()
     {
         if (NativeDrag.Gesture != null && ReferenceEquals(NativeDrag.Gesture.Surface.Owner, openTerminal)) NativeDrag.Gesture.Cancelled = true;
@@ -150,40 +152,23 @@ internal sealed partial class GameSession
         partWindow.SetTitle(UiText.Get("ui_controller_title")); partWindow.closeCallback = ClosePart; partWindow.Show().Center();
     }
     private static string FaceName(int side) => UiText.Get(new[] { "ui_face_north", "ui_face_east", "ui_face_south", "ui_face_west" }[side]);
-    private void ShowCable(GameItem cable)
+    internal GameItem? CableBusAt(GameItem cable, Vector2 pointer)
     {
-        ClosePart(); displayedPart = cable;
-        var board = ReadBoard();
-        bool online = board.Evaluation.ComponentCore.TryGetValue(Id(cable), out var core) && board.Powered.Contains(core);
-        var sides = new List<PixelElement>();
-        for (int side = 0; side < 4; side++)
-        {
-            int face = side; var bus = PartStorage.CableBuses(cable).SingleOrDefault(b => PartStorage.Int(b, "cable_face", -1) == face);
-            if (bus != null) sides.Add(new MachineryButton(FaceName(face) + " - " + UiText.Get("ui_bus_title"), () => OpenPart(bus), 145));
-            else sides.Add(NativeWidgets.Text(FaceName(face) + " - " + UiText.Get("ui_empty_face")));
-        }
-        partWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel(UiText.Get("ui_cable"), MachineryStack.Vertical(
-            NativeWidgets.Icon(NativeWidgets.Sprite("pipeline")), MachineryText.Status(UiText.Get("ui_status"), online ? UiText.Get("ui_online") : UiText.Get("ui_inactive")),
-            MachineryText.Status(UiText.Get("ui_channels"), board.Evaluation.ChannelsUsed[Id(cable)] + " / 8"),
-            NativeWidgets.Text(UiText.Get("ui_bus_install_hint")), MachineryStack.Vertical(sides.ToArray())), "cable", false));
-        partWindow.closeCallback = ClosePart; partWindow.Show().Center();
-    }
-    private void ShowCableRemoval(GameItem tool, GameItem cable)
-    {
-        CloseEditor();
-        var buttons = new List<PixelElement>();
+        if (!ReferenceEquals(cable.parentInventory, MainInventory()) || !GeneralHelper.IsItemEffectivelyOwned(cable)
+            || cable is not GameItemElement element) return null;
+        var rect = element.rotator.rectTransform; var local = rect.InverseTransformPoint(pointer); var bounds = rect.rect;
+        if (bounds.width <= 0 || bounds.height <= 0) return null;
+        float x = (local.x - bounds.xMin) * 16 / bounds.width, y = (bounds.yMax - local.y) * 16 / bounds.height;
+        int mask = 0;
         foreach (var bus in PartStorage.CableBuses(cable))
-        {
-            var selected = bus; int face = PartStorage.Int(bus, "cable_face", -1);
-            buttons.Add(new MachineryButton((face >= 0 && face < 4 ? FaceName(face) : "?") + " - " + UiText.Get("ui_remove_bus"), () => {
-                if (writing || !ReferenceEquals(cable.parentInventory, MainInventory()) || !GeneralHelper.IsItemEffectivelyOwned(tool)
-                    || !ReferenceEquals(PartStorage.BusHost(selected), cable)) return;
-                CloseEditor(); PartStorage.WithUpgradeRemoval(cable, () => ConfigureMove(cable, selected, MainInventory()!));
-            }, 145));
-        }
-        if (buttons.Count == 0) return;
-        editorWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel(UiText.Get("ui_remove_bus"), MachineryStack.Vertical(buttons.ToArray()), "wrench", false));
-        editorWindow.closeCallback = CloseEditor; editorWindow.Show().Center();
+        { int face = PartStorage.Int(bus, "cable_face", -1); if (face >= 0 && face < 4) mask |= 1 << face; }
+        int hit = CablePorts.FaceAt(mask, x, y);
+        return hit < 0 ? null : PartStorage.CableBuses(cable).SingleOrDefault(b => PartStorage.Int(b, "cable_face", -1) == hit);
+    }
+    internal void OpenCableBusAt(GameItem cable, Vector2 pointer)
+    {
+        var bus = CableBusAt(cable, pointer);
+        if (bus != null) OpenPart(bus);
     }
     private void ShowBus(GameItem bus)
     {
@@ -199,13 +184,12 @@ internal sealed partial class GameSession
             value => ConfigureNumber(bus, "extract_filter", value ? 1 : 0), 110);
         var options = MachineryStack.Vertical(NativeWidgets.Text(UiText.Get("ui_access_mode")), access,
             NativeWidgets.Text(UiText.Get("ui_filter_matching")), matching, extraction,
-            new MachineryButton(UiText.Get("ui_priority"), () => ShowPriority(bus), 110, 18),
-            new MachineryButton(UiText.Get("ui_back"), () => { var host = PartStorage.BusHost(bus); if (host != null) OpenPart(host); }, 110, 18));
+            new MachineryButton(UiText.Get("ui_priority"), () => ShowPriority(bus), 110, 18));
         partWindow = MachineHelper.CreateMachineryWindow(true,
             new MachineryPanel(UiText.Get("ui_bus_settings"), options, "settings"),
             MachineHelper.Panel(policy.Tags ? UiText.Get("ui_category_filter") : UiText.Get("ui_item_filter"), filterGrid, "storage_bus"),
             new MachineryPanel(UiText.Get("ui_upgrades"), Borrow(bus), "upgrades"));
-        partWindow.SetTitle(UiText.Get("ui_bus_title")); partWindow.closeCallback = ClosePart;
+        partWindow.SetTitle(UiText.Get("ui_bus_title") + " - " + FaceName(PartStorage.Int(bus, "cable_face"))); partWindow.closeCallback = ClosePart;
         RenderFilters(); partWindow.Show().Center();
     }
     private void RenderFilters()
@@ -287,11 +271,6 @@ internal sealed partial class GameSession
             if (displayedPart == null || ItemMouseDragHandler.current?.IsDraggingItem == true) return;
             if (!(ReferenceEquals(displayedPart.parentInventory, MainInventory()) || PartStorage.CanConfigure(displayedPart)) || !GeneralHelper.IsItemEffectivelyOwned(displayedPart)) { ClosePart(); return; }
             if (filterGrid != null) RenderFilters();
-            else if (displayedPart.identifier == "deepspaceae.pipeline")
-            {
-                var position = partWindow?.rectTransform.position; ShowCable(displayedPart);
-                if (position.HasValue && partWindow != null) { partWindow.rectTransform.position = position.Value; partWindow.FixBounds(); }
-            }
             else if (displayedPart.identifier == "deepspaceae.core")
             {
                 var position = partWindow?.rectTransform.position;
