@@ -62,4 +62,6 @@
 
 发现真实 GameItem.Destroy 是 abstract，旧 6d03e55 的 Harmony 声明不可修补，发生在 ModLoader 调用 Init/OnEnable 之前。已删除该目标，仅保留 GameItemElement.Destroy 的受管覆盖。新增只读元数据审计：旧 DLL 14 通过/1 预期失败，新 DLL 14 通过/0 失败；不等同 Harmony 真正运行。
 
+2026-10-31（Asia/Shanghai）实际读取用户上传的 Player.log：加载器报告 DeepSpaceAE v0.3.0-alpha，Harmony.PatchAll 对抽象 GameItem.Destroy 抛出 BadImageFormatException: Method has no body，随后 Init failed、running=False。故旧版加载阻断已有实机失败证据；修复版 0.3.1 的实机结果仍未知。该日志的入口名为 ModLoader.LoadModDll，不将它与现有 REV3 的 LoadModAssembly 混同，也不据此声称 REV5 全部 API 兼容。原日志不入库，关键行及范围见加载诊断。
+
 语言键与字体另行区分：原生机器 UI 选择当前 locale 的 Noto_Sans，OfficeCodePro/[Text] 缺字需要原始日志定位。自有显示参数中的中文为合法纯文本，并无中文作为 GetLocalized 键的证据；现改为官方 Localization/en.csv、zh.csv 和 UiText ASCII 键。完整证据、官方链接和免 F8 日志步骤见 [加载诊断](load-troubleshooting.md)。

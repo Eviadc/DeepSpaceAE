@@ -4,9 +4,27 @@
 
 旧包 DeepSpaceAE-0.3.0-alpha-100-REV3-6d03e55.zip 中，PreserveUnknownProjectionMovePatch 使用 `[HarmonyPatch(typeof(GameItem), nameof(GameItem.Destroy))]`。用户提供的真实 REV3 程序集将该方法声明为 `public abstract void Destroy()`，没有 IL 方法体。编译只检查符号存在，未检查它能否由 Harmony 修补。这是上一轮漏掉的验证。
 
-真实 ModLoader.LoadModAssembly 的顺序是 PatchAll → Init → OnEnable；捕获异常时撤回自己的补丁，并记录 LoadError。注册 OnModItemDirectoryInit 的代码位于 OnEnable，故补丁阶段失败时，7 个 AE 工厂都不会注册。官方故障排查也说明：本地模组加载失败会自动打开 F8。此缺陷足以解释用户报告的“全部组件消失 + F8 自动弹出”，但用户当前 REV5 的第一条实际异常仍须原始日志确认。
+真实 REV3 ModLoader.LoadModAssembly 的顺序是 PatchAll → Init → OnEnable；捕获异常时撤回自己的补丁，并记录 LoadError。注册 OnModItemDirectoryInit 的代码位于 OnEnable，故补丁阶段失败时，7 个 AE 工厂都不会注册。官方故障排查也说明：本地模组加载失败会自动打开 F8。
 
 0.3.1 删除抽象基类目标，只保留有实际方法体的 GameItemElement.Destroy 保护；没有删除未知移动结果的锁定/保留机制。
+
+## 用户 Player.log 已确认的原因（2026-10-31，Asia/Shanghai）
+
+本次实际读取用户上传的 Player.log，而非仅依据截图推断。关键记录按原始行号为：
+
+```text
+30: [DeepSpaceAE] Error: BadImageFormatException: Method has no body (Harmony patching or Init)
+31: HarmonyLib.HarmonyException: Patching exception in method abstract virtual System.Void GameItem::Destroy() ---> System.BadImageFormatException: Method has no body
+40:   at HarmonyLib.Harmony.PatchAll (System.Reflection.Assembly assembly)
+41:   at ModLoader.LoadModDll (...)
+42: [ModLoader]   Init failed: DeepSpaceAE v0.3.0-alpha
+```
+
+行 70 的加载审计再次记录该模组 `running=False`，错误仍为 Method has no body。本次原始日志中未发现另一条独立的 Error/Exception。日志明确显示正在加载 **0.3.0-alpha**，因此不能把它当作修复版 0.3.1 的运行结果；日志也不能单独证明本地 DLL 对应哪个源码提交。
+
+这证实了前述抽象方法补丁缺陷是本次组件无法注册的直接原因。修复已在源码提交 `9328ca56068bea7d60dca739ef76a2fb8681013a` 中完成；本次没有新增游戏全局补丁、跳过安全补丁或改变物品搬运规则。用户日志的加载入口名称为 LoadModDll，与现有 REV3 静态引用的 LoadModAssembly 不同；此处仅记录日志实际调用链，不据此推断整个新版本 API 相同。
+
+提取器处理 1,728 行，单独计数 1,100 条 OfficeCodePro / [Text] 缺字警告，异常调用栈完整保留、报告未截断。该计数不构成官方中文翻译有错的证据，也不影响对加载异常的判断。按用户要求，控制台字体问题暂不处理。原始日志及提取副本留在仓库外，不随源码或模组分发。
 
 ## Text 对象、语言键和字体
 
@@ -58,7 +76,9 @@ scripts/build-game.sh 现在在真实引用编译后运行只读 PE 元数据审
 - 修复后：14 项通过、0 失败。
 - 新回归包含抽象/具体方法、93 个双语键与格式占位符；独立日志提取器覆盖 2 万条字体告警夹杂加载异常、其他字体/对象、缺失翻译和输出上限。
 - 打包要求元数据报告成功，且其 Adapter SHA-256 与当前 DLL 一致；缺报告、旧报告或失败报告拒绝打包。
-- 用户实机加载、F8 字体渲染、REV5 程序集和 UI：未运行/未核验。修复后如仍无组件，请提供同次启动的 Player.log 或提取报告，才能确认真实第一条异常。
+- 用户实机旧版 0.3.0 加载：**失败，已由本次 Player.log 确认**。修复版 0.3.1 实机加载、REV5 程序集和 UI：**未运行/未核验**；F8 字体问题按用户要求暂不处理。
+
+兼容范围保持为实际核验过的引用；新版本私有字段或方法改变时先核验真实 API，不静默跳过锁定/物品保护补丁继续运行。元数据门禁只能发现静态绑定错误，不能替代真实 Unity/Mono 的 Harmony 安装及游戏存档验收。
 
 依据：官方开发指南固定提交 dc4a00939182d2bf099b075754b79eee42742c20 的“本地化”“用 ModLog 记录日志”“Harmony 补丁”“故障排查”。链接：
 

@@ -107,3 +107,16 @@ Core 投影布局探针，固定每实例 2×3 六格，预热后 5 次中位数
 - 游戏内 Harmony 执行、注册菜单、F8 字体渲染、REV5 和实际 UI：**未运行/未核验**。元数据通过不代表 Unity 真正加载通过。
 
 旧负向报告在忽略目录 artifacts/validation/old-6d03e55/patch-audit.txt；当前正向报告为 artifacts/validation/game-patch-audit.json，绑定实际 Adapter SHA-256。打包缺少、失败或过期报告必须拒绝。具体根因、官方依据和不依赖 F8 的取证步骤见 [加载诊断](load-troubleshooting.md)。
+
+## 用户日志核对及重新验证（2026-10-31，Asia/Shanghai）
+
+- 用户 Player.log：1,728 行；确认 0.3.0-alpha 在 Harmony.PatchAll → GameItem.Destroy 处报 Method has no body，随后 Init failed、running=False。这是旧版实机**失败**证据；不等同修复版测试。1,100 条 OfficeCodePro/[Text] 字体警告单独计数，原日志不修改、不入库。
+- 当前源码已经包含 `9328ca5` 的修复；本轮补充确认的诊断记录，没有新加功能、改变版本或扩大运行时补丁范围。
+- `bash scripts/install-env.sh`：通过，锁定还原成功。
+- `bash scripts/verify.sh`：通过；干净 Release 构建零警告/零错误，xUnit **76 通过、0 失败、0 跳过**。
+- `python3 scripts/test-extract-load-log.py`：**4 通过、0 失败**。实际日志提取完整保留异常栈，报告未截断。
+- `GameManagedDir=/workspace/.deepspaceae/game-references/100-REV3 bash scripts/build-game.sh`：通过，零警告/零错误；**14 项补丁元数据检查通过**。
+- 再次比较原 6d03e55 ZIP 内的自有 Adapter DLL 与负向试验输入，内容相同；重跑审计退出 1，仅 GameItem.Destroy 失败，14 通过/1 预期失败。门禁能拒绝此次已确认的错误类型。
+- 修复版游戏加载、真实终端拖放/存档、REV5 对应引用：**未运行/未核验**。按用户要求搁置字体问题；不把旧日志当作新版通过证据。
+
+实际源码提交和包内逐文件校验以对应安装包的 build-info.json 为准。兼容范围和真实游戏验收仍遵守 [API 核验](api-verification.md) 与 [安装验收](game-test.md)，不跳过失败的安全补丁来宣称兼容新版本。
