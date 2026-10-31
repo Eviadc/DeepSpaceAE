@@ -15,7 +15,8 @@ Changes by DeepSpaceAE contributors: controller scaled to 48×48 with 12 sampled
 light frames; storage-bus model up faces projected with their original/default UVs into four directional
 profiles with internal glass-cable connectors; terminal layers composited; glass-cable model up faces and their UVs projected into four-port shapes;
 inactive variants darkened/desaturated; fuzzy-card texture adapted with a tag symbol.
-Capacity card and certus-quartz wrench textures are retained. Derivative artwork is
+Disk-drive rack and 1x2 storage disks are new pixel compositions derived from the
+controller and capacity-card textures. Capacity card and certus-quartz wrench textures are retained. Derivative artwork is
 also CC BY-NC-SA 3.0: retain this notice and attribution, share adaptations under the
 same license, and do not use the artwork commercially without separate permission.
 No endorsement by the AE2 project is implied. No AE2 Java code or Minecraft/game

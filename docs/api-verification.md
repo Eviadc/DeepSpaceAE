@@ -1,4 +1,19 @@
-# 100-REV3 API 核验与剩余未知
+# API 核验与剩余未知
+
+## 0.5.0 本地 Rev6 增量（2026-11-01）
+
+当前目标 100-Rev6 / Steam Build 26337366；本机合法安装 Managed 中 Assembly-CSharp.dll SHA-256 为 `6398d44aa1675e1f02b63bc668868f970e0f5d3ae5a50f2aced8d06ca084e3b5`。以下由真实反编译实现及编译绑定核验，仍不是游戏执行证据。下文 REV3 保留为历史记录。
+
+- GameGridInventory 的真实 items 列表、UncheckedAccept/Expel 回调和保存子图可供 DiskAreaInventory 复用；仅覆盖准入/形状预检，把几何排布换成面积预算。SlotMarker.TryAcceptOnce 会先 Expel，再 UncheckedAccept，因此预检必须在调用前完成，未知失败禁止重试。加载时保留超容量实例，不丢弃。
+- GameSlotInventory 支持 `(defaultGridWidth, defaultGridHeight)`，驱动器六槽使用 `(1,2)`；原生 DNA 背景键为 Items/items_hydroponic_plant / dna_disk_black_full。仅引用原生资源，不复制进模组包。
+- 原版电网物品 identifier 为 `current_converter`，CurrentConverterHelper.GetHostMachine 识别父物品 machinery_drawn_power 标签，费率/开关/停电走原生方法。
+- PlayerStore.EndNight：OnGoingSleepEarly → UpdatePowerState → isNightCycle=true → 原生服务现金扣款及 RunStats.OnServicePaid → isNightCycle=false → OnGoingSleepLate。不能在 Early 直接调用 Supply，否则可能按白天再次扣现金。
+- UpdateServiceCost 原生跳过 ITEM_BEHIND_LOCK_TAG、关闭转换器；本模组对自有核心已累计峰值保留账单，其他机器按原生规则合并。RunStats.OnServicePaid 位于真实现金扣款之后，作为结算凭据；Service.IsActive 只说明启用，不能当成已付款。
+- 新增两项公开具体静态 Harmony 目标：CurrentConverterHelper.UpdateServiceCost(StoreService)、RunStats.OnServicePaid(string,int)。当前总计 31 项补丁由 PE 门禁核验目标、参数/字段绑定；不执行 Harmony。
+
+待本地联合验收：六槽布局/真实拖放，硬盘内容原生保存往返，特殊物品在非几何库存的副作用，电费总账单/付款/未付款/停电时序。详细合同和操作见 [功能规格](feature-spec.md)、[用例表](functional-cases.md)。
+
+## 历史 REV3 基线
 
 目标：游戏内 `100-REV3` / Steam Build `26284217` / Windows x64，由用户提供；尚未独立确认 label/build 对应关系或“最新正式版”状态。用户明确授权上传必要真实编译引用供云端核验与开发；这些文件存放在 checkout 外，不提交、不重新分发。没有下载游戏本体、登录 Steam、操作本地电脑或安装 Unity/Wine。
 

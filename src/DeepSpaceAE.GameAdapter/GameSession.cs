@@ -57,6 +57,7 @@ internal sealed partial class GameSession
     internal static bool IsPart(GameItem item) => item.identifier != null && ModEntry.PartKinds.ContainsKey(item.identifier);
     internal void Reset()
     {
+        PartStorage.ResetPowerSettlement();
         Loading = true; Close(); uncertainItems.Clear(); NativeDrag.Gesture = null; NativeDrag.OriginItem = null; NativeDrag.OriginSource = null; Visuals.Detach(); identities = new(); observations = new(); writeFault = writing = false;
         search = tag = message = "";
     }
@@ -131,7 +132,7 @@ internal sealed partial class GameSession
         var board = new Board { Layout = new InventoryLayout(root) };
         foreach (var part in board.Layout.Parts) board.ById.Add(Id(part), part);
         var nodes = board.Layout.Parts.Select(i => new NetworkNode(Id(i), ModEntry.PartKinds[i.identifier],
-            i.identifier == "deepspaceae.item_storage_bus" ? Id(i) : null));
+            i.identifier == "deepspaceae.item_storage_bus" || DiskStorage.IsDrive(i) ? Id(i) : null));
         board.Topology = PhysicalNetworkProjection.Build(nodes, board.Layout.Edges(Id), new ChannelSettings());
         board.Evaluation = new NetworkEvaluation(board.Topology);
         foreach (var pair in board.Evaluation.NightCosts)
@@ -162,7 +163,7 @@ internal sealed partial class GameSession
             }
         Visuals.Invalidate();
     }
-    private static IEnumerable<GameItem> AllCores() => PlayerStore.Instance == null ? Array.Empty<GameItem>()
+    internal static IEnumerable<GameItem> AllCores() => PlayerStore.Instance == null ? Array.Empty<GameItem>()
         : PlayerStore.Instance.FindAllItem(false).Where(i => i.identifier == "deepspaceae.core");
     internal void Night()
     {
@@ -179,6 +180,11 @@ internal sealed partial class GameSession
             catch (Exception e) { log.Error(Diagnostics.ConsoleText(e.ToString())); }
         Visuals.Invalidate();
     }
+    internal void NightLate()
+    {
+        foreach(var core in AllCores()) PartStorage.GridNightComplete(core);
+        Visuals.Invalidate();
+    }
     private sealed class View
     {
         internal Board Board = null!;
@@ -187,6 +193,7 @@ internal sealed partial class GameSession
         internal Dictionary<GameItem, GameItem> Owners = new();
         internal Dictionary<GameItem, StoragePolicy> Policies = new();
         internal Dictionary<GameItem, List<GameInventory>> Inventories = new();
+        internal List<GameInventory> Attachments = new();
         internal Dictionary<Guid, GameItem> Live = new();
         internal Dictionary<Guid, GameInventory> Sources = new();
         internal CatalogSearch Search = null!;
@@ -206,12 +213,22 @@ internal sealed partial class GameSession
             var bc = board.Evaluation.Devices[Id(bus)];
             if (bc.Status != DeviceStatus.Online || bc.CoreId != connection.CoreId) continue;
             var owner = board.Layout.FrontOwner(bus);
-            if (owner == null || IsPart(owner) || !board.Layout.Owned.Contains(owner)) continue;
+            if (owner == null || IsPart(owner) || DiskStorage.IsDisk(owner) || !board.Layout.Owned.Contains(owner)) continue;
             if (!view.Inventories.TryGetValue(owner, out var invs)) { invs = Contents(owner); view.Inventories.Add(owner, invs); }
             if (invs.Count == 0) continue;
             var policy = PartStorage.Policy(bus); view.Owners.Add(bus, owner); view.Policies.Add(bus, policy);
             if (!ownerPolicies.TryGetValue(owner, out var ps)) ownerPolicies.Add(owner, ps = new List<StoragePolicy>());
             ps.Add(policy);
+        }
+        foreach(var drive in board.Layout.Parts.Where(DiskStorage.IsDrive))
+        {
+            if(!board.Evaluation.Devices.TryGetValue(Id(drive),out var dc) || dc.Status!=DeviceStatus.Online || dc.CoreId!=connection.CoreId) continue;
+            var bays=DiskStorage.Bays(drive); view.Attachments.AddRange(bays);
+            var invs=bays.Where(b=>b.childItem!=null).Select(b=>b.childItem).Where(DiskStorage.IsDisk)
+                .Select(d=>DiskStorage.Data(d)).Cast<GameInventory>().ToList();
+            view.Inventories.Add(drive,invs); view.Owners.Add(drive,drive);
+            var policy=new StoragePolicy(0,StorageAccess.ReadWrite,false,false,false,0,Array.Empty<string>());
+            view.Policies.Add(drive,policy); ownerPolicies.Add(drive,new List<StoragePolicy>{policy});
         }
         var records = new List<CatalogRecord>();
         foreach (var pair in ownerPolicies)
@@ -247,7 +264,8 @@ internal sealed partial class GameSession
                 return;
             }
             if (!ReferenceEquals(part.parentInventory, MainInventory()) || !GeneralHelper.IsItemEffectivelyOwned(part)) throw new Rejected(UiText.Get("error_part_main"));
-            if (part.identifier == "deepspaceae.core") ShowCore(part);
+            if (DiskStorage.IsDrive(part)) ShowDrive(part);
+            else if (part.identifier == "deepspaceae.core") ShowCore(part);
             // Cables have no independent UI; double-click is routed by hit face.
         }
         catch (Exception e) { Error(e); }

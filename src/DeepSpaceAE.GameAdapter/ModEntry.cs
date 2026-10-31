@@ -12,7 +12,8 @@ public sealed class ModEntry : IMod
         ("deepspaceae.core", "item_core_name", "core", NetworkPart.Core),
         ("deepspaceae.pipeline", "item_pipeline_name", "pipeline", NetworkPart.Pipeline),
         ("deepspaceae.item_storage_bus", "item_bus_name", "item-storage-bus", NetworkPart.ItemStorageBus),
-        ("deepspaceae.terminal", "item_terminal_name", "terminal", NetworkPart.Terminal) };
+        ("deepspaceae.terminal", "item_terminal_name", "terminal", NetworkPart.Terminal),
+        (DiskStorage.Drive, "item_drive_name", "drive", NetworkPart.DiskDrive) };
     internal static readonly Dictionary<string, NetworkPart> PartKinds = Parts.ToDictionary(part => part.Id, part => part.Part, StringComparer.Ordinal);
     internal static GameSession? ActiveSession { get; private set; }
     private ModLog log = null!;
@@ -23,7 +24,7 @@ public sealed class ModEntry : IMod
         log = new ModLog(manifest); // Manifest Name is ASCII; keep official metadata intact.
         session = new GameSession(log);
         ActiveSession = session;
-        log.Log("DeepSpaceAE 0.4.1 / 100-Rev6 initialized.");
+        log.Log("DeepSpaceAE 0.5.0 / 100-Rev6 initialized.");
     }
 
     public void OnEnable()
@@ -34,6 +35,7 @@ public sealed class ModEntry : IMod
         ModHook.OnGameLoadedLate += AttachInventory;
         ModHook.OnModAssetsLoaded += AssetsLoaded;
         ModHook.OnGoingSleepEarly += session.Night;
+        ModHook.OnGoingSleepLate += session.NightLate;
         ModHook.OnLootTablesLoaded += LootLoaded;
         log.Log("Enabled.");
     }
@@ -45,6 +47,7 @@ public sealed class ModEntry : IMod
         ModHook.OnGameLoadedLate -= AttachInventory;
         ModHook.OnModAssetsLoaded -= AssetsLoaded;
         ModHook.OnGoingSleepEarly -= session.Night;
+        ModHook.OnGoingSleepLate -= session.NightLate;
         ModHook.OnLootTablesLoaded -= LootLoaded;
         foreach (var group in lootGroups) ModHelper.RemoveLootGroupEntry(ModId, group, "deepspaceae.scavenging");
         lootGroups.Clear();
@@ -80,7 +83,7 @@ public sealed class ModEntry : IMod
                 item.unitValue = 1;
                 item.SetSpriteAndShapeFromMod(ModId, definition.Sprite + "-off");
                 // Intentional custom part definition, not a guess about other inventory shapes.
-                int size = definition.Part == NetworkPart.Core ? 3 : 1;
+                int size = definition.Part == NetworkPart.Core ? 3 : definition.Part == NetworkPart.DiskDrive ? 2 : 1;
                 item.SetShape(new GridShapeBuilder(size, size).SetDataFill(1).Build());
                 item.mayStackItemFunc = (_, _) => false;
                 // Native default activation runs on single press. All AE windows use the
@@ -88,7 +91,7 @@ public sealed class ModEntry : IMod
                 item.activateDefault = false;
                 item.mayActivateSlotItemFunc = (_, _, _) => false;
                 item.canActivateSlotItemFunc = (_, _, _) => false;
-                PartStorage.Create(item);
+                if (definition.Part == NetworkPart.DiskDrive) DiskStorage.CreateDrive(item); else PartStorage.Create(item);
                 if (definition.Part == NetworkPart.Pipeline)
                 { NativeWidgets.FullCellHit(item); item.getItemSpriteModifierForItemFunc = CableVisuals.BusMarkers; }
                 return item;
@@ -118,7 +121,18 @@ public sealed class ModEntry : IMod
                 return item;
             });
         }
-        log.Log("Registration complete: 7 AE item factories.");
+        foreach (var entry in new[] { (DiskStorage.Small,"item_disk_small","disk-small"), (DiskStorage.Large,"item_disk_large","disk-large") })
+        {
+            var definition=entry;
+            directory.Add(definition.Item1,()=>{
+                var item=ItemDirectory.CreateEmptyItem(definition.Item1); item.name=UiText.Get(definition.Item2);
+                item.shortDescription=UiText.Get("item_disk_desc",DiskStorage.Capacity(item)); item.unitValue=DiskStorage.Capacity(item);
+                item.SetSpriteAndShapeFromMod(ModId,definition.Item3);
+                item.SetShape(new GridShapeBuilder(1,2).SetDataFill(1).Build()); item.mayStackItemFunc=(_,_)=>false;
+                DiskStorage.CreateDisk(item); return item;
+            });
+        }
+        log.Log("Registration complete: 10 AE item factories.");
     }
 
     private readonly HashSet<string> lootGroups = new(StringComparer.Ordinal);
@@ -127,7 +141,8 @@ public sealed class ModEntry : IMod
         const string table = "deepspaceae.scavenging";
         if (!LootRegistry.HasTable(table)) ModHelper.RegisterLootTable(ModId, table, ("deepspaceae.core", 1f), ("deepspaceae.pipeline", 8f),
             ("deepspaceae.item_storage_bus", 3f), ("deepspaceae.terminal", 2f),
-            (PartStorage.Capacity, 2f), (PartStorage.Tag, 1f), (PartStorage.Wrench, 3f));
+            (PartStorage.Capacity, 2f), (PartStorage.Tag, 1f), (PartStorage.Wrench, 3f),
+            (DiskStorage.Drive, 1f), (DiskStorage.Small, 2f), (DiskStorage.Large, 0.5f));
         foreach (var group in LootRegistry.GroupIds.ToArray())
             if (group.StartsWith("POI_", StringComparison.Ordinal) && lootGroups.Add(group))
                 ModHelper.AddLootGroupEntry(ModId, group, table, 20f);

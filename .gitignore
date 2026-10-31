@@ -74,3 +74,6 @@ Directory.Build.local.props
 
 !assets/game/Textures/Items/bus-face-[0-3].png
 !assets/game/Textures/Items/bus-face-[0-3]-off.png
+!assets/game/Textures/Items/drive.png
+!assets/game/Textures/Items/disk-small.png
+!assets/game/Textures/Items/disk-large.png

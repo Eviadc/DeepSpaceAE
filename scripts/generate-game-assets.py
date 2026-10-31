@@ -85,6 +85,17 @@ def assets():
         elif mask==10: img=straight.transpose(Image.Transpose.ROTATE_90)
         result[f'pipeline-{mask}.png']=img
     result['pipeline.png']=result['pipeline-15.png']
+    # Six-bay rack and elongated cells adapted from the pinned AE2 controller/card
+    # material palette. These are DeepSpaceAE compositions, not vanilla AE2 models.
+    rack=image('controller.png').resize((32,32),Image.Resampling.NEAREST)
+    draw=ImageDraw.Draw(rack)
+    for row in range(2):
+        for col in range(3):
+            x,y=3+col*9,3+row*14
+            draw.rectangle((x,y,x+7,y+11),fill=(30,33,36,255),outline=(115,121,125,255))
+            draw.rectangle((x+2,y+3,x+5,y+8),fill=(151,160,161,255))
+            draw.point((x+5,y+10),fill=(116,230,128,255))
+    result['drive.png']=rack
     for name,img in list(result.items()):
         if not name.endswith('-off.png') and name[:-4]+'-off.png' not in result: result[name[:-4]+'-off.png']=inactive(img)
     lights=image('controller_lights.png')
@@ -98,6 +109,13 @@ def assets():
     for y in (7,9): draw.line((4,y,11,y),fill=(208,255,194,255))
     result['tag-upgrade.png']=tag
     result['wrench.png']=image('certus_quartz_wrench.png')
+    for size,color in [('small',(116,205,130,255)),('large',(230,163,76,255))]:
+        disk=image('card_capacity.png').resize((16,32),Image.Resampling.NEAREST)
+        draw=ImageDraw.Draw(disk)
+        draw.rectangle((4,11,11,22),fill=(43,47,49,255))
+        draw.rectangle((5,13,10,15),fill=color)
+        if size=='large': draw.rectangle((5,18,10,20),fill=color)
+        result[f'disk-{size}.png']=disk
     return {k:png(v) for k,v in result.items()}
 
 if __name__=='__main__':

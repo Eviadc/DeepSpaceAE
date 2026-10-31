@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace DeepSpaceAE.Core.Network;
 
-public enum NetworkPart { Core, Pipeline, ItemStorageBus, Terminal }
+public enum NetworkPart { Core, Pipeline, ItemStorageBus, Terminal, DiskDrive }
 
 /// <summary>Logical model node. No grid coordinates, game types or rotation assumptions.</summary>
 public sealed class NetworkNode
@@ -13,16 +13,16 @@ public sealed class NetworkNode
     public string Id { get; }
     public NetworkPart Part { get; }
     public string? ContainerId { get; }
-    public bool ConsumesChannel => Part == NetworkPart.Terminal || Part == NetworkPart.ItemStorageBus;
+    public bool ConsumesChannel => Part == NetworkPart.Terminal || Part == NetworkPart.ItemStorageBus || Part == NetworkPart.DiskDrive;
 
     public NetworkNode(string id, NetworkPart part, string? containerId = null)
     {
         if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Node ID is required.", nameof(id));
         if (!Enum.IsDefined(typeof(NetworkPart), part)) throw new ArgumentOutOfRangeException(nameof(part));
-        if (part == NetworkPart.ItemStorageBus && string.IsNullOrWhiteSpace(containerId))
-            throw new ArgumentException("Storage bus needs a model container ID.", nameof(containerId));
-        if (part != NetworkPart.ItemStorageBus && containerId != null)
-            throw new ArgumentException("Only storage buses attach containers.", nameof(containerId));
+        if ((part == NetworkPart.ItemStorageBus || part == NetworkPart.DiskDrive) && string.IsNullOrWhiteSpace(containerId))
+            throw new ArgumentException("Storage device needs a model container ID.", nameof(containerId));
+        if (part != NetworkPart.ItemStorageBus && part != NetworkPart.DiskDrive && containerId != null)
+            throw new ArgumentException("Only storage devices attach containers.", nameof(containerId));
         Id = id;
         Part = part;
         ContainerId = containerId;

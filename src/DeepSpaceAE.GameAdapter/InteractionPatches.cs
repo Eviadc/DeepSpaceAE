@@ -46,6 +46,13 @@ internal static class LockedBatterySwapPatch
             return owner != null && (owner.identifier == "deepspaceae.core" || owner.identifier == "deepspaceae.item_storage_bus" || owner.identifier == "deepspaceae.pipeline")
                 && (inv!.IsRemoveLocked() || item!.MaxNumRemove() < item.unitCount);
         }
+        bool DriveBay(GameItem item)=>item.parentInventory?.GetParentItem() is GameItem owner && DiskStorage.IsDrive(owner);
+        // Native swapping skips slot validation. Disk data is accessed by terminal
+        // transfers, which re-check capacity; it must not enter unchecked swaps.
+        if(source.parentInventory is DiskAreaInventory || target.parentInventory is DiskAreaInventory)
+        { __result=false; return false; }
+        if((DriveBay(source) && !DiskStorage.IsDisk(target)) || (DriveBay(target) && !DiskStorage.IsDisk(source)))
+        { __result=false; return false; }
         if (!Locked(source) && !Locked(target)) return true;
         __result = false; return false;
     }
@@ -63,5 +70,5 @@ internal static class DayStartedPatch
 internal static class CableContentWindowPatch
 {
     [HarmonyPrefix]
-    private static bool Prefix(GameItem __0) => __0?.identifier != "deepspaceae.pipeline";
+    private static bool Prefix(GameItem __0) => __0?.identifier != "deepspaceae.pipeline" && (__0==null || (!DiskStorage.IsDisk(__0) && !DiskStorage.IsDrive(__0)));
 }

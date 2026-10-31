@@ -1,5 +1,7 @@
 # 架构边界
 
+> 当前 0.5.0 行为以 [完整功能规格](feature-spec.md)、[用例矩阵](functional-cases.md) 为准。下文按版本保留历史实现背景，不能恢复旧终端渲染借用、独立总线或旧电源策略。
+
 ## 目标与阶段
 
 玩法方向是在主物品栏放置核心、连接件和接口，发现可连接的真实容器。首版优先统一索引和安全取放；效率、扩展性与兼容性高于提前加入完整功能。当前有逻辑拓扑、频道、内存原型，以及用真实引用编译的游戏适配测试版。自动合成、物流调度、自有持久化格式仍未实现；基础交互版本已由用户确认可用，0.2 新功能仍待真实运行。
@@ -40,8 +42,14 @@ ModEntry 注册四种供电节点、容量卡、标签卡、扳手和原生拾�
 
 ## 分发边界
 
-IsPackable=false；游戏 ZIP 使用 scripts/package-game.py 逐文件白名单：两个自有 DLL、55 张授权 PNG、manifest、安装验收说明、素材署名/来源与构建记录。检查干净提交、二进制内嵌提交、PNG 头、逐文件哈希和 ZIP CRC。游戏/Unity/Harmony/Steam DLL、测试宿主、存档和凭据不得进入 Git 或安装包。源素材是公开 AE2 代码库的资产子集，许可 CC BY-NC-SA 3.0，随包保留署名，不与早期原创 CC0 占位 SVG 混淆。
+IsPackable=false；游戏 ZIP 使用 scripts/package-game.py 逐文件白名单：两个自有 DLL、67 张授权 PNG、manifest、安装验收说明、素材署名/来源与构建记录。检查干净提交、二进制内嵌提交、PNG 头、逐文件哈希和 ZIP CRC。游戏/Unity/Harmony/Steam DLL、测试宿主、存档和凭据不得进入 Git 或安装包。源素材是公开 AE2 代码库的资产子集，许可 CC BY-NC-SA 3.0，随包保留署名，不与早期原创 CC0 占位 SVG 混淆。
 
 源码修复按用户授权直接推送；附件交付需真实上传工具或用户指定渠道，不把 /workspace 或虚构 Library ID 当成下载链接。不操作本地电脑、不登录 Steam、不安装 Unity/Wine。
 
 0.3.1 增加真实 PE 元数据门禁（Tests CLI --audit-game），不执行游戏代码；禁止给抽象方法打补丁。自有界面文案通过官方 en/zh CSV 读取，静态目录只保存 ASCII 键。打包另含这两份 CSV、加载诊断说明与独立日志提取器；其余 DLL/素材白名单不变。详见 docs/load-troubleshooting.md。
+
+## 0.5 驱动器和结算增量
+
+DiskStorage 为每个驱动器建立六个真实 GameSlotInventory(1,2)，为每个硬盘建立独立 DiskAreaInventory 子图。后者保留原生真实 item list / 保存方式，仅用 occupied-cell 预算替代空间排布。GameSession.Read 将在线驱动器映射为默认优先级 0 的存储设备，沿用 NativeMove；PartStorage 的旧子图不增加节点。
+
+PartPower 从 PartStorage 拆出供电逻辑，NightReservation 新增 Shortfall（枚举末尾追加以保留旧数值）。普通电池失败峰值当日锁网、解锁电池，次日清零。电网使用原版 service 价格计算和实际付款事件，已知未付款允许未来真实账单结算，加载后的未知 DebitStarted 禁止重放。两项新补丁均参与 PE 元数据审计。

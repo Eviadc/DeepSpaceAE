@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace DeepSpaceAE.Core.Network;
 
-/// <summary>Fresh, read-only view of online buses in this terminal's single-core component.</summary>
+/// <summary>Fresh, read-only view of online storage devices in this terminal's single-core component.</summary>
 public sealed class TerminalCatalog
 {
     public NetworkEvaluation Network { get; }
@@ -29,7 +29,7 @@ public sealed class TerminalCatalog
         var attached = new HashSet<string>(StringComparer.Ordinal);
         if (Connection.Status == DeviceStatus.Online)
         {
-            foreach (var node in topology.Nodes.Values.Where(n => n.Part == NetworkPart.ItemStorageBus))
+            foreach (var node in topology.Nodes.Values.Where(n => n.Part == NetworkPart.ItemStorageBus || n.Part == NetworkPart.DiskDrive))
             {
                 var bus = Network.Devices[node.Id];
                 if (bus.Status == DeviceStatus.Online && bus.CoreId == Connection.CoreId) attached.Add(node.ContainerId!);

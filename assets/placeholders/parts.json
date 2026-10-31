@@ -5,6 +5,7 @@
     { "id": "deepspaceae.core", "part": "Core", "name": "AE 核心", "icon": "core.svg", "channelCost": 0 },
     { "id": "deepspaceae.pipeline", "part": "Pipeline", "name": "AE 管线", "icon": "pipeline.svg", "channelCost": 0 },
     { "id": "deepspaceae.item_storage_bus", "part": "ItemStorageBus", "name": "物品存储总线", "icon": "item-storage-bus.svg", "channelCost": 1 },
-    { "id": "deepspaceae.terminal", "part": "Terminal", "name": "存储终端", "icon": "terminal.svg", "channelCost": 1 }
+    { "id": "deepspaceae.terminal", "part": "Terminal", "name": "存储终端", "icon": "terminal.svg", "channelCost": 1 },
+    { "id": "deepspaceae.disk_drive", "part": "DiskDrive", "name": "硬盘驱动器", "icon": "drive.svg", "channelCost": 1 }
   ]
 }

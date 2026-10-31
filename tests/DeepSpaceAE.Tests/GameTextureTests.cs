@@ -15,7 +15,7 @@ public sealed class GameTextureTests
     [Fact]
     public void CoreTextureCoversAllNineCellsAndWhitelistContainsAllActiveAndInactiveImages()
     {
-        Assert.Equal(63, Directory.GetFiles(Root, "*.png").Length);
+        Assert.Equal(67, Directory.GetFiles(Root, "*.png").Length);
         foreach (var name in new[] { "core", "terminal", "item-storage-bus", "pipeline" })
             Assert.True(File.Exists(Path.Combine(Root, name + "-off.png")));
         for (int mask = 0; mask < 16; mask++) Assert.True(File.Exists(Path.Combine(Root, $"pipeline-{mask}-off.png")));
@@ -24,6 +24,15 @@ public sealed class GameTextureTests
         Assert.Equal(48, height);
         foreach (int y in new[] { 8, 24, 40 })
             foreach (int x in new[] { 8, 24, 40 }) Assert.Equal(255, pixels[(y * width + x) * 4 + 3]);
+    }
+
+    [Fact]
+    public void DriveAndDisksHaveTheirActualCellDimensions()
+    {
+        foreach(var name in new[]{"drive.png","drive-off.png"})
+        { var (width,height,_)=Decode(name); Assert.Equal(32,width); Assert.Equal(32,height); }
+        foreach(var name in new[]{"disk-small.png","disk-large.png"})
+        { var (width,height,_)=Decode(name); Assert.Equal(16,width); Assert.Equal(32,height); }
     }
 
     [Fact]

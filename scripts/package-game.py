@@ -13,6 +13,9 @@ files = {
     "DeepSpaceAE/DeepSpaceAE.GameAdapter.dll": root / "src/DeepSpaceAE.GameAdapter/bin/Release/netstandard2.1/DeepSpaceAE.GameAdapter.dll",
     "DeepSpaceAE/manifest.xml": root / "assets/game/manifest.xml",
     "DeepSpaceAE/安装与测试.md": root / "docs/game-test.md",
+    "DeepSpaceAE/功能规格.md": root / "docs/feature-spec.md",
+    "DeepSpaceAE/功能用例.md": root / "docs/functional-cases.md",
+    "DeepSpaceAE/版本维护.md": root / "docs/version-maintenance.md",
     "DeepSpaceAE/加载诊断.md": root / "docs/load-troubleshooting.md",
     "DeepSpaceAE/extract-load-log.py": root / "scripts/extract-load-log.py",
 }
@@ -21,7 +24,8 @@ keys += [k + "-off" for k in keys.copy()]
 keys += ["capacity-upgrade", "tag-upgrade", "wrench"]
 keys += [f"core-{i}" for i in range(12)]
 keys += [f"bus-face-{side}{suffix}" for side in range(4) for suffix in ("", "-off")]
-assert len(keys) == len(set(keys)) == 63
+keys += ["drive", "drive-off", "disk-small", "disk-large"]
+assert len(keys) == len(set(keys)) == 67
 for key in keys:
     files[f"DeepSpaceAE/Textures/Items/{key}.png"] = root / f"assets/game/Textures/Items/{key}.png"
 files["DeepSpaceAE/THIRD-PARTY-NOTICES.md"] = root / "assets/THIRD-PARTY-NOTICES.md"
@@ -42,10 +46,11 @@ for name, path in files.items():
         raise SystemExit(f"{path.name} does not contain the current source revision. Rebuild after committing.")
     if name.endswith(".png"):
         data = path.read_bytes()
-        size = 48 if Path(name).stem == "core" or Path(name).stem.startswith("core-") else 16
-        assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", data[16:24]) == (size, size)
+        stem = Path(name).stem
+        dimensions = (48,48) if stem == "core" or stem.startswith("core-") else (32,32) if stem in ("drive","drive-off") else (16,32) if stem in ("disk-small","disk-large") else (16,16)
+        assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", data[16:24]) == dimensions
 version = ET.parse(files["DeepSpaceAE/manifest.xml"]).getroot().findtext("ModVersion")
-assert version == "0.4.1-alpha"
+assert version == "0.5.0-alpha"
 audit_path = root / "artifacts/validation/game-patch-audit.json"
 if not audit_path.is_file():
     raise SystemExit("Missing game patch metadata audit; run scripts/build-game.ps1 (Windows) or scripts/build-game.sh first.")

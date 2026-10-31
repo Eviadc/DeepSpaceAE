@@ -11,6 +11,7 @@ internal sealed partial class GameSession
     private VirtualInventory? terminalGrid;
     private GhostFilterInventory? filterGrid;
     private BorrowedInventoryView? borrowedStorage;
+    private readonly List<BorrowedInventoryView> driveBorrowed=new();
     private GameItem? displayedPart;
     private View? displayedView;
     private IReadOnlyList<CatalogRecord>? packedRows;
@@ -34,6 +35,7 @@ internal sealed partial class GameSession
     private void ClosePart()
     {
         if (editorWindow != null) { var w = editorWindow; editorWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); }
+        foreach(var borrowed in driveBorrowed) borrowed.Return(); driveBorrowed.Clear();
         borrowedStorage?.Return(); borrowedStorage = null; displayedPart = null; filterGrid = null;
         if (partWindow != null) { var w = partWindow; partWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); }
     }
@@ -75,7 +77,7 @@ internal sealed partial class GameSession
         bool create = terminalWindow == null || !ReferenceEquals(openTerminal, terminal);
         if (create) CloseTerminal(); else Unobserve();
         displayedView = view; openTerminal = terminal; packedRows = null; packing = null;
-        foreach (var inv in view.Inventories.Values.SelectMany(i => i).Append(view.Root).Distinct())
+        foreach (var inv in view.Inventories.Values.SelectMany(i => i).Concat(view.Attachments).Append(view.Root).Distinct())
         {
             foreach (var item in inv.childItems) observations.GetValue(item, i => new Observation(i));
             observed.Add(inv); inv.onSlotAddItemEndFunc += Changed; inv.onSlotRemoveItemEndFunc += Changed; inv.onSlotChangeAmountItemFunc += Changed;
@@ -117,13 +119,27 @@ internal sealed partial class GameSession
         terminalStatus!.SetText(writeFault ? UiText.Get("ui_transfer_locked") : string.IsNullOrEmpty(message) ? UiText.Get("ui_item_count", rows.Count) : message);
         terminalWindow?.Validate();
     }
+    private void ShowDrive(GameItem drive)
+    {
+        ClosePart(); displayedPart=drive;
+        var grid=new GridPixelElement(3,2,true).SetSpacing(6,6); var slots=DiskStorage.Bays(drive);
+        for(int i=0;i<slots.Length;i++)
+        {
+            var borrowed=new BorrowedInventoryView(slots[i]); driveBorrowed.Add(borrowed);
+            var disk=slots[i].childItem;
+            string label=disk==null?UiText.Get("ui_disk_empty"):DiskStorage.Data(disk).Used+" / "+DiskStorage.Capacity(disk);
+            grid.AttachPos(MachineryStack.Vertical(NativeWidgets.Text(label),new MachineryIntake(borrowed,true,false)),i%3,i/3);
+        }
+        partWindow=MachineHelper.CreateMachineryWindow(true,MachineHelper.Panel(UiText.Get("item_drive_name"),grid,"drive",false));
+        partWindow.closeCallback=ClosePart; partWindow.Show().Center();
+    }
     private void ShowCore(GameItem core)
     {
         ClosePart(); displayedPart = core;
         var board = ReadBoard(); var lease = PartStorage.Lease(core); var battery = PartStorage.Battery(core);
         int cost = board.Evaluation.NightCosts.TryGetValue(Id(core), out var budget) ? budget : 2;
-        var stats = new GridPixelElement(4, 2, true).SetSpacing(6, 3);
-        var counts = new int[4];
+        var stats = new GridPixelElement(ModEntry.Parts.Length, 2, true).SetSpacing(6, 3);
+        var counts = new int[Enum.GetValues(typeof(NetworkPart)).Length];
         foreach (var member in board.Evaluation.ComponentCore)
             if (member.Value == Id(core)) counts[(int)ModEntry.PartKinds[board.ById[member.Key].identifier]]++;
         foreach (NetworkPart kind in Enum.GetValues(typeof(NetworkPart)))
@@ -138,13 +154,14 @@ internal sealed partial class GameSession
         int used = board.Evaluation.ChannelsUsed.TryGetValue(Id(core), out var u) ? u : 0;
         var power = MachineryStack.Horizontal(NativeWidgets.Icon(MachineryStyle.IconPower), MachineryText.Status(UiText.Get("ui_nightly"), cost + " kJ"));
         int remaining = battery == null ? 0 : PowerHelper.GetAvailableEnergyFromItem(battery, false);
-        bool infinite = battery != null && HypertechBatteryHelper.IsHypertechBattery(battery);
+        bool gridPower = battery != null && PartStorage.IsGrid(battery);
+        bool infinite = battery != null && (gridPower || HypertechBatteryHelper.IsHypertechBattery(battery));
         int maximum = battery == null || infinite ? 0 : battery.GetTagReadonly(PowerHelper.POWER_SOURCE_ITEM_MAX_ENERGY).GetInt();
         var bar = new MachineryProgressBar(infinite ? 1 : Math.Min(1, (float)remaining / Math.Max(1, maximum)), 120);
-        string batteryState = battery == null ? UiText.Get("ui_insert_battery") : lease.Phase == NightPhase.Fault || lease.Phase == NightPhase.DebitStarted ? UiText.Get("ui_billing_unknown") : lease.CanRemove(PartStorage.Day) ? UiText.Get("ui_replaceable") : UiText.Get("ui_battery_locked");
+        string batteryState = battery == null ? UiText.Get("ui_insert_battery") : PartStorage.GridUnpaid(core) ? UiText.Get("ui_grid_unpaid") : lease.Phase == NightPhase.Shortfall ? UiText.Get("ui_power_shortfall") : lease.Phase == NightPhase.Fault || lease.Phase == NightPhase.DebitStarted ? UiText.Get("ui_billing_unknown") : lease.CanRemove(PartStorage.Day) ? UiText.Get("ui_replaceable") : UiText.Get("ui_battery_locked");
         var overview = MachineryStack.Vertical(stats, power, bar,
-            MachineryText.Status(UiText.Get("ui_energy"), infinite ? UiText.Get("ui_hypertech_battery") : remaining + " / " + maximum + " kJ"),
-            MachineryText.Status(UiText.Get("ui_reserved"), (lease.Phase == NightPhase.Reserved ? lease.Required : 0) + " kJ"),
+            MachineryText.Status(UiText.Get("ui_energy"), gridPower ? UiText.Get("ui_grid_power") : infinite ? UiText.Get("ui_hypertech_battery") : remaining + " / " + maximum + " kJ"),
+            MachineryText.Status(UiText.Get("ui_daily_peak"), (lease.Day == PartStorage.Day ? lease.Required : 0) + " kJ"),
             MachineryText.Status(UiText.Get("ui_channels"), used + " / 32"), NativeWidgets.Text(batteryState));
         partWindow = MachineHelper.CreateMachineryWindow(true,
             MachineHelper.IconPanel(MachineryStyle.IconPower, Borrow(core), "power"),
@@ -271,6 +288,11 @@ internal sealed partial class GameSession
             if (displayedPart == null || ItemMouseDragHandler.current?.IsDraggingItem == true) return;
             if (!(ReferenceEquals(displayedPart.parentInventory, MainInventory()) || PartStorage.CanConfigure(displayedPart)) || !GeneralHelper.IsItemEffectivelyOwned(displayedPart)) { ClosePart(); return; }
             if (filterGrid != null) RenderFilters();
+            else if(DiskStorage.IsDrive(displayedPart))
+            {
+                var position=partWindow?.rectTransform.position; ShowDrive(displayedPart);
+                if(position.HasValue && partWindow!=null) { partWindow.rectTransform.position=position.Value; partWindow.FixBounds(); }
+            }
             else if (displayedPart.identifier == "deepspaceae.core")
             {
                 var position = partWindow?.rectTransform.position;

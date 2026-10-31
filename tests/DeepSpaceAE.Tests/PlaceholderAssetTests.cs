@@ -22,7 +22,7 @@ public sealed class PlaceholderAssetTests
         using var output = new StringWriter();
         PrototypeReport.Write(prototype, output);
         var html = output.ToString();
-        foreach (var kind in Enum.GetValues<NetworkPart>()) Assert.Contains($"data-part=\"{kind}\"", html);
+        foreach (var kind in prototype.Topology.Nodes.Values.Select(n=>n.Part).Distinct()) Assert.Contains($"data-part=\"{kind}\"", html);
         Assert.Contains("<td>battery</td><td>charge=100</td><td>locker-b</td>", html);
         Assert.Contains("&lt;script&gt;", html);
         Assert.Contains("unsafe&amp;state", html);
@@ -31,18 +31,18 @@ public sealed class PlaceholderAssetTests
     }
 
     [Fact]
-    public void AllFourPartsHaveOriginalStandaloneIconsAndMatchingChannelCosts()
+    public void AllPartsHaveOriginalStandaloneIconsAndMatchingChannelCosts()
     {
         var root = Path.Combine(AppContext.BaseDirectory, "assets", "placeholders");
         using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "parts.json")));
         var parts = document.RootElement.GetProperty("parts").EnumerateArray().ToArray();
-        Assert.Equal(4, parts.Length);
-        Assert.Equal(4, parts.Select(p => p.GetProperty("id").GetString()).Distinct().Count());
+        Assert.Equal(5, parts.Length);
+        Assert.Equal(5, parts.Select(p => p.GetProperty("id").GetString()).Distinct().Count());
         Assert.Equal(Enum.GetValues<NetworkPart>().OrderBy(p => p), parts.Select(p => Enum.Parse<NetworkPart>(p.GetProperty("part").GetString()!)).OrderBy(p => p));
         foreach (var part in parts)
         {
             var kind = Enum.Parse<NetworkPart>(part.GetProperty("part").GetString()!);
-            var node = new NetworkNode("asset-check", kind, kind == NetworkPart.ItemStorageBus ? "box" : null);
+            var node = new NetworkNode("asset-check", kind, kind == NetworkPart.ItemStorageBus || kind == NetworkPart.DiskDrive ? "box" : null);
             Assert.Equal(node.ConsumesChannel ? 1 : 0, part.GetProperty("channelCost").GetInt32());
             var icon = part.GetProperty("icon").GetString()!;
             Assert.Equal(icon, Path.GetFileName(icon));

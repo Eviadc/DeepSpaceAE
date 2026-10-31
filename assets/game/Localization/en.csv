@@ -103,3 +103,14 @@ ui_empty_face,No storage bus
 ui_bus_install_hint,Drop a bus onto the cable. Double-click the bus face to configure it.
 ui_remove_bus,Remove storage bus
 item_cable_desc,Drop up to four storage buses onto this cable. Each blocks its face. Rotate the whole cable to rotate all faces.
+item_drive_name,AE Disk Drive
+item_disk_small,AE Small Storage Disk
+item_disk_large,AE Large Storage Disk
+item_disk_desc,Stores {0} occupied cells. Insert into an AE disk drive and access through a terminal.
+ui_disk_data,AE Disk Data
+ui_drive_data,AE Drive Bays
+ui_disk_empty,Empty disk bay
+ui_daily_peak,Daily peak
+ui_grid_power,Power grid (native nightly bill)
+ui_grid_unpaid,Unpaid: source locked / network offline
+ui_power_shortfall,Low power: replace battery / wait until tomorrow

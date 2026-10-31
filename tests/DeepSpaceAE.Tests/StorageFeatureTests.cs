@@ -96,8 +96,30 @@ public sealed class StorageFeatureTests
         Assert.True(lease.Reserve(3,80,42,n=>n<=100)); Assert.False(lease.CanRemove(3));
         Assert.True(lease.Reserve(3,90,42,n=>n<=100));
         Assert.True(lease.Reserve(3,10,42,n=>n<=100)); Assert.Equal(90,lease.Required);
-        Assert.False(lease.Reserve(3,110,42,n=>n<=100)); Assert.Equal(90,lease.Required);
-        Assert.False(lease.Reserve(3,10,43,n=>true));
+        Assert.False(lease.Reserve(3,110,42,n=>n<=100)); Assert.Equal(110,lease.Required);
+        Assert.Equal(NightPhase.Shortfall,lease.Phase); Assert.True(lease.CanRemove(3));
+        Assert.False(lease.Reserve(3,10,42,_=>true)); // same battery cannot clear today's shortage
+        Assert.False(lease.Reserve(3,10,43,n=>n<=100));
+        Assert.True(lease.Reserve(3,10,43,n=>n<=120)); Assert.Equal(110,lease.Required);
+    }
+    [Fact]
+    public void UnpaidShortfallResetsNextDayWithoutCarryingPeakOrDebit()
+    {
+        var lease=new NightReservation(); Assert.True(lease.Reserve(3,80,42,_=>true));
+        Assert.False(lease.Reserve(3,110,42,n=>n<=100));
+        Assert.False(lease.BeginDebit(3,42));
+        var restored=new NightReservation(lease.Day,lease.Required,lease.Battery,lease.Phase);
+        Assert.True(restored.Reserve(4,10,42,n=>n<=100)); Assert.Equal(10,restored.Required);
+        Assert.True(restored.BeginDebit(4,42)); restored.Complete(true);
+    }
+    [Fact]
+    public void PeakWithoutBatterySurvivesReplacementTrialsButResetsTomorrow()
+    {
+        var lease=new NightReservation(); lease.ObservePeak(3,90);
+        Assert.False(lease.Reserve(3,20,42,n=>n<=80)); Assert.Equal(90,lease.Required);
+        Assert.True(lease.Reserve(3,20,43,n=>n<=100)); Assert.Equal(90,lease.Required);
+        Assert.False(lease.Reserve(3,120,43,n=>n<=100));
+        Assert.True(lease.ObservePeak(4,5)); Assert.Equal(5,lease.Required); Assert.Equal(NightPhase.Empty,lease.Phase);
     }
     [Fact]
     public void DebitIsOnceAndBatteryUnlocksOnlyNextDay()
@@ -116,6 +138,15 @@ public sealed class StorageFeatureTests
         Assert.True(lease.BeginDebit(5,42)); lease.Complete(true);
         Assert.Equal(5,lease.Day); Assert.False(lease.CanRemove(5)); Assert.True(lease.CanRemove(6));
         Assert.False(lease.Reserve(5,25,42,_=>true)); Assert.False(lease.BeginDebit(5,42));
+    }
+    [Fact]
+    public void DelayedGridReceiptSettlesOnPaymentDayAndResetsOnlyFollowingDay()
+    {
+        var lease=new NightReservation(); lease.Reserve(3,25,42,_=>true); lease.BeginDebit(3,42);
+        lease.Complete(true,5);
+        Assert.Equal(5,lease.Day); Assert.False(lease.CanRemove(5));
+        Assert.False(lease.Reserve(5,2,42,_=>true));
+        Assert.True(lease.Reserve(6,2,42,_=>true)); Assert.Equal(2,lease.Required);
     }
     [Fact]
     public void UnknownDebitCannotReplayOrUnlockEvenOnFollowingDay()

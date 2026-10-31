@@ -12,7 +12,7 @@ internal sealed class CableVisuals
     private GameGridInventory? root;
     private bool queued;
     private int generation;
-    private sealed class BatteryState { internal int Energy, Output; }
+    private sealed class BatteryState { internal int Energy, Output, Grid; }
     private readonly ConditionalWeakTable<GameItem, BatteryState> batteryStates = new();
     private readonly ModLog log;
     private readonly GameSession session;
@@ -90,13 +90,18 @@ internal sealed class CableVisuals
         {
             if (!poses.TryGetValue(item, out var old) || old != Pose(item)) { Invalidate(); session.StructureChanged(item); session.NativeStorageChanged(); }
         }
+        else if(item.parentInventory is DiskAreaInventory area)
+        {
+            var drive=DiskStorage.HostDrive(area.Disk); if(drive!=null) session.NativeStorageChanged(drive);
+        }
         else if (item.parentInventory?.GetParentItem() is GameItem owner && owner.identifier == "deepspaceae.core")
         {
             int energy = PowerHelper.GetAvailableEnergyFromItem(item, false);
             int output = HypertechBatteryHelper.IsHypertechBattery(item) ? HypertechBatteryHelper.GetOutput(item) : 0;
+            int grid = PartStorage.IsGrid(item) ? (CurrentConverterHelper.IsOn(item) ? 1 : 0) + (CurrentConverterHelper.IsBlackedOut() ? 2 : 0) : -1;
             var previous = batteryStates.GetValue(item, _ => new BatteryState { Energy = -1, Output = -1 });
-            if (previous.Energy != energy || previous.Output != output)
-            { previous.Energy = energy; previous.Output = output; Invalidate(); session.StructureChanged(owner); session.NativeStorageChanged(owner); }
+            if (previous.Energy != energy || previous.Output != output || previous.Grid != grid)
+            { previous.Energy = energy; previous.Output = output; previous.Grid = grid; Invalidate(); session.StructureChanged(owner); session.NativeStorageChanged(owner); }
         }
     }
     internal void Invalidate()

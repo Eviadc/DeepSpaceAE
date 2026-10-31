@@ -103,3 +103,14 @@ ui_empty_face,未安装总线
 ui_bus_install_hint,将总线拖到线缆上安装；双击对应侧面的总线配置。
 ui_remove_bus,卸下存储总线
 item_cable_desc,最多安装四个存储总线，每个总线阻断所在面的线缆连接；拿起整根线缆可旋转所有面。
+item_drive_name,AE 硬盘驱动器
+item_disk_small,AE 小型存储硬盘
+item_disk_large,AE 大型存储硬盘
+item_disk_desc,存储 {0} 格实际物品占格。装入 AE 硬盘驱动器后通过终端取放。
+ui_disk_data,AE 硬盘数据
+ui_drive_data,AE 硬盘槽
+ui_disk_empty,空硬盘槽
+ui_daily_peak,当日耗电峰值
+ui_grid_power,电网供电（原版夜间账单）
+ui_grid_unpaid,电费未缴：锁定并断电
+ui_power_shortfall,电量不足：更换电池或等待次日
