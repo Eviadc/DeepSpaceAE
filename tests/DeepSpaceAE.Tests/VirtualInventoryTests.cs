@@ -8,6 +8,29 @@ public sealed class VirtualInventoryTests
     private static DisplayFootprint Box(int width, int height) => new(Guid.NewGuid(),
         Enumerable.Range(0,height).SelectMany(y => Enumerable.Range(0,width).Select(x => new GridCell(x,y))));
     [Fact]
+    public void ContinuousViewportIncludesIntersectingItemsWithoutPages()
+    {
+        var items = Enumerable.Range(0,1000).Select(_ => Box(3,2)).ToArray();
+        var layout = new VirtualInventoryLayout(items,6,4,continuous:true);
+        Assert.Equal(1,layout.PageCount); Assert.Equal(1000,layout.Height);
+        Assert.Equal(1000,layout.Page(0).Count);
+        var visible = layout.Visible(3,4);
+        Assert.Equal(6,visible.Count); // three shelves intersect [3,7)
+        Assert.All(visible,p => Assert.True(p.Y < 7 && p.Y + p.Footprint.Height > 3));
+        Assert.Empty(layout.Visible(1000,4));
+        var first = items[0].Instance;
+        Assert.False(layout.Reposition(first,0,0,998)); // occupied last shelf
+        Assert.Equal(first,layout.At(0,0,0));
+    }
+    [Fact]
+    public void ContinuousLayoutKeepsLargeItemsVisibleAcrossViewportBoundaries()
+    {
+        var huge = Box(25,30);
+        var layout = new VirtualInventoryLayout(new[]{huge},18,12,continuous:true);
+        Assert.Equal(25,layout.Width); Assert.Equal(30,layout.Height);
+        Assert.Equal(huge.Instance,Assert.Single(layout.Visible(15,12)).Footprint.Instance);
+    }
+    [Fact]
     public void ItemsKeepTheirActualOccupiedCellsAndIdentity()
     {
         var a = Box(3,2); var b = new DisplayFootprint(Guid.NewGuid(),new[]{new GridCell(0,0),new GridCell(0,1),new GridCell(1,1)});

@@ -44,7 +44,6 @@ internal sealed partial class GameSession
     internal bool Loading { get; private set; } = true;
     private bool writeFault, writing, refreshQueued, terminalDirty;
     private int terminalGeneration;
-    private int page;
     private CatalogSort sort = CatalogSort.Name;
     private string search = "", tag = "", message = "";
     private GameItem? openTerminal;
@@ -59,7 +58,7 @@ internal sealed partial class GameSession
     internal void Reset()
     {
         Loading = true; Close(); uncertainItems.Clear(); NativeDrag.Gesture = null; NativeDrag.OriginItem = null; NativeDrag.OriginSource = null; Visuals.Detach(); identities = new(); observations = new(); writeFault = writing = false;
-        page = 0; search = tag = message = "";
+        search = tag = message = "";
     }
     private void Unobserve()
     {
@@ -87,11 +86,11 @@ internal sealed partial class GameSession
             if (expected != terminalGeneration) return;
             refreshQueued = false;
             if (!ReferenceEquals(openTerminal, current) || !terminalDirty) return;
-            if (writing || ItemMouseDragHandler.current?.IsDraggingItem == true) return; // retain dirty until release
+            if (writing || ItemMouseDragHandler.current?.IsDraggingItem == true || ItemMultiSelectHandler.current?.IsGroupDragging == true) return; // retain dirty until release
             terminalDirty = false; Open(current);
         });
     }
-    internal void DragEnded() { ScheduleTerminalRefresh(); RefreshPartLater(); }
+    internal void DragEnded() { terminalGrid?.RefreshVisible(); ScheduleTerminalRefresh(); RefreshPartLater(); }
     internal void ItemChanged(GameItem item)
     {
         if (item.parentInventory != null && observed.Contains(item.parentInventory)

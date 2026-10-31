@@ -15,7 +15,6 @@ internal sealed partial class GameSession
     private IReadOnlyList<CatalogRecord>? packedRows;
     private VirtualInventoryLayout? packing;
     private MachineryText? terminalStatus;
-    private MachineryText? pageLabel;
     private NativeWidgets.Field? tagField;
     private string[] displayedTags = Array.Empty<string>();
     private bool partRefreshQueued;
@@ -26,7 +25,7 @@ internal sealed partial class GameSession
         if (NativeDrag.Gesture != null && ReferenceEquals(NativeDrag.Gesture.Surface.Owner, openTerminal)) NativeDrag.Gesture.Cancelled = true;
         terminalGrid?.ClearTiles();
         Unobserve(); displayedView = null; terminalGrid = null; packedRows = null; packing = null;
-        terminalStatus = null; pageLabel = null; tagField = null; displayedTags = Array.Empty<string>();
+        terminalStatus = null; tagField = null; displayedTags = Array.Empty<string>();
         if (terminalWindow != null) { var w = terminalWindow; terminalWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); }
     }
     private void ClosePart()
@@ -82,16 +81,13 @@ internal sealed partial class GameSession
         {
             terminalGrid = new VirtualInventory(terminal, 18, 12);
             terminalGrid.Redraw = RenderTerminal;
-            var query = NativeWidgets.Input(UiText.Get("ui_search"), search, value => { if (search == value) return; search = value; page = 0; RenderTerminal(); }, 150);
-            tagField = NativeWidgets.Dropdown(new[] { UiText.Get("ui_all_categories") }, 0, i => { tag = i > 0 && i <= displayedTags.Length ? displayedTags[i - 1] : ""; page = 0; RenderTerminal(); }, 100);
-            var sortField = NativeWidgets.Dropdown(new[] { UiText.Get("ui_native_order"), UiText.Get("ui_name"), UiText.Get("ui_quantity") }, (int)sort, i => { sort = (CatalogSort)i; page = 0; RenderTerminal(); }, 70);
+            var query = NativeWidgets.Input(UiText.Get("ui_search"), search, value => { if (search == value) return; search = value; terminalGrid?.SetScroll(0); RenderTerminal(); }, 150);
+            tagField = NativeWidgets.Dropdown(new[] { UiText.Get("ui_all_categories") }, 0, i => { tag = i > 0 && i <= displayedTags.Length ? displayedTags[i - 1] : ""; terminalGrid?.SetScroll(0); RenderTerminal(); }, 100);
+            var sortField = NativeWidgets.Dropdown(new[] { UiText.Get("ui_native_order"), UiText.Get("ui_name"), UiText.Get("ui_quantity") }, (int)sort, i => { sort = (CatalogSort)i; terminalGrid?.SetScroll(0); RenderTerminal(); }, 70);
             terminalStatus = NativeWidgets.Text("").SetFillWidth(false);
-            pageLabel = NativeWidgets.Text("1 / 1").SetFillWidth(false);
-            var paging = MachineryStack.Horizontal(new MachineryButton("<", () => { page = Math.Max(0, page - 1); RenderTerminal(); }, 20), pageLabel,
-                new MachineryButton(">", () => { if (packing != null && page + 1 < packing.PageCount) page++; RenderTerminal(); }, 20));
             var searchBar = MachineryStack.Horizontal(query, tagField, sortField).SetMainAlign(MachineryStack.Align.Start);
             var body = MachineryStack.Vertical(searchBar, new MachineryIntake(terminalGrid),
-                MachineryStack.Horizontal(terminalStatus, paging));
+                terminalStatus);
             terminalWindow = MachineHelper.CreateMachineryWindow(true, new MachineryPanel(UiText.Get("ui_network"), body, "terminal"));
             terminalWindow.SetTitle(UiText.Get("ui_terminal_title")); terminalWindow.closeCallback = CloseTerminal;
         }
@@ -111,12 +107,10 @@ internal sealed partial class GameSession
         var rows = displayedView.Search.Find(search, string.IsNullOrEmpty(tag) ? null : tag, sort);
         if (!ReferenceEquals(rows, packedRows))
         {
-            packing = new VirtualInventoryLayout(rows.Select(r => Footprint(r.Instance, displayedView.Live[r.Instance])));
+            packing = new VirtualInventoryLayout(rows.Select(r => Footprint(r.Instance, displayedView.Live[r.Instance])), continuous: true);
             packedRows = rows;
         }
-        page = Math.Max(0, Math.Min(page, packing!.PageCount - 1));
-        terminalGrid.Populate(packing, page, displayedView.Live, displayedView.Sources);
-        pageLabel!.SetText($"{page + 1} / {packing.PageCount}");
+        terminalGrid.Populate(packing!, 0, displayedView.Live, displayedView.Sources);
         terminalStatus!.SetText(writeFault ? UiText.Get("ui_transfer_locked") : string.IsNullOrEmpty(message) ? UiText.Get("ui_item_count", rows.Count) : message);
         terminalWindow?.Validate();
     }

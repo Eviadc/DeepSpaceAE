@@ -5,7 +5,7 @@ using UnityEngine;
 namespace DeepSpaceAE.GameAdapter;
 
 /// <summary>A native grid background with non-owning display tiles. No item can enter it.</summary>
-internal sealed class VirtualInventory : GameGridInventory
+internal sealed class VirtualInventory : GameGridScrollableInventory
 {
     internal readonly GameItem Owner;
     internal readonly bool Ghost;
@@ -17,9 +17,9 @@ internal sealed class VirtualInventory : GameGridInventory
     private IReadOnlyDictionary<Guid, GameInventory> sources = new Dictionary<Guid, GameInventory>();
     private readonly List<TreeNodeRender> tiles = new();
     private readonly Dictionary<Guid, ItemTile> itemTiles = new();
-    internal VirtualInventory(GameItem owner, int width, int height, bool ghost = false) : base(width, height)
+    internal VirtualInventory(GameItem owner, int width, int height, bool ghost = false) : base(width, height, height, 0)
     {
-        Owner = owner; Ghost = ghost; SetMachineryStyle();
+        Owner = owner; Ghost = ghost;
         rectTransform.anchorMin = rectTransform.anchorMax = rectTransform.pivot = new Vector2(0, 1);
         inner.rectTransform.anchorMin = inner.rectTransform.anchorMax = inner.rectTransform.pivot = new Vector2(0, 1);
         inner.rectTransform.anchoredPosition = Vector2.zero;
@@ -27,8 +27,38 @@ internal sealed class VirtualInventory : GameGridInventory
     internal void Populate(VirtualInventoryLayout layout, int page, IReadOnlyDictionary<Guid, GameItem> live, IReadOnlyDictionary<Guid, GameInventory> observedSources)
     {
         ClearTiles(); Layout = layout; PageIndex = page; items = live; sources = observedSources;
-        SetShape(layout.Width, layout.Height);
-        foreach (var p in layout.Page(page)) AddTile(p.Footprint.Instance, p.X, p.Y, live[p.Footprint.Instance]);
+        SetShape(layout.Width, 12, Math.Max(13, layout.Height));
+        RefreshVisible();
+    }
+    private bool visibilityQueued;
+    internal void QueueVisibility()
+    {
+        if (Ghost || visibilityQueued) return;
+        visibilityQueued = true;
+        LetterboxManager.RunNextUpdate(() => {
+            visibilityQueued = false;
+            if (handler.gameObject.activeInHierarchy) RefreshVisible();
+        });
+    }
+    internal void RefreshVisible()
+    {
+        if (Ghost || Layout == null || ItemMouseDragHandler.current?.IsDraggingItem == true
+            || ItemMultiSelectHandler.current?.IsGroupDragging == true) return;
+        int top = (int)Math.Round(inner.rectTransform.anchoredPosition.y / UISettings.current.gridSize);
+        var visible = Layout.Visible(top, GetVisibleHeight() + 1);
+        var keep = new HashSet<Guid>();
+        foreach (var placement in visible) keep.Add(placement.Footprint.Instance);
+        var removed = new List<Guid>();
+        foreach (var entry in itemTiles) if (!keep.Contains(entry.Key)) removed.Add(entry.Key);
+        foreach (var id in removed)
+        {
+            var tile = itemTiles[id]; tile.Return();
+            tile.handler.gameObject.SetActive(false); UnityEngine.Object.Destroy(tile.handler.gameObject);
+            tiles.Remove(tile.handler); itemTiles.Remove(id);
+        }
+        foreach (var placement in visible)
+            if (!itemTiles.ContainsKey(placement.Footprint.Instance))
+                AddTile(placement.Footprint.Instance, placement.X, placement.Y, items[placement.Footprint.Instance]);
     }
     internal void ClearTiles()
     {
@@ -89,7 +119,7 @@ internal sealed class VirtualInventory : GameGridInventory
     {
         var (x,y) = Cell(position);
         return new SlotMarker { item = item, inventory = this, itemGridShape = shape, index = y * 9 + x,
-            numTransfer = x >= 0 && y >= 0 && x < inventoryShape.width && y < inventoryShape.height && requestedNum >= item.unitCount ? item.unitCount : 0 };
+            numTransfer = x >= 0 && y >= 0 && x < width && y < height && requestedNum >= item.unitCount ? item.unitCount : 0 };
     }
     internal sealed class ItemTile : EmptyPixelElement, TooltipListener
     {

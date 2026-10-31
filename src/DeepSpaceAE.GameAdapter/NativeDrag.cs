@@ -282,3 +282,33 @@ internal static class NativeTerminalRenderPatch
     [HarmonyPostfix]
     private static void Postfix(GameItemElement __instance) => VirtualInventory.ItemTile.Align(__instance);
 }
+
+// The native scroller derives its extent from owned items. Our non-owning directory
+// supplies its display extent instead; its childItems must stay empty.
+[HarmonyPatch(typeof(GameGridScrollableInventory), nameof(GameGridScrollableInventory.GetMinVisibleHeight))]
+internal static class TerminalScrollExtentPatch
+{
+    [HarmonyPrefix]
+    private static bool Prefix(GameGridScrollableInventory __instance, ref int __result)
+    {
+        if (__instance is not VirtualInventory surface) return true;
+        __result = Math.Max(surface.GetVisibleHeight() + 1, surface.Layout?.Height ?? surface.GetVisibleHeight() + 1);
+        surface.QueueVisibility();
+        return false;
+    }
+}
+[HarmonyPatch(typeof(GameGridScrollableInventory), nameof(GameGridScrollableInventory.Scroll))]
+internal static class TerminalScrollDragGuardPatch
+{
+    [HarmonyPrefix]
+    private static bool Prefix(GameGridScrollableInventory __instance) => __instance is not VirtualInventory
+        || (ItemMouseDragHandler.current?.IsDraggingItem != true && ItemMultiSelectHandler.current?.IsGroupDragging != true);
+}
+
+[HarmonyPatch(typeof(GameGridScrollableInventory), nameof(GameGridScrollableInventory.SetScroll))]
+internal static class TerminalScrollBarDragGuardPatch
+{
+    [HarmonyPrefix]
+    private static bool Prefix(GameGridScrollableInventory __instance) => __instance is not VirtualInventory
+        || (ItemMouseDragHandler.current?.IsDraggingItem != true && ItemMultiSelectHandler.current?.IsGroupDragging != true);
+}
