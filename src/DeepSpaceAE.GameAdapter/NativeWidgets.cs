@@ -6,6 +6,20 @@ namespace DeepSpaceAE.GameAdapter;
 
 internal static class NativeWidgets
 {
+    internal static void StorageBackground(GameGridScrollableInventory inventory)
+    {
+        var node = inventory.handler.transform.GetChild(0).GetComponent<TreeNodeRender>();
+        var image = typeof(TreeNodeRender).GetProperty("image")!.GetValue(node)!;
+        typeof(RenderHandler).GetMethod("SetHighlightColor")!.Invoke(RenderHandler.current,
+            new object[] { image, RenderHandler.BackgroundColor.Tan, RenderHandler.BackgroundType.Grid });
+    }
+    internal static void FullCellHit(GameItem item)
+    {
+        if (item is not GameItemElement element) return;
+        var image = typeof(TreeNodeRender).GetProperty("image")!.GetValue(element.background)!;
+        image.GetType().GetProperty("alphaHitTestMinimumThreshold")!.SetValue(image, 0f);
+    }
+
     private static readonly Dictionary<string, string> tagNames = new(StringComparer.Ordinal);
     private static string locale = "";
     private static int localeFrame = -1;

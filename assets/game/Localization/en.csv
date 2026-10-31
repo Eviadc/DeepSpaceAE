@@ -5,12 +5,12 @@ item_terminal_name,AE Terminal
 item_capacity_name,AE Capacity Card
 item_tag_name,AE Category Card
 item_wrench_name,AE Wrench
-item_bus_desc,Connect a container at the arrow and cables at the back. Double-click to configure.
+item_bus_desc,Install on a cable face to access the adjacent container. This face no longer connects cables.
 item_part_desc,Place directly in the main inventory to join the network. Double-click to open.
 item_flavor,Applied energy in deep space.
 item_capacity_desc,Install in a storage bus to add 9 filter slots.
 item_tag_desc,Switch the bus to category filters. One per bus.
-item_wrench_desc,Use on an AE bus to remove one upgrade card.
+item_wrench_desc,Use on a cable to choose a bus to remove. Use on a detached bus to remove its last upgrade card.
 error_enter_game,Load a game first.
 error_terminal_main,Terminal inactive: place it directly in the main inventory.
 error_terminal_network,"Terminal inactive: check the controller, cables and channels. Use one controller per network."
@@ -93,3 +93,13 @@ ui_item_count,{0} instances
 ui_part_stat,\n{0} parts\n{1} kJ per part per night
 ui_filter_matching,Filter matching
 ui_bus_settings,Settings
+ui_cable_bus_data,AE Cable - installed buses
+ui_install_bus_first,Install this storage bus on a cable first.
+ui_face_north,Top (local)
+ui_face_east,Right (local)
+ui_face_south,Bottom (local)
+ui_face_west,Left (local)
+ui_empty_face,No storage bus
+ui_bus_install_hint,Drop a storage bus onto this cable. Faces rotate with the cable.
+ui_remove_bus,Remove storage bus
+item_cable_desc,Drop up to four storage buses onto this cable. Each blocks its face. Rotate the whole cable to rotate all faces.

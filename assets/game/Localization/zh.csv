@@ -5,12 +5,12 @@ item_terminal_name,AE 存储终端
 item_capacity_name,AE 容量升级
 item_tag_name,AE 标签升级
 item_wrench_name,AE 扳手
-item_bus_desc,箭头面接容器，背面接线。双击设置优先级与筛选。
+item_bus_desc,安装在线缆的一面以访问相邻容器；该面不再连接其他线缆。双击线缆选择各面配置。
 item_part_desc,放置于主物品栏接入网络。双击打开。
 item_flavor,深空中的应用能源。
 item_capacity_desc,安装至存储总线，每张增加 9 个筛选槽。
 item_tag_desc,将总线筛选切换为标签。每条总线限一张。
-item_wrench_desc,对 AE 总线使用，拆卸一张升级卡。
+item_wrench_desc,对线缆使用可选择一面卸下总线；对卸下的总线使用可拆出最后一张升级卡。
 error_enter_game,请先进入游戏。
 error_terminal_main,终端未激活：请直接放入主物品栏。
 error_terminal_network,终端未激活：检查核心、线缆和频道。每个网络只能有一个核心。
@@ -93,3 +93,13 @@ ui_item_count,{0} 件
 ui_part_stat,\n{0} 个\n每晚 {1} kJ / 个
 ui_filter_matching,筛选规则
 ui_bus_settings,设置
+ui_cable_bus_data,AE 线缆 - 已安装总线
+ui_install_bus_first,请先将存储总线安装在线缆上。
+ui_face_north,上侧（本地方向）
+ui_face_east,右侧（本地方向）
+ui_face_south,下侧（本地方向）
+ui_face_west,左侧（本地方向）
+ui_empty_face,未安装总线
+ui_bus_install_hint,将总线拖到线缆上安装；各面随整根线缆旋转。
+ui_remove_bus,卸下存储总线
+item_cable_desc,最多安装四个存储总线，每个总线阻断所在面的线缆连接；拿起整根线缆可旋转所有面。

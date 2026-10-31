@@ -43,7 +43,12 @@ public sealed class CatalogSearch
             ? r.SearchTags.Any(t => t.IndexOf(w.Substring(1), StringComparison.OrdinalIgnoreCase) >= 0)
             : r.Text.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0));
         if (sort == CatalogSort.Name) candidates = candidates.OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.Instance);
-        if (sort == CatalogSort.Quantity) candidates = candidates.OrderByDescending(r => r.Quantity).ThenBy(r => r.Instance);
+        if (sort == CatalogSort.Quantity)
+        {
+            var matches = candidates.ToArray();
+            var totals = matches.GroupBy(r => r.ItemId, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Sum(r => (long)r.Quantity), StringComparer.Ordinal);
+            candidates = matches.OrderByDescending(r => totals[r.ItemId]).ThenBy(r => r.ItemId, StringComparer.Ordinal).ThenByDescending(r => r.Quantity);
+        }
         return cachedResult = Array.AsReadOnly(candidates.ToArray());
     }
 }

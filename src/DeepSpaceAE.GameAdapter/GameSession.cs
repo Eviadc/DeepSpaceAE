@@ -98,7 +98,9 @@ internal sealed partial class GameSession
     }
     internal void StructureChanged(GameItem item)
     {
-        if (item.parentInventory != null && observed.Contains(item.parentInventory)) Changed(item, item.parentInventory, null!);
+        var host = PartStorage.BusHost(item);
+        if (host?.parentInventory != null && observed.Contains(host.parentInventory)) Changed(host, host.parentInventory, null!);
+        else if (item.parentInventory != null && observed.Contains(item.parentInventory)) Changed(item, item.parentInventory, null!);
     }
     internal static List<GameInventory> Contents(GameItem owner)
     {
@@ -152,7 +154,7 @@ internal sealed partial class GameSession
                 {
                     var definition = ModEntry.Parts.First(p => p.Id == item.identifier);
                     item.name = UiText.Get(definition.NameKey);
-                    item.shortDescription = definition.Part == NetworkPart.ItemStorageBus ? UiText.Get("item_bus_desc") : UiText.Get("item_part_desc");
+                    item.shortDescription = definition.Part == NetworkPart.ItemStorageBus ? UiText.Get("item_bus_desc") : definition.Part == NetworkPart.Pipeline ? UiText.Get("item_cable_desc") : UiText.Get("item_part_desc");
                     item.flavorText = UiText.Get("item_flavor");
                 }
                 if (IsPart(item) && !ReferenceEquals(item.parentInventory, MainInventory())) Visuals.Inactive(item);
@@ -239,9 +241,13 @@ internal sealed partial class GameSession
         try
         {
             if (part.identifier == "deepspaceae.terminal") { Open(part); return; }
+            if (part.identifier == "deepspaceae.item_storage_bus")
+            {
+                if (PartStorage.CanConfigure(part)) ShowBus(part); else ShowNotice(UiText.Get("ui_install_bus_first"));
+                return;
+            }
             if (!ReferenceEquals(part.parentInventory, MainInventory()) || !GeneralHelper.IsItemEffectivelyOwned(part)) throw new Rejected(UiText.Get("error_part_main"));
             if (part.identifier == "deepspaceae.core") ShowCore(part);
-            else if (part.identifier == "deepspaceae.item_storage_bus") ShowBus(part);
             else ShowCable(part);
         }
         catch (Exception e) { Error(e); }
@@ -259,18 +265,20 @@ internal sealed partial class GameSession
     }
     private void ConfigureNumber(GameItem bus, string key, int value)
     {
-        if (!ReferenceEquals(bus.parentInventory, MainInventory()) || !GeneralHelper.IsItemEffectivelyOwned(bus)) return;
+        if (!PartStorage.CanConfigure(bus)) return;
         PartStorage.Number(bus, key, value); Visuals.Invalidate(); StructureChanged(bus);
     }
     private void SetFilter(GameItem bus, int slot, string value)
     {
-        if (!ReferenceEquals(bus.parentInventory, MainInventory()) || !GeneralHelper.IsItemEffectivelyOwned(bus)) return;
+        if (!PartStorage.CanConfigure(bus)) return;
         var filters = PartStorage.Filters(bus); filters[slot] = value.Replace("\n", "").Replace("\r", "").Trim();
         PartStorage.String(bus, PartStorage.Policy(bus).Tags ? "tag_filters" : "filters", string.Join("\n", filters)); Visuals.Invalidate(); StructureChanged(bus);
     }
     internal void UseWrench(GameItem tool, GameItem bus)
     {
-        if (writing || !GeneralHelper.IsItemEffectivelyOwned(tool) || !GeneralHelper.IsItemEffectivelyOwned(bus) || bus.identifier != "deepspaceae.item_storage_bus") return;
+        if (writing || !GeneralHelper.IsItemEffectivelyOwned(tool) || !GeneralHelper.IsItemEffectivelyOwned(bus)) return;
+        if (bus.identifier == "deepspaceae.pipeline") { ShowCableRemoval(tool, bus); return; }
+        if (bus.identifier != "deepspaceae.item_storage_bus") return;
         var card = PartStorage.Inventory(bus).childItems.LastOrDefault();
         if (card == null) return;
         PartStorage.WithUpgradeRemoval(bus, () => ConfigureMove(bus, card, MainInventory()!));

@@ -55,8 +55,30 @@ internal sealed class CableVisuals
     }
     private void Apply(GameItem part, string path)
     {
-        if (part.spritePath == path || sprites == null || !sprites.TryGetValue(path, out var sprite)) return;
-        if (part is GameItemElement element) { element.ApplyAnimationFrame(sprite); part.spritePath = path; }
+        if (sprites == null || !sprites.TryGetValue(path, out var sprite)) return;
+        if (part is GameItemElement element)
+        {
+            if (part.spritePath != path) { element.ApplyAnimationFrame(sprite); part.spritePath = path; }
+            if (part.identifier == "deepspaceae.pipeline") element.HandleInnateModSprite();
+        }
+    }
+    private static readonly Dictionary<bool, Sprite> markers = new();
+    internal static List<ItemSpriteModifier> BusMarkers(GameItem cable)
+    {
+        var result = new List<ItemSpriteModifier>();
+        bool off = cable.spritePath.EndsWith("-off", StringComparison.Ordinal);
+        if (!markers.TryGetValue(off, out var marker))
+        {
+            var sprite = NativeWidgets.Sprite(off ? "item-storage-bus-off" : "item-storage-bus");
+            if (sprite == null) return result;
+            // Reuse a 4x4 region of the licensed bus texture; no new texture or PNG.
+            marker = Sprite.Create(sprite.texture, new Rect(sprite.rect.x + 6, sprite.rect.y + 6, 4, 4), new Vector2(0, 1));
+            markers.Add(off, marker);
+        }
+        var positions = new[] { new Vector2(6, 0), new Vector2(12, -6), new Vector2(6, -12), new Vector2(0, -6) };
+        foreach (var bus in PartStorage.CableBuses(cable))
+        { int face = PartStorage.Int(bus, "cable_face", -1); if (face >= 0 && face < 4) result.Add(new ItemSpriteModifier(marker, positions[face])); }
+        return result;
     }
     private void Changed(GameItem item, GameInventory inventory, SlotMarker slot)
     {

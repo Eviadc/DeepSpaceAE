@@ -9,18 +9,17 @@ namespace DeepSpaceAE.GameAdapter;
 internal sealed class VirtualInventory : GameGridScrollableInventory
 {
     internal readonly GameItem Owner;
-    internal readonly bool Ghost;
     internal int PageIndex;
     internal VirtualInventoryLayout? Layout;
-    internal Action<int, GameItem>? ConfigureFilter;
     internal Action? Redraw;
     private IReadOnlyDictionary<Guid, GameItem> items = new Dictionary<Guid, GameItem>();
     private IReadOnlyDictionary<Guid, GameInventory> sources = new Dictionary<Guid, GameInventory>();
     private readonly List<TreeNodeRender> tiles = new();
     private readonly Dictionary<Guid, ItemTile> itemTiles = new();
-    internal VirtualInventory(GameItem owner, int width, int height, bool ghost = false) : base(width, height, height, 0)
+    internal VirtualInventory(GameItem owner, int width, int height) : base(width, height, height, 0)
     {
-        Owner = owner; Ghost = ghost;
+        Owner = owner;
+        NativeWidgets.StorageBackground(this);
         rectTransform.anchorMin = rectTransform.anchorMax = rectTransform.pivot = new Vector2(0, 1);
         inner.rectTransform.anchorMin = inner.rectTransform.anchorMax = inner.rectTransform.pivot = new Vector2(0, 1);
         inner.rectTransform.anchoredPosition = Vector2.zero;
@@ -34,7 +33,7 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
     private bool visibilityQueued;
     internal void QueueVisibility()
     {
-        if (Ghost || visibilityQueued) return;
+        if (visibilityQueued) return;
         visibilityQueued = true;
         LetterboxManager.RunNextUpdate(() => {
             visibilityQueued = false;
@@ -43,7 +42,7 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
     }
     internal void RefreshVisible()
     {
-        if (Ghost || Layout == null || ItemMouseDragHandler.current?.IsDraggingItem == true
+        if (Layout == null || ItemMouseDragHandler.current?.IsDraggingItem == true
             || ItemMultiSelectHandler.current?.IsGroupDragging == true) return;
         int top = (int)Math.Round(inner.rectTransform.anchoredPosition.y / UISettings.current.gridSize);
         var visible = Layout.Visible(top, GetVisibleHeight() + 1);
@@ -81,16 +80,6 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
         itemTiles.Add(id, tile);
         tile.CreateView();
     }
-    internal void GhostTile(int index, Sprite? sprite, string description, Action clear)
-    {
-        int cell = UISettings.current.gridSize;
-        var button = new MachineryButton("", clear, cell, cell);
-        if (sprite != null) { var image = TreeNodeRender.Instantiate().SetParent(button.handler); MachineryStyle.SetSimple(image, sprite, Color.white); MachineryStyle.Place(image, 1, 1, cell - 2, cell - 2); }
-        button.SetDescription(description);
-        button.handler.SetParent(inner);
-        MachineryStyle.Place(button.handler, index % 9 * cell, index / 9 * cell, cell, cell);
-        tiles.Add(button.handler);
-    }
     internal (int X, int Y) Cell(Vector2 position)
     {
         var local = inner.rectTransform.InverseTransformPoint(position);
@@ -99,7 +88,7 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
     }
     internal GameItem? At(Vector2 position)
     {
-        if (Ghost || Layout == null) return null;
+        if (Layout == null) return null;
         var (x, y) = Cell(position); var id = Layout.At(PageIndex, x, y);
         return id.HasValue && items.TryGetValue(id.Value, out var item) ? item : null;
     }
@@ -117,9 +106,9 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
     private static readonly MethodInfo setHighlight = typeof(RenderHandler).GetMethod("SetHighlightColor")!;
     private static PropertyInfo? imageEnabled;
     public override List<TreeNodeRender> HighlightSlot(SlotMarker slot, RenderHandler.BackgroundColor color, bool doReplace)
-        => Ghost ? base.HighlightSlot(slot, color, doReplace) : HighlightDropArea(color);
+        => HighlightDropArea(color);
     public override List<TreeNodeRender> HighlightWholeInventory(RenderHandler.BackgroundColor color)
-        => Ghost ? base.HighlightWholeInventory(color) : HighlightDropArea(color);
+        => HighlightDropArea(color);
     private List<TreeNodeRender> HighlightDropArea(RenderHandler.BackgroundColor color)
     {
         int cell = UISettings.current.gridSize;
@@ -153,7 +142,7 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
     public override bool UncheckedAccept(GameItem item) => false;
     public override bool Expel(GameItem item) => false;
     public override bool MayHaveValidInventorySlot(GameItem item) => item != null;
-    public override SlotMarker TryFindOneValidInventorySlot(GameItem item) => new SlotMarker { item = item, inventory = this, numTransfer = Ghost ? 0 : item.unitCount };
+    public override SlotMarker TryFindOneValidInventorySlot(GameItem item) => new SlotMarker { item = item, inventory = this, numTransfer = item.unitCount };
     public override SlotMarker TryInventorySlot(GameItem item, int requestedNum, Vector2 position, GridShape shape, TagSystem state)
     {
         var (x,y) = Cell(position);

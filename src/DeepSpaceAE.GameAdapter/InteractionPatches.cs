@@ -41,7 +41,7 @@ internal static class LockedBatterySwapPatch
         {
             var inv = item?.parentInventory;
             var owner = inv?.GetParentItem();
-            return owner != null && (owner.identifier == "deepspaceae.core" || owner.identifier == "deepspaceae.item_storage_bus")
+            return owner != null && (owner.identifier == "deepspaceae.core" || owner.identifier == "deepspaceae.item_storage_bus" || owner.identifier == "deepspaceae.pipeline")
                 && (inv!.IsRemoveLocked() || item!.MaxNumRemove() < item.unitCount);
         }
         if (!Locked(source) && !Locked(target)) return true;

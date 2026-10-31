@@ -11,6 +11,7 @@ internal sealed class InventoryLayout
     internal readonly List<GameItem> Items;
     internal readonly List<GameItem> Parts = new();
     internal readonly HashSet<GameItem> Owned = new();
+    internal readonly Dictionary<GameItem, GameItem> BusCables = new();
     private readonly HashSet<GameItem> partSet = new();
     private readonly OccupiedGrid<GameItem> grid = new();
     private readonly Dictionary<GameItem, List<GridCell>> footprints = new();
@@ -21,7 +22,7 @@ internal sealed class InventoryLayout
         foreach (var item in Items)
         {
             if (!ReferenceEquals(item.parentInventory, root)) throw new InvalidOperationException("Inconsistent MAIN inventory observation.");
-            var part = GameSession.IsPart(item);
+            var part = GameSession.IsPart(item) && item.identifier != "deepspaceae.item_storage_bus";
             if (partsOnly && !part) continue;
             if (GeneralHelper.IsItemEffectivelyOwned(item)) Owned.Add(item);
             if (part && Owned.Contains(item)) { Parts.Add(item); partSet.Add(item); }
@@ -38,6 +39,15 @@ internal sealed class InventoryLayout
                     }
             footprints.Add(item, cells);
         }
+        foreach (var cable in Parts.Where(i => i.identifier == "deepspaceae.pipeline").ToArray())
+            foreach (var bus in PartStorage.CableBuses(cable))
+            {
+                int face = PartStorage.Int(bus, "cable_face", -1);
+                if (face < 0 || face > 3) continue;
+                BusCables.Add(bus, cable); Parts.Add(bus); partSet.Add(bus); Owned.Add(bus);
+                footprints.Add(bus, footprints[cable]);
+            }
+
     }
 
     // Transform an authored local port with the game's actual rotation and flip mapping.
@@ -52,17 +62,28 @@ internal sealed class InventoryLayout
 
     internal GameItem? FrontOwner(GameItem bus)
     {
-        if (!footprints.TryGetValue(bus, out var cells) || cells.Count != 1)
-            throw new InvalidOperationException("Storage bus must occupy exactly one cell.");
-        return grid.At(cells[0] + Step(bus, GridSide.East));
+        if (!BusCables.TryGetValue(bus, out var cable)) return null;
+        var cells = footprints[cable];
+        return grid.At(cells[0] + Step(cable, (GridSide)PartStorage.Int(bus, "cable_face")));
     }
 
     private static bool Allows(GameItem item, GridCell toward)
-        => item.identifier != "deepspaceae.item_storage_bus" || GridSides.IsBackFace(Step(item, GridSide.East), toward);
+    {
+        if (item.identifier != "deepspaceae.pipeline") return item.identifier != "deepspaceae.item_storage_bus";
+        foreach (var bus in PartStorage.CableBuses(item))
+        {
+            int face = PartStorage.Int(bus, "cable_face", -1);
+            if (face >= 0 && face < 4 && Step(item, (GridSide)face).Equals(toward)) return false;
+        }
+        return true;
+    }
 
     internal HashSet<GameItem> Neighbors(GameItem part)
     {
         var result = new HashSet<GameItem>();
+        if (BusCables.TryGetValue(part, out var host)) { result.Add(host); return result; }
+        if (part.identifier == "deepspaceae.pipeline")
+            foreach (var bus in PartStorage.CableBuses(part)) if (BusCables.ContainsKey(bus)) result.Add(bus);
         foreach (var cell in footprints[part])
             for (int side = 0; side < 4; side++)
             {
@@ -88,7 +109,16 @@ internal sealed class InventoryLayout
     {
         var cells = footprints[cable];
         if (cells.Count != 1) throw new InvalidOperationException("Cable must occupy exactly one cell.");
-        return grid.ConnectionMask(cells[0], side => Step(cable, side),
-            (other, toward) => partSet.Contains(other) && Allows(other, toward));
+        int mask = 0;
+        for (int side = 0; side < 4; side++)
+        {
+            var offset = Step(cable, (GridSide)side); var other = grid.At(cells[0] + offset);
+            if (other != null && partSet.Contains(other)
+                && Allows(other, new GridCell(-offset.X, -offset.Y))) mask |= 1 << side;
+        }
+        int installed = 0;
+        foreach (var bus in PartStorage.CableBuses(cable))
+        { int face = PartStorage.Int(bus, "cable_face", -1); if (face >= 0 && face < 4) installed |= 1 << face; }
+        return CablePorts.TransmissionMask(installed, mask);
     }
 }

@@ -8,7 +8,8 @@ namespace DeepSpaceAE.GameAdapter;
 internal sealed partial class GameSession
 {
     private PixelWindow? terminalWindow, partWindow, editorWindow, noticeWindow;
-    private VirtualInventory? terminalGrid, filterGrid;
+    private VirtualInventory? terminalGrid;
+    private GhostFilterInventory? filterGrid;
     private BorrowedInventoryView? borrowedStorage;
     private GameItem? displayedPart;
     private View? displayedView;
@@ -148,23 +149,48 @@ internal sealed partial class GameSession
             MachineHelper.Panel(UiText.Get("ui_controller"), overview, "network", false));
         partWindow.SetTitle(UiText.Get("ui_controller_title")); partWindow.closeCallback = ClosePart; partWindow.Show().Center();
     }
+    private static string FaceName(int side) => UiText.Get(new[] { "ui_face_north", "ui_face_east", "ui_face_south", "ui_face_west" }[side]);
     private void ShowCable(GameItem cable)
     {
         ClosePart(); displayedPart = cable;
         var board = ReadBoard();
         bool online = board.Evaluation.ComponentCore.TryGetValue(Id(cable), out var core) && board.Powered.Contains(core);
+        var sides = new List<PixelElement>();
+        for (int side = 0; side < 4; side++)
+        {
+            int face = side; var bus = PartStorage.CableBuses(cable).SingleOrDefault(b => PartStorage.Int(b, "cable_face", -1) == face);
+            if (bus != null) sides.Add(new MachineryButton(FaceName(face) + " - " + UiText.Get("ui_bus_title"), () => OpenPart(bus), 145));
+            else sides.Add(NativeWidgets.Text(FaceName(face) + " - " + UiText.Get("ui_empty_face")));
+        }
         partWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel(UiText.Get("ui_cable"), MachineryStack.Vertical(
             NativeWidgets.Icon(NativeWidgets.Sprite("pipeline")), MachineryText.Status(UiText.Get("ui_status"), online ? UiText.Get("ui_online") : UiText.Get("ui_inactive")),
-            MachineryText.Status(UiText.Get("ui_channels"), board.Evaluation.ChannelsUsed[Id(cable)] + " / 8")), "cable", false));
+            MachineryText.Status(UiText.Get("ui_channels"), board.Evaluation.ChannelsUsed[Id(cable)] + " / 8"),
+            NativeWidgets.Text(UiText.Get("ui_bus_install_hint")), MachineryStack.Vertical(sides.ToArray())), "cable", false));
         partWindow.closeCallback = ClosePart; partWindow.Show().Center();
+    }
+    private void ShowCableRemoval(GameItem tool, GameItem cable)
+    {
+        CloseEditor();
+        var buttons = new List<PixelElement>();
+        foreach (var bus in PartStorage.CableBuses(cable))
+        {
+            var selected = bus; int face = PartStorage.Int(bus, "cable_face", -1);
+            buttons.Add(new MachineryButton((face >= 0 && face < 4 ? FaceName(face) : "?") + " - " + UiText.Get("ui_remove_bus"), () => {
+                if (writing || !ReferenceEquals(cable.parentInventory, MainInventory()) || !GeneralHelper.IsItemEffectivelyOwned(tool)
+                    || !ReferenceEquals(PartStorage.BusHost(selected), cable)) return;
+                CloseEditor(); PartStorage.WithUpgradeRemoval(cable, () => ConfigureMove(cable, selected, MainInventory()!));
+            }, 145));
+        }
+        if (buttons.Count == 0) return;
+        editorWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel(UiText.Get("ui_remove_bus"), MachineryStack.Vertical(buttons.ToArray()), "wrench", false));
+        editorWindow.closeCallback = CloseEditor; editorWindow.Show().Center();
     }
     private void ShowBus(GameItem bus)
     {
         ClosePart(); displayedPart = bus;
         var policy = PartStorage.Policy(bus);
-        filterGrid = new VirtualInventory(bus, 9, policy.Slots / 9, true);
+        filterGrid = new GhostFilterInventory(9, policy.Slots / 9);
         filterGrid.ConfigureFilter = (index, item) => CaptureGhost(bus, index, item);
-        filterGrid.Redraw = RenderFilters;
         var access = NativeWidgets.Dropdown(new[] { UiText.Get("ui_access_both"), UiText.Get("ui_access_extract"), UiText.Get("ui_access_insert") },
             (int)policy.Access, value => ConfigureNumber(bus, "access", value), 110);
         var matching = NativeWidgets.Dropdown(new[] { UiText.Get("ui_include"), UiText.Get("ui_exclude") }, policy.Exclude ? 1 : 0,
@@ -173,7 +199,8 @@ internal sealed partial class GameSession
             value => ConfigureNumber(bus, "extract_filter", value ? 1 : 0), 110);
         var options = MachineryStack.Vertical(NativeWidgets.Text(UiText.Get("ui_access_mode")), access,
             NativeWidgets.Text(UiText.Get("ui_filter_matching")), matching, extraction,
-            new MachineryButton(UiText.Get("ui_priority"), () => ShowPriority(bus), 110, 18));
+            new MachineryButton(UiText.Get("ui_priority"), () => ShowPriority(bus), 110, 18),
+            new MachineryButton(UiText.Get("ui_back"), () => { var host = PartStorage.BusHost(bus); if (host != null) OpenPart(host); }, 110, 18));
         partWindow = MachineHelper.CreateMachineryWindow(true,
             new MachineryPanel(UiText.Get("ui_bus_settings"), options, "settings"),
             MachineHelper.Panel(policy.Tags ? UiText.Get("ui_category_filter") : UiText.Get("ui_item_filter"), filterGrid, "storage_bus"),
@@ -211,7 +238,7 @@ internal sealed partial class GameSession
     private void CaptureGhost(GameItem bus, int slot, GameItem item)
     {
         var policy = PartStorage.Policy(bus);
-        if (slot < 0 || slot >= policy.Slots || !ReferenceEquals(bus.parentInventory, MainInventory()) || !GeneralHelper.IsItemEffectivelyOwned(bus)) return;
+        if (slot < 0 || slot >= policy.Slots || !PartStorage.CanConfigure(bus)) return;
         if (!policy.Tags)
         {
             SetFilter(bus, slot, item.identifier);
@@ -248,7 +275,8 @@ internal sealed partial class GameSession
     }
     internal void NativeStorageChanged(GameItem? owner = null)
     {
-        if (owner == null || ReferenceEquals(owner, displayedPart)) RefreshPartLater();
+        if (owner != null) StructureChanged(owner);
+        if (owner == null || ReferenceEquals(owner, displayedPart) || (displayedPart != null && ReferenceEquals(PartStorage.BusHost(displayedPart), owner))) RefreshPartLater();
     }
     private void RefreshPartLater()
     {
@@ -257,8 +285,13 @@ internal sealed partial class GameSession
         LetterboxManager.RunNextUpdate(() => {
             partRefreshQueued = false;
             if (displayedPart == null || ItemMouseDragHandler.current?.IsDraggingItem == true) return;
-            if (!ReferenceEquals(displayedPart.parentInventory, MainInventory()) || !GeneralHelper.IsItemEffectivelyOwned(displayedPart)) { ClosePart(); return; }
+            if (!(ReferenceEquals(displayedPart.parentInventory, MainInventory()) || PartStorage.CanConfigure(displayedPart)) || !GeneralHelper.IsItemEffectivelyOwned(displayedPart)) { ClosePart(); return; }
             if (filterGrid != null) RenderFilters();
+            else if (displayedPart.identifier == "deepspaceae.pipeline")
+            {
+                var position = partWindow?.rectTransform.position; ShowCable(displayedPart);
+                if (position.HasValue && partWindow != null) { partWindow.rectTransform.position = position.Value; partWindow.FixBounds(); }
+            }
             else if (displayedPart.identifier == "deepspaceae.core")
             {
                 var position = partWindow?.rectTransform.position;

@@ -44,7 +44,7 @@ for name, path in files.items():
         size = 48 if Path(name).stem == "core" or Path(name).stem.startswith("core-") else 16
         assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", data[16:24]) == (size, size)
 version = ET.parse(files["DeepSpaceAE/manifest.xml"]).getroot().findtext("ModVersion")
-assert version == "0.3.6-alpha"
+assert version == "0.4.0-alpha"
 audit_path = root / "artifacts/validation/game-patch-audit.json"
 if not audit_path.is_file():
     raise SystemExit("Missing game patch metadata audit; run scripts/build-game.ps1 (Windows) or scripts/build-game.sh first.")

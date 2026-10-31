@@ -16,6 +16,18 @@ internal static class PartStorage
     }
     private static readonly ConditionalWeakTable<GameItem, Slots> slots = new();
     internal static GameInventory Inventory(GameItem item) => slots.GetValue(item, _ => throw new InvalidOperationException("Missing AE storage graph.")).Inventory;
+    internal static List<GameItem> CableBuses(GameItem cable) => Inventory(cable).childItems;
+    internal static GameItem? BusHost(GameItem bus)
+    {
+        var owner = bus.parentInventory?.GetParentItem();
+        return owner?.identifier == "deepspaceae.pipeline" ? owner : null;
+    }
+    internal static bool CanConfigure(GameItem bus)
+    {
+        var host = BusHost(bus);
+        return host != null && ReferenceEquals(host.parentInventory, GameSession.MainInventory())
+            && GeneralHelper.IsItemEffectivelyOwned(host) && GeneralHelper.IsItemEffectivelyOwned(bus);
+    }
     internal static int Day => StoreStation.GetDayCounter();
     internal static TagState? Read(GameItem item, string key) => item.state.dict.TryGetValue("deepspaceae." + key, out var value) ? value : null;
     internal static int Int(GameItem item, string key, int fallback = 0) => Read(item, key)?.GetInt() ?? fallback;
@@ -65,12 +77,39 @@ internal static class PartStorage
             };
             var window = new PixelWindow(true, UiText.Get("ui_battery_data")); window.Attach(slot); item.SetContentWindow(window);
         }
+        else if (item.identifier == "deepspaceae.pipeline")
+        {
+            var grid = new GameGridInventory(4, 1); var data = new Slots { Inventory = grid }; slots.Add(item, data);
+            grid.mayInventoryAddItemFunc = (bus, _) => ReferenceEquals(item.parentInventory, GameSession.MainInventory())
+                && GeneralHelper.IsItemEffectivelyOwned(item) && GeneralHelper.IsItemEffectivelyOwned(bus)
+                && bus.identifier == "deepspaceae.item_storage_bus" && bus.unitCount == 1 && grid.childItems.Count < 4;
+            grid.maxSlotRemoveItemFunc = (_, _, _) => data.RemovingUpgrade ? int.MaxValue : 0;
+            grid.mayInventoryRemoveItemFunc = (_, _) => data.RemovingUpgrade;
+            grid.onSlotAddItemEndFunc += (bus, _, _) => {
+                if (ModEntry.ActiveSession?.Loading == false)
+                {
+                    int installed = 0;
+                    foreach (var existing in grid.childItems.Where(b => !ReferenceEquals(b, bus)))
+                    { int face = Int(existing, "cable_face", -1); if (face >= 0 && face < 4) installed |= 1 << face; }
+                    var layout = new InventoryLayout(GameSession.MainInventory()!);
+                    int chosen = CablePorts.ChooseFace(installed, layout.CableMask(item));
+                    if (chosen < 0) throw new InvalidOperationException("Cable has no free bus face.");
+                    Number(bus, "cable_face", chosen);
+                }
+                ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item);
+            };
+            grid.onSlotRemoveItemEndFunc += (bus, _, _) => {
+                if (ModEntry.ActiveSession?.Loading == false) Number(bus, "cable_face", -1);
+                ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item);
+            };
+            var window = new PixelWindow(true, UiText.Get("ui_cable_bus_data")); window.Attach(grid); item.SetContentWindow(window);
+        }
         else if (item.identifier == "deepspaceae.item_storage_bus")
         {
             var grid = new GameGridInventory(5, 1);
             var data = new Slots { Inventory = grid };
             slots.Add(item, data);
-            grid.mayInventoryAddItemFunc = (card, _) => ReferenceEquals(item.parentInventory, GameSession.MainInventory()) && GeneralHelper.IsItemEffectivelyOwned(item) && GeneralHelper.IsItemEffectivelyOwned(card) && card.unitCount == 1
+            grid.mayInventoryAddItemFunc = (card, _) => CanConfigure(item) && GeneralHelper.IsItemEffectivelyOwned(card) && card.unitCount == 1
                 && (card.identifier == Capacity || (card.identifier == Tag && !grid.childItems.Any(c => c.identifier == Tag)));
             grid.maxSlotRemoveItemFunc = (_, _, _) => data.RemovingUpgrade ? int.MaxValue : 0;
             grid.mayInventoryRemoveItemFunc = (_, _) => data.RemovingUpgrade;

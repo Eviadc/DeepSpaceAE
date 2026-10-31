@@ -23,7 +23,7 @@ public sealed class ModEntry : IMod
         log = new ModLog(manifest); // Manifest Name is ASCII; keep official metadata intact.
         session = new GameSession(log);
         ActiveSession = session;
-        log.Log("DeepSpaceAE 0.3.6 / 100-Rev6 initialized.");
+        log.Log("DeepSpaceAE 0.4.0 / 100-Rev6 initialized.");
     }
 
     public void OnEnable()
@@ -75,7 +75,7 @@ public sealed class ModEntry : IMod
             directory.Add(definition.Id, () => {
                 var item = ItemDirectory.CreateEmptyItem(definition.Id);
                 item.name = UiText.Get(definition.NameKey);
-                item.shortDescription = definition.Part == NetworkPart.ItemStorageBus ? UiText.Get("item_bus_desc") : UiText.Get("item_part_desc");
+                item.shortDescription = definition.Part == NetworkPart.ItemStorageBus ? UiText.Get("item_bus_desc") : definition.Part == NetworkPart.Pipeline ? UiText.Get("item_cable_desc") : UiText.Get("item_part_desc");
                 item.flavorText = UiText.Get("item_flavor");
                 item.unitValue = 1;
                 item.SetSpriteAndShapeFromMod(ModId, definition.Sprite + "-off");
@@ -89,6 +89,8 @@ public sealed class ModEntry : IMod
                 item.mayActivateSlotItemFunc = (_, _, _) => false;
                 item.canActivateSlotItemFunc = (_, _, _) => false;
                 PartStorage.Create(item);
+                if (definition.Part == NetworkPart.Pipeline)
+                { NativeWidgets.FullCellHit(item); item.getItemSpriteModifierForItemFunc = CableVisuals.BusMarkers; }
                 return item;
             });
         }
@@ -109,8 +111,8 @@ public sealed class ModEntry : IMod
                     item.SetGameItemType("TOOL");
                     item.maySelectSlotItemFunc = (_, _, _) => true;
                     item.canSelectSlotItemFunc = (_, _, _) => true;
-                    item.mayThisTargetItemFunc = (_, target) => target.identifier == "deepspaceae.item_storage_bus";
-                    item.canThisTargetItemFunc = (_, target) => target.identifier == "deepspaceae.item_storage_bus" && PartStorage.Inventory(target).childItems.Count > 0;
+                    item.mayThisTargetItemFunc = (_, target) => (target.identifier == "deepspaceae.item_storage_bus" || target.identifier == "deepspaceae.pipeline");
+                    item.canThisTargetItemFunc = (_, target) => (target.identifier == "deepspaceae.item_storage_bus" || target.identifier == "deepspaceae.pipeline") && PartStorage.Inventory(target).childItems.Count > 0;
                     item.onThisTargetItemFunc = (tool, target) => session.UseWrench(tool, target);
                 }
                 return item;

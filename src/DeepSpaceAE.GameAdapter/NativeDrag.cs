@@ -35,7 +35,7 @@ internal static class ProjectionPressPatch
         // Mirror hit nodes resolve to the real item without moving its renderer.
         var tile = RenderHandler.RaycastFindParentElement<VirtualInventory.ItemTile>(position);
         var surface = tile?.Surface;
-        if (surface == null || surface.Ghost) return;
+        if (surface == null) return;
         var (x, y) = surface.Cell(position);
         if (surface.Layout?.At(surface.PageIndex, x, y) != tile!.Instance) return;
         if (surface.At(position) is not GameItemElement item || item.parentInventory == null) return;
@@ -78,6 +78,16 @@ internal static class ProjectionDropPatch
         ref GameInventory ___lastInventory, ref GameItem ___lastItem, ref SlotMarker ___lastSlot)
     {
         if (!___isDragging || ___currentItem == null) return;
+        if (___lastInventory is GhostFilterInventory filter)
+        {
+            try
+            {
+                var marker = filter.TryInventorySlot(___currentItem, ___currentRemove, ___currentItem.GetFakeRotatorCenteredPosition(), ___currentItem.tempShape, ___currentItem.modifiedState);
+                if (marker.numTransfer > 0) filter.ConfigureFilter?.Invoke(marker.index, ___currentItem);
+            }
+            finally { ___lastInventory = null!; ___lastItem = null!; ___lastSlot = null!; NativeDrag.Gesture = null; }
+            return;
+        }
         var source = NativeDrag.Gesture;
         var target = ___lastInventory as VirtualInventory;
         if (source == null && target == null) return;
@@ -96,9 +106,10 @@ internal static class ProjectionNeverOwnsItemsPatch
     [HarmonyPrefix]
     private static bool Prefix(SlotMarker __instance, int amount, ref int __result)
     {
+        if (__instance.inventory is GhostFilterInventory) { __result = 0; return false; }
         if (__instance.inventory is not VirtualInventory) return true;
         __result = 0;
-        if (__instance.inventory is VirtualInventory surface && !surface.Ghost && __instance.item is GameItemElement item
+        if (__instance.inventory is VirtualInventory surface && __instance.item is GameItemElement item
             && __instance.numTransfer >= item.unitCount && (amount < 0 || amount >= item.unitCount))
             __result = ModEntry.ActiveSession?.DepositFromNative(surface, item) ?? 0;
         return false; // Route native bulk/quick moves through fresh network checks, never into this grid.
@@ -108,7 +119,7 @@ internal static class ProjectionNeverOwnsItemsPatch
 internal static class ProjectionNeverUncheckedPatch
 {
     [HarmonyPrefix]
-    private static bool Prefix(SlotMarker __instance) => __instance.inventory is not VirtualInventory;
+    private static bool Prefix(SlotMarker __instance) => __instance.inventory is not VirtualInventory && __instance.inventory is not GhostFilterInventory;
 }
 // GameItem.Destroy is abstract and cannot be patched. Guard its concrete renderer override only.
 [HarmonyPatch(typeof(GameItemElement), nameof(GameItemElement.Destroy))]
@@ -157,12 +168,6 @@ internal sealed partial class GameSession
         try
         {
             if (gesture?.Cancelled == true) return;
-            if (target?.Ghost == true)
-            {
-                var marker = target.TryInventorySlot(item, item.unitCount, item.GetFakeRotatorCenteredPosition(), item.tempShape, item.modifiedState);
-                if (marker.numTransfer > 0) target.ConfigureFilter?.Invoke(marker.index, item);
-                return; // A ghost filter copies metadata; never moves the dragged instance.
-            }
             if (writeFault) throw new Rejected(UiText.Get("error_transfer_locked"));
             if (gesture != null && (gesture.Cancelled || !gesture.Allowed)) throw new Rejected(UiText.Get("error_gesture_expired"));
             var source = item.parentInventory ?? throw new Rejected(UiText.Get("error_item_gone"));
@@ -189,7 +194,7 @@ internal sealed partial class GameSession
             if (target != null)
             {
                 deposit = Read(target.Owner);
-                if ((IsPart(item) && ReferenceEquals(source, deposit.Root)) || deposit.Inventories.ContainsKey(item)) throw new Rejected(UiText.Get("error_active_part"));
+                if ((IsPart(item) && item.identifier != "deepspaceae.item_storage_bus" && ReferenceEquals(source, deposit.Root)) || deposit.Inventories.ContainsKey(item)) throw new Rejected(UiText.Get("error_active_part"));
                 var policies = deposit.Policies.ToDictionary(p => Id(p.Key), p => p.Value, StringComparer.Ordinal);
                 SlotMarker? found = null;
                 foreach (var busId in StorageRouting.InsertionOrder(policies, item.identifier, PartStorage.Tags(item)))
@@ -258,7 +263,7 @@ internal static class CancelProjectionGesturePatch
     [HarmonyPrefix]
     private static void Prefix(bool ___isDragging, ref GameInventory ___lastInventory, ref GameItem ___lastItem, ref SlotMarker ___lastSlot)
     {
-        if (!___isDragging || (NativeDrag.Gesture == null && ___lastInventory is not VirtualInventory)) return;
+        if (!___isDragging || (NativeDrag.Gesture == null && ___lastInventory is not VirtualInventory && ___lastInventory is not GhostFilterInventory)) return;
         if (NativeDrag.Gesture != null) NativeDrag.Gesture.Cancelled = true;
         ___lastInventory = null!; ___lastItem = null!; ___lastSlot = null!;
     }
