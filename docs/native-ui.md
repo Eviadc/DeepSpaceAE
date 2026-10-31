@@ -45,3 +45,15 @@ VirtualInventory 是真实 GameGridInventory 的显示子类，内部不接收 G
 - 16 种连接图完整采样 AE2 glass cable 的 center/connection/straight 顶面和 UV。保留原素材透明孔洞，不再画纯色连接臂。12 张核心帧从 controller_lights.png 等距裁取并合成原版底图，保持同为 48×48。供电联网时调用真实 SpriteAnimationHelper.InitSpriteAnimation，每帧 500 ms（原 mcmeta 的 25 tick）；关闭/拆离/停用时移除自有动画，熄灭。复用原生动画管理器，不运行网络扫描、不动态创建纹理；不声称复现原 Minecraft 的插值着色。
 
 当前素材白名单 55 PNG（43 基础 + 12 动画帧），含许可及固定来源哈希。字形刷屏仍按用户要求搁置；没有全局修改字体/日志开关。新命中路径、布局、动画及控件比例都需要用户在真实游戏复测；真实引用编译和元数据检查无法替代现场 UI 验收。
+
+## 0.3.3 原版物品渲染与批量存入
+
+用户报告 0.3.2 终端双击、右键、拖动和外部多选拖入无效。核对本地 Rev6：ItemMouseDoubleClickHandler、ItemContextHandler、ItemMouseDragHandler 用 RaycastElement 查找真实 GameItem/GameItemElement，旧 EmptyPixelElement 投影片无法被识别。仅补拖动按下不覆盖这些入口。原版多选 EndGroupDrag 的普通批量分支调用 GraphUtils.TryAcceptAll → TryFindOneValidInventorySlot → SlotMarker.TryAcceptOnce；旧虚拟槽 numTransfer=0 且提交被统一拒绝，故不会存入。SupportsGroupPlacement=false 仅关闭空间阵列摆放，不是禁用普通批量存入。
+
+方案选择：保留跨容器搜索/分页的非持有目录，借用实际 GameItemElement.handler 的原版渲染树，不再手绘 sprite、数量或命中片；原版双击、右键菜单、提示和拖动识别真实对象，其他模组在这些原版对象上的扩展也可参与。仅改变渲染父级与显示偏移，parentInventory、modifiedShape 和保存图不变。源容器中该实例的同一份渲染会暂时显示在终端中，不支持同时渲染两份；关闭、换页或刷新先按当前真实 parentInventory 归还，移动已重新挂接的渲染不归还旧容器。销毁布局前必须先归还，防止误销毁真实物品。UpdateRectTransform 后只重施自有显示偏移。
+
+不选用“把终端变成普通拥有型库存”：这会实际取走网络容器物品、改变容量与保存语义。逐容器原版库存展示虽简单，但不提供当前统一搜索/排序。选择原版真实渲染加目录布局，并保留网络存取门禁。
+
+外部多选拖到终端空白区域采用原版逐件批量路径；虚拟 SlotMarker 仅表达路由请求，提交时逐件重新读网络、供电、总线权限、容量与来源，并使用既有 NativeMove。绝不把物品放入虚拟库存。部分数量请求拒绝；失败物品留源，未知结果锁定后续移动，不承诺整批原子成功。精确阵列摆放仍不支持；终端内框选跨容器物品也未新增，原版框选依赖真实库存/窗口保存图，不能靠填充虚拟 childItems 伪造。
+
+验证：Windows Rev6 真实引用编译及补丁元数据审计；模型测试仅证明既有模型。真实 UI 尚待用户复测双击开容器、右键菜单、单件拖出、外部多选拖至终端空白、关窗恢复源容器显示，以及容量不足/权限拒绝和保存往返。此次未启动游戏，不声称已验证跨模组运行兼容性。

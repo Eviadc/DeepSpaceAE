@@ -32,7 +32,7 @@ internal static class ProjectionPressPatch
         NativeDrag.Gesture = null;
         var position = ___lastMouseClickedPosition;
         // Use the actual tile and the pointer captured by the native input handler.
-        // A non-owning projection is deliberately not a native GameItemElement.
+        // The native item renderer is borrowed beneath this non-owning layout tile.
         var tile = RenderHandler.RaycastFindParentElement<VirtualInventory.ItemTile>(position);
         var surface = tile?.Surface;
         if (surface == null || surface.Ghost) return;
@@ -41,7 +41,6 @@ internal static class ProjectionPressPatch
         if (surface.At(position) is not GameItemElement item || item.parentInventory == null) return;
         var observedSource = surface.SourceAt(position);
         if (observedSource == null || !ReferenceEquals(observedSource, item.parentInventory)) return;
-        surface.Select(tile.Instance);
         surface.handler.FindParentWindow()?.ToFront();
         ___currentItem = item;
         ___lastMouseClickedKey = __instance.key;
@@ -94,10 +93,14 @@ internal static class ProjectionDropPatch
 internal static class ProjectionNeverOwnsItemsPatch
 {
     [HarmonyPrefix]
-    private static bool Prefix(SlotMarker __instance, ref int __result)
+    private static bool Prefix(SlotMarker __instance, int amount, ref int __result)
     {
         if (__instance.inventory is not VirtualInventory) return true;
-        __result = 0; return false; // Never let another native path expel into a display-only grid.
+        __result = 0;
+        if (__instance.inventory is VirtualInventory surface && !surface.Ghost && __instance.item is GameItemElement item
+            && __instance.numTransfer >= item.unitCount && (amount < 0 || amount >= item.unitCount))
+            __result = ModEntry.ActiveSession?.DepositFromNative(surface, item) ?? 0;
+        return false; // Route native bulk/quick moves through fresh network checks, never into this grid.
     }
 }
 [HarmonyPatch(typeof(SlotMarker), nameof(SlotMarker.AcceptUnchecked))]
@@ -117,6 +120,20 @@ internal static class PreserveUnknownProjectionElementPatch
 internal sealed partial class GameSession
 {
     private readonly HashSet<GameItem> uncertainItems = new();
+    internal int DepositFromNative(VirtualInventory target, GameItemElement item)
+    {
+        var source = item.parentInventory;
+        if (source == null || writing || writeFault) return 0;
+        var previousItem = NativeDrag.OriginItem; var previousSource = NativeDrag.OriginSource;
+        int count = item.unitCount;
+        try
+        {
+            NativeDrag.OriginItem = item; NativeDrag.OriginSource = source;
+            NativeDrop(null, target, item, count, target, null);
+            return !writeFault && item.parentInventory != null && !ReferenceEquals(source, item.parentInventory) ? count : 0;
+        }
+        finally { NativeDrag.OriginItem = previousItem; NativeDrag.OriginSource = previousSource; }
+    }
     internal bool PreserveUncertain(GameItem item) => uncertainItems.Contains(item);
     internal bool ValidateProjection(ProjectionGesture gesture)
     {
@@ -255,4 +272,13 @@ internal static class ClearNativeDragOriginPatch
         NativeDrag.OriginItem = null; NativeDrag.OriginSource = null;
         ModEntry.ActiveSession?.DragEnded();
     }
+}
+
+// Native validation may reset the root to its source coordinates. Only render offsets
+// are reapplied; no inventory or saved shape is changed.
+[HarmonyPatch(typeof(GameItemElement), nameof(GameItemElement.UpdateRectTransform))]
+internal static class NativeTerminalRenderPatch
+{
+    [HarmonyPostfix]
+    private static void Postfix(GameItemElement __instance) => VirtualInventory.ItemTile.Align(__instance);
 }

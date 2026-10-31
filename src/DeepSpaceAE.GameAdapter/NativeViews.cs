@@ -24,6 +24,7 @@ internal sealed partial class GameSession
     private void CloseTerminal()
     {
         if (NativeDrag.Gesture != null && ReferenceEquals(NativeDrag.Gesture.Surface.Owner, openTerminal)) NativeDrag.Gesture.Cancelled = true;
+        terminalGrid?.ClearTiles();
         Unobserve(); displayedView = null; terminalGrid = null; packedRows = null; packing = null;
         terminalStatus = null; pageLabel = null; tagField = null; displayedTags = Array.Empty<string>();
         if (terminalWindow != null) { var w = terminalWindow; terminalWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); }

@@ -17,7 +17,6 @@ internal sealed class VirtualInventory : GameGridInventory
     private IReadOnlyDictionary<Guid, GameInventory> sources = new Dictionary<Guid, GameInventory>();
     private readonly List<TreeNodeRender> tiles = new();
     private readonly Dictionary<Guid, ItemTile> itemTiles = new();
-    private Guid? selected;
     internal VirtualInventory(GameItem owner, int width, int height, bool ghost = false) : base(width, height)
     {
         Owner = owner; Ghost = ghost; SetMachineryStyle();
@@ -33,6 +32,7 @@ internal sealed class VirtualInventory : GameGridInventory
     }
     internal void ClearTiles()
     {
+        foreach (var tile in itemTiles.Values) tile.Return();
         foreach (var tile in tiles) { tile.gameObject.SetActive(false); UnityEngine.Object.Destroy(tile.gameObject); }
         tiles.Clear();
         itemTiles.Clear();
@@ -45,48 +45,11 @@ internal sealed class VirtualInventory : GameGridInventory
         tile.handler.SetParent(inner);
         tile.rectTransform.anchorMin = tile.rectTransform.anchorMax = tile.rectTransform.pivot = new Vector2(0, 1);
         MachineryStyle.Place(tile.handler, x * cell, y * cell, shape.globalWidth * cell, shape.globalHeight * cell);
-        var image = TreeNodeRender.Instantiate().SetParent(tile.handler);
-        var sprite = (item as GameItemElement)?.ResolveSpriteByName(item.spritePath);
-        if (sprite != null) MachineryStyle.SetSimple(image, sprite, Color.white);
-        image.rectTransform.anchorMin = image.rectTransform.anchorMax = new Vector2(0, 1);
-        image.rectTransform.sizeDelta = new Vector2(shape.width * cell, shape.height * cell);
-        float flip = shape.flipped ? 1 : 0;
-        image.rectTransform.localScale = new Vector3(shape.flipped ? -1 : 1, 1, 1);
-        image.rectTransform.pivot = shape.orientation == 0 ? new Vector2(flip, 1) : shape.orientation == 1 ? new Vector2(1 - flip, 1)
-            : shape.orientation == 2 ? new Vector2(1 - flip, 0) : new Vector2(flip, 0);
-        image.rectTransform.localEulerAngles = 90 * shape.orientation * Vector3.forward;
-        image.rectTransform.anchoredPosition = Vector2.zero;
-        int minX = int.MaxValue, minY = int.MaxValue;
-        for (int ly = 0; ly < shape.height; ly++) for (int lx = 0; lx < shape.width; lx++)
-            if (shape.GetLocal(lx, ly) == 1) { var (gx, gy) = shape.ForwardTransform(lx, ly); minX = Math.Min(minX, gx); minY = Math.Min(minY, gy); }
-        // Native hit targets follow occupied cells, including holes in irregular items.
-        for (int ly = 0; ly < shape.height; ly++) for (int lx = 0; lx < shape.width; lx++)
-            if (shape.GetLocal(lx, ly) == 1)
-            {
-                var (gx, gy) = shape.ForwardTransform(lx, ly);
-                var hit = TreeNodeRender.Instantiate().SetParent(tile.handler);
-                // An actual occupied-cell hit surface; it remains raycastable when the
-                // item's sprite has transparent pixels. Never use a rectangular item clone.
-                MachineryStyle.SetFlat(hit, new Color(1, 1, 1, 0.01f));
-                hit.rectTransform.anchorMin = hit.rectTransform.anchorMax = hit.rectTransform.pivot = new Vector2(0, 1);
-                MachineryStyle.Place(hit, (gx - minX) * cell, (gy - minY) * cell, cell, cell);
-                hit.InitEventHandler();
-                tile.Hits.Add(hit);
-            }
-        if (item.unitCount > 1)
-        {
-            var count = new MachineryLabel(item.unitCount.ToString());
-            count.handler.SetParent(tile.handler); count.rectTransform.anchoredPosition = new Vector2(0, -(shape.globalHeight * cell - count.heightPixels));
-        }
+        // Borrow the actual native renderer, not a sprite or a second GameItem.
+        // Its graph parent, shape and saved coordinates remain in the real container.
+        tile.Borrow();
         tiles.Add(tile.handler);
-        itemTiles.Add(id, tile); tile.Select(selected == id);
-    }
-    internal void Select(Guid? instance)
-    {
-        if (selected == instance) return;
-        if (selected.HasValue && itemTiles.TryGetValue(selected.Value, out var previous)) previous.Select(false);
-        selected = instance;
-        if (selected.HasValue && itemTiles.TryGetValue(selected.Value, out var next)) next.Select(true);
+        itemTiles.Add(id, tile);
     }
     internal void GhostTile(int index, Sprite? sprite, string description, Action clear)
     {
@@ -116,11 +79,12 @@ internal sealed class VirtualInventory : GameGridInventory
         var (x, y) = Cell(position); var id = Layout.At(PageIndex, x, y);
         return id.HasValue && sources.TryGetValue(id.Value, out var source) ? source : null;
     }
+    // False selects native sequential bulk insertion, not spatial formation placement.
     public override bool SupportsGroupPlacement => false;
     public override bool UncheckedAccept(GameItem item) => false;
     public override bool Expel(GameItem item) => false;
     public override bool MayHaveValidInventorySlot(GameItem item) => item != null;
-    public override SlotMarker TryFindOneValidInventorySlot(GameItem item) => new SlotMarker { item = item, inventory = this };
+    public override SlotMarker TryFindOneValidInventorySlot(GameItem item) => new SlotMarker { item = item, inventory = this, numTransfer = Ghost ? 0 : item.unitCount };
     public override SlotMarker TryInventorySlot(GameItem item, int requestedNum, Vector2 position, GridShape shape, TagSystem state)
     {
         var (x,y) = Cell(position);
@@ -130,13 +94,34 @@ internal sealed class VirtualInventory : GameGridInventory
     internal sealed class ItemTile : EmptyPixelElement, TooltipListener
     {
         private readonly GameItem item;
+        private static readonly Dictionary<GameItemElement, ItemTile> borrowed = new();
+        internal void Borrow()
+        {
+            if (item is not GameItemElement element) return;
+            borrowed[element] = this;
+            element.handler.SetParent(handler);
+            Align(element);
+        }
+        internal static void Align(GameItemElement element)
+        {
+            if (!borrowed.TryGetValue(element, out var tile) || element.handler.parent != tile.handler) return;
+            element.handler.rectTransform.anchoredPosition = -element.middle.rectTransform.anchoredPosition;
+        }
+        internal void Return()
+        {
+            if (item is not GameItemElement element || !borrowed.Remove(element) || element.IsDestroyed()) return;
+            // A successful move may already have reparented the native renderer.
+            if (element.handler.parent == handler)
+            {
+                if (element.parentInventory is PixelElement source) element.handler.SetParent(source.inner);
+                else element.handler.ResetParent();
+                element.Validate();
+            }
+        }
         internal readonly VirtualInventory Surface;
         internal readonly Guid Instance;
-        internal readonly List<TreeNodeRender> Hits = new();
         internal ItemTile(VirtualInventory surface, Guid instance, GameItem item, int width, int height) : base(width, height)
         { Surface = surface; Instance = instance; this.item = item; }
-        internal void Select(bool selected)
-        { foreach (var hit in Hits) MachineryStyle.SetFlat(hit, selected ? new Color(0.3f, 0.9f, 0.6f, 0.22f) : new Color(1, 1, 1, 0.01f)); }
         public bool HasTooltip() => true;
         public RichText GetTooltip() => item is GameItemElement element ? element.GetTooltip() : new RichTextBuilder().Add(item.name).Build();
         public RichText GetTooltipAdvanced() => item is GameItemElement element ? element.GetTooltipAdvanced() : GetTooltip();
