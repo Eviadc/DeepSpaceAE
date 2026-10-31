@@ -2,7 +2,7 @@
 
 《深空当铺：可能是偷的》的存储网络模组工程。目标依次是高效率、可扩展、高兼容：计划在主物品栏摆放核心、连接件和接口形成网络，首版聚焦真实容器的统一索引与安全取放，自动合成后置。
 
-**当前版本 0.3.2-alpha，目标 100-REV3。** 基础交互版本 37f61bf 已由用户确认可用。本版继续实现整网库存搜索、标签筛选与排序、总线优先级和访问规则、容量/标签升级、扳手、拾荒掉落、真实电池槽、按夜结算及次日解锁。移除原测试/诊断 UI；所有组件双击打开，离线时熄灭。核心 3×3，总线箭头接容器、背面接线，线缆自动连接。
+**当前版本 0.3.2-alpha，本地目标 100-Rev6 / Steam Build 26337366。** 基础交互版本 37f61bf 已由用户确认可用。本版继续实现整网库存搜索、标签筛选与排序、总线优先级和访问规则、容量/标签升级、扳手、拾荒掉落、真实电池槽、按夜结算及次日解锁。移除原测试/诊断 UI；所有组件双击打开，离线时熄灭。核心 3×3，总线箭头接容器、背面接线，线缆自动连接。
 
 0.3.2 修正终端投影命中和拖拽来源、借用槽尺寸与偏移，取消手动刷新；搜索/下拉/复选使用原版控件及正确比例，统计不再用按钮。线缆连接段采自 AE2 模型 UV，供电核心播放 12 帧灯光。游戏内验收仍待完成，详见 [UI 修订](docs/native-ui.md#032-本地反馈修订)。
 
@@ -10,7 +10,7 @@
 
 0.3 按用户反馈改用原生机器面板、真实拖放电池槽、AE 九列幽灵筛选和按实际占格展示的终端投影；移除自动取电池及主栏候选列表。电缆耗电归零，核心/总线/终端下调至每晚 2/1/1 kJ。详见 [原生 UI 迁移](docs/native-ui.md)。
 
-**本版重构未在真实游戏运行。REV5 对应程序集仍未提供，当前仅以 REV3 引用编译核验。** 已使用用户提供的真实程序集核验并编译；模型测试不证明真实移动、夜间回调或存档安全，不承诺跨容器原子事务。终端现在可直接执行整实例取放，未知原生结果停止操作；自动合成仍后置。
+**本版重构的真实游戏交互仍待验证。历史云端构建使用 REV3；Windows 本地迁移现以 100-Rev6 / Build 26337366 的真实引用核验，结果见下方 Windows 段。** 已使用用户提供的真实程序集核验并编译；模型测试不证明真实移动、夜间回调或存档安全，不承诺跨容器原子事务。终端现在可直接执行整实例取放，未知原生结果停止操作；自动合成仍后置。
 
 [安装和本地验收](docs/game-test.md) · [新功能边界](docs/storage-features.md) · [复杂度](docs/performance.md)。AE2 素材采用 CC BY-NC-SA 3.0，已保留[署名和许可](assets/THIRD-PARTY-NOTICES.md)。原始纹理和模型来自公开 AE2 源码固定提交，没有下载本游戏资源或 Minecraft 本体。
 
@@ -89,7 +89,7 @@ dotnet test tests/DeepSpaceAE.Tests/DeepSpaceAE.Tests.csproj -c Release --no-bui
 
 ```bash
 source scripts/env.sh
-GameManagedDir=/workspace/.deepspaceae/game-references/100-REV3 bash scripts/build-game.sh
+GameManagedDir=/workspace/.deepspaceae/game-references/100-Rev6 bash scripts/build-game.sh
 # 提交/审查当前源代码后打包；文件名带源码提交，拒绝覆盖已有包
 python scripts/package-game.py
 ```
@@ -105,3 +105,26 @@ python scripts/package-game.py
 这些断言只证明模拟模型，不证明真实游戏已经安全。游戏适配用 `SlotMarker.TryAcceptOnce` 做受限的整实例搬运，不自行删源/造目标；未知结果锁定写入。在独立测试档按 [游戏验收说明](docs/game-test.md) 验证真实行为；本版供电与存储边界见 [0.2 功能](docs/storage-features.md)。
 
 详见 [架构边界](docs/architecture.md)、[初始化验证记录](docs/validation.md)、[内存原型历史验证](docs/network-prototype.md)。仓库与安装包不得包含游戏 DLL、本体、存档或凭据；`.gitignore` 只是第一道防线，提交与打包前仍需审查。测试输出不可作为模组分发；修复完成适当验证后按用户授权推送源码；安装包另行交付，不自动发布创意工坊。
+
+## Windows 本地开发
+
+无需 WSL、Unity Editor 或完整 Visual Studio。SDK 固定为 `global.json` 中的 10.0.403；以下脚本在 Windows PowerShell 5.1 / PowerShell 7 中运行，自动选择 `%LOCALAPPDATA%\DeepSpaceAE\dotnet`，不替换系统已有的 .NET 8。NuGet 依赖使用锁定还原。
+
+```powershell
+# 首次安装固定 SDK（微软官方来源及 SHA-512 校验）
+powershell -ExecutionPolicy Bypass -File .\scripts\install-env.ps1
+# 核心构建和模型测试
+powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1
+# 游戏适配器构建 + 只读补丁元数据审计
+powershell -ExecutionPolicy Bypass -File .\scripts\build-game.ps1
+# 一条命令：构建 → 审计 → 白名单 ZIP → 备份旧模组 → 复制到 Mods
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy-game.ps1
+```
+
+默认游戏目录为 `G:\SteamLibrary\steamapps\common\Probably Stolen`，可用 `-GameDir` 指定其他安装目录；仅构建时也可用 `-GameManagedDir` 明确指定引用目录。直接读取游戏 Managed 中的四个 DLL，不复制进仓库。运行游戏时部署会停止并提示先退出。
+
+Windows 当前目标为本地 **100-Rev6 / Steam Build 26337366**，主程序集精确哈希门禁不放宽。历史 REV3 验证记录保留为历史证据，不能作为 Rev6 运行验证。打包沿用干净提交、内嵌源码提交、素材白名单和补丁审计检查；先提交源码再构建打包。相同提交及相同内容的已有 ZIP 可复用，内容不同时拒绝覆盖。
+
+旧模组完整备份到 `artifacts/mod-backups/<时间>/DeepSpaceAE`，部署只复制当前安装包中的文件到 `Mods\DeepSpaceAE`，不删除其他模组或旧目录里的自定义文件。独立打包命令为 `scripts/package-game.ps1`。编译、模型测试和元数据审计不等于真实游戏加载、交互或存档验证。
+
+2026-10-31 本机验证：固定 SDK 10.0.403、77 项模型测试、Rev6 编译（0 警告 / 0 错误）及 14 项补丁元数据审计均通过；未启动游戏或验证真实交互。

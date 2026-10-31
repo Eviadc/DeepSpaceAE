@@ -47,22 +47,31 @@ version = ET.parse(files["DeepSpaceAE/manifest.xml"]).getroot().findtext("ModVer
 assert version == "0.3.2-alpha"
 audit_path = root / "artifacts/validation/game-patch-audit.json"
 if not audit_path.is_file():
-    raise SystemExit("Missing game patch metadata audit; run scripts/build-game.sh first.")
+    raise SystemExit("Missing game patch metadata audit; run scripts/build-game.ps1 (Windows) or scripts/build-game.sh first.")
 audit = json.loads(audit_path.read_text())
 assert audit["success"] is True and audit["findings"]
 assert all(f["Result"] == "PASS" for f in audit["findings"])
 assert audit["adapterSha256"] == hashlib.sha256(files["DeepSpaceAE/DeepSpaceAE.GameAdapter.dll"].read_bytes()).hexdigest()
-assert audit["gameSha256"] == "0fd3de05d961c8a415758f8f78a8e0a32692b8b45fb34350df885ed8bd5e8eb0"
-output = root / "artifacts/packages" / f"DeepSpaceAE-{version}-100-REV3-{revision[:7]}.zip"
+assert audit["gameSha256"] == "6398d44aa1675e1f02b63bc668868f970e0f5d3ae5a50f2aced8d06ca084e3b5"
+output = root / "artifacts/packages" / f"DeepSpaceAE-{version}-100-Rev6-{revision[:7]}.zip"
 if output.exists():
-    raise SystemExit("Package already exists; refusing to overwrite.")
+    with zipfile.ZipFile(output) as previous:
+        expected = set(files) | {"DeepSpaceAE/build-info.json"}
+        if set(previous.namelist()) != expected or any(previous.read(name) != path.read_bytes() for name, path in files.items()):
+            raise SystemExit("Existing package differs from current build; preserve it elsewhere before retrying.")
+        previous_info = json.loads(previous.read("DeepSpaceAE/build-info.json"))
+        if previous_info["sourceCommit"] != revision or previous_info["referenceAssemblySha256"] != audit["gameSha256"]:
+            raise SystemExit("Existing package provenance differs from current build.")
+    print(output)
+    print("Reusing unchanged package.")
+    raise SystemExit(0)
 output.parent.mkdir(parents=True, exist_ok=True)
 hashes = {name: hashlib.sha256(path.read_bytes()).hexdigest() for name, path in files.items()}
 info = {
     "sourceCommit": revision,
-    "gameLabel": "100-REV3",
-    "steamBuildId": "26284217 (user-reported)",
-    "referenceAssemblySha256": "0fd3de05d961c8a415758f8f78a8e0a32692b8b45fb34350df885ed8bd5e8eb0",
+    "gameLabel": "100-Rev6",
+    "steamBuildId": "26337366 (local Steam appmanifest)",
+    "referenceAssemblySha256": "6398d44aa1675e1f02b63bc668868f970e0f5d3ae5a50f2aced8d06ca084e3b5",
     "configuration": "Release",
     "patchMetadataAudit": {"status": "PASS", "declarations": len(audit["findings"]), "execution": "NOT RUN"},
     "modVersion": version,

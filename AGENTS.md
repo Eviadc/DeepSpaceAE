@@ -22,3 +22,5 @@
 - 0.3.1 加载回归见 docs/load-troubleshooting.md：GameItem.Destroy 是 abstract，禁止恢复其 Harmony 目标，仅保留具体 GameItemElement 覆盖。scripts/build-game.sh 必须通过只读 PE 补丁元数据审计；打包校验审计绑定当前 DLL 哈希。显示文案用官方 Localization/en.csv、zh.csv 和 ASCII 键，在工厂/钩子且资源就绪后解析，禁止 Init/OnEnable 解析。补丁/日志问题优先读取 Player.log，不全局静音 TMP 或错误。包白名单另允许 2 CSV、加载诊断说明和独立日志提取脚本。
 
 - 0.3.2 修订见 docs/native-ui.md：借用槽包装必须参与原生 MachineryWidget 尺寸刷新、清除旧偏移并在关闭归还，不改保存图；终端无手动刷新，拖拽期间的 dirty 事件不得丢弃。原版 CustomUI 控件设计比例为 2，要整体缩放并保留下拉/勾选图形。素材现为 55 PNG；核心 12 帧复用真实 SpriteAnimationHelper，离线/停用停止，不每帧扫描网络。
+
+- Windows 本地工作流见 README 的 Windows 本地开发段；用户已授权从本地 Steam 安装引用 DLL、适配当前 100-Rev6 / Build 26337366，并在编译及元数据审计成功后部署到指定 Mods。此项取代上文云端背景下的“不操作本地电脑”限制，仅限本次开发和模组部署，不登录 Steam、不启动游戏或操作存档。

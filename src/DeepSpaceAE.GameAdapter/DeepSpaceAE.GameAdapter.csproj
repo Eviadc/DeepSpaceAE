@@ -6,7 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../DeepSpaceAE.Core/DeepSpaceAE.Core.csproj" />
-    <!-- Real, user-supplied 100-REV3 references. Never copy to output. -->
+    <!-- Real, local Steam Build 26337366 references. Never copy to output. -->
     <Reference Include="Assembly-CSharp" HintPath="$(GameManagedDir)/Assembly-CSharp.dll" Private="false" />
     <Reference Include="UnityEngine" HintPath="$(GameManagedDir)/UnityEngine.dll" Private="false" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(GameManagedDir)/UnityEngine.CoreModule.dll" Private="false" />
@@ -23,7 +23,7 @@
     <GetFileHash Files="$(GameManagedDir)/Assembly-CSharp.dll" Algorithm="SHA256">
       <Output TaskParameter="Items" ItemName="CheckedGameAssembly" />
     </GetFileHash>
-    <Error Condition="'%(CheckedGameAssembly.FileHash)' != '0FD3DE05D961C8A415758F8F78A8E0A32692B8B45FB34350DF885ED8BD5E8EB0'"
-           Code="EAE004" Text="Unexpected Assembly-CSharp.dll hash. This adapter was checked against the user-supplied 100-REV3 assembly only. Re-verify APIs before targeting another build." />
+    <Error Condition="'%(CheckedGameAssembly.FileHash)' != '6398D44AA1675E1F02B63BC668868F970E0F5D3AE5A50F2ACED8D06CA084E3B5'"
+           Code="EAE004" Text="Unexpected Assembly-CSharp.dll hash. This adapter was checked against the local Steam Build 26337366 assembly only. Re-verify APIs before targeting another build." />
   </Target>
 </Project>

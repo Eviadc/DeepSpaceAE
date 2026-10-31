@@ -71,3 +71,11 @@
 新增静态核对：MachineryContainerUtils.Refresh/TryResize 只自动调用 MachineryContainer/MachineryWidget，StealPixelElement 本身不在该范围且 Attach 保留位置。修订借用包装以主动传播真实槽尺寸并归还位置，保持原始库存保存父图。TreeNodeRender.FindParentElement<T> 沿渲染祖先查找；终端仅命中自有投影片，再将原生按下状态指向实际来源实例。
 
 CustomUIMachineryStyle.SCALE=2，Reskin 会替换所有 Image，输入/下拉依赖原版 prefab；本版使用正确缩放并保留其子装饰。SpriteAnimationHelper 的显式帧列表通过 GameItemElement.ResolveSpriteByName 读取本模组精灵，原生管理器 Tick 调用 ApplyAnimationFrame，不改占格。现复用此接口播放 12 帧灯光，离线移除自有动画。这些依据均来自现有真实 REV3 引用，未据 APIChanges 假定 REV5 签名相同。实现、成本及用户侧复测项见 [UI 修订](native-ui.md#032-本地反馈修订)。
+
+## Windows / 100-Rev6 本地迁移（2026-10-31）
+
+用户授权适配 G 盘合法安装并部署。Steam `appmanifest_4348910.acf` 的 buildid 为 `26337366`；当前 Assembly-CSharp.dll 的用户字符串包含 `VERSION 100-Rev6`。主程序集 SHA-256 为 `6398d44aa1675e1f02b63bc668868f970e0f5d3ae5a50f2aced8d06ca084e3b5`。
+
+Windows 脚本直接引用安装目录，不上传或入库游戏 DLL。此前 REV3 的行为分析是历史依据；本次须以当前 DLL 的编译与补丁审计另行记录，均不证明真实游戏交互、搬运或存档安全。
+
+本次 Windows 实际验证：SDK 10.0.403；`scripts/verify.ps1` 的 77 项模型测试全部通过；`scripts/build-game.ps1` 使用上述 Rev6 引用编译成功，0 警告 / 0 错误，14 项补丁元数据审计全部 PASS。现有 API 调用未需业务逻辑修改。审计只读 PE，不执行游戏或 Harmony；本次未运行游戏，也未验证真实交互或存档往返。
