@@ -1,6 +1,6 @@
 # 架构边界
 
-> 当前 0.5.0 行为以 [完整功能规格](feature-spec.md)、[用例矩阵](functional-cases.md) 为准。下文按版本保留历史实现背景，不能恢复旧终端渲染借用、独立总线或旧电源策略。
+> 当前 0.6.0 行为以 [完整功能规格](feature-spec.md)、[用例矩阵](functional-cases.md) 为准。下文按版本保留历史实现背景，不能恢复旧终端渲染借用、独立总线或旧电源策略。
 
 ## 目标与阶段
 
@@ -53,3 +53,9 @@ IsPackable=false；游戏 ZIP 使用 scripts/package-game.py 逐文件白名单�
 DiskStorage 为每个驱动器建立六个真实 GameSlotInventory(1,2)，为每个硬盘建立独立 DiskAreaInventory 子图。后者保留原生真实 item list / 保存方式，仅用 occupied-cell 预算替代空间排布。GameSession.Read 将在线驱动器映射为默认优先级 0 的存储设备，沿用 NativeMove；PartStorage 的旧子图不增加节点。
 
 PartPower 从 PartStorage 拆出供电逻辑，NightReservation 新增 Shortfall（枚举末尾追加以保留旧数值）。普通电池失败峰值当日锁网、解锁电池，次日清零。电网使用原版 service 价格计算和实际付款事件，已知未付款允许未来真实账单结算，加载后的未知 DebitStarted 禁止重放。两项新补丁均参与 PE 元数据审计。
+
+## 0.6 液体增量
+
+GameSession.Read 同时发现总线前方化学液体容器，不要求 GameInventory 子图；独立液体目录以真实来源容器为身份，LiquidComposition 保存完整微升数值及精确比例签名，不汇总来源。VirtualInventory 仅增加固定卡片布局与镜像文字，支持模式切换，拒绝液体卡片的物理搬运。选择、Target、取消、转移及提示通过六个局部补丁桥接；普通源窗口和物品模式继续走原有原生路径。
+
+液体目标/来源操作只在已打开液体终端相关来源上进行额外射线命中检查，平时不轮询场景或构建候选液体对象。原生转移和可观察成分/温度/容量数值变化触发合并目录刷新；不存在自有液体保存格式。

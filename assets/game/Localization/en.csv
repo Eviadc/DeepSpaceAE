@@ -114,3 +114,10 @@ ui_daily_peak,Daily peak
 ui_grid_power,Power grid (native nightly bill)
 ui_grid_unpaid,Unpaid: source locked / network offline
 ui_power_shortfall,Low power: replace battery / wait until tomorrow
+ui_items,Items
+ui_liquids,Liquids
+ui_liquid_empty,Empty liquid container
+ui_liquid_insert_only,Insert only
+ui_liquid_count,{0} liquid containers - use native select then target to pour
+error_liquid_access,The storage bus does not allow this liquid action.
+error_liquid_use_native,Use the native select-container then click-target action to pour liquid.

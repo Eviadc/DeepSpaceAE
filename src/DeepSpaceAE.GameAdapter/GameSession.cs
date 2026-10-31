@@ -22,16 +22,19 @@ internal sealed partial class GameSession
     {
         private int count;
         private string? name, sprite;
+        private string liquid="";
         private readonly HashSet<string> enabled = new(StringComparer.Ordinal);
         internal Observation(GameItem item) => Capture(item);
         private void Capture(GameItem item)
         {
             count = item.unitCount; name = item.name; sprite = item.spritePath; enabled.Clear();
+            liquid=LiquidStorage.IsContainer(item)?LiquidStorage.Read(item).Stamp:"";
             foreach (var pair in item.modifiedState.dict) if (pair.Value.valueEnabled) enabled.Add(pair.Key);
         }
         internal bool Changed(GameItem item)
         {
-            bool different = count != item.unitCount || name != item.name || sprite != item.spritePath;
+            bool different = count != item.unitCount || name != item.name || sprite != item.spritePath
+                || liquid!=(LiquidStorage.IsContainer(item)?LiquidStorage.Read(item).Stamp:"");
             int keys = 0;
             foreach (var pair in item.modifiedState.dict)
                 if (pair.Value.valueEnabled) { keys++; if (!enabled.Contains(pair.Key)) different = true; }
@@ -58,6 +61,7 @@ internal sealed partial class GameSession
     internal void Reset()
     {
         PartStorage.ResetPowerSettlement();
+        NativeLiquidSelection.EndFor(openTerminal); NativeLiquidSelection.Clear(); liquidMode=false;
         Loading = true; Close(); uncertainItems.Clear(); NativeDrag.Gesture = null; NativeDrag.OriginItem = null; NativeDrag.OriginSource = null; Visuals.Detach(); identities = new(); observations = new(); writeFault = writing = false;
         search = tag = message = "";
     }
@@ -68,6 +72,7 @@ internal sealed partial class GameSession
     }
     internal void Close()
     {
+        NativeLiquidSelection.EndFor(openTerminal);
         Unobserve(); CloseNative();
         if (CustomUIManager.Instance == null) return;
         CustomUIManager.Instance.CloseWindow(WindowId); CustomUIManager.Instance.CloseWindow("deepspaceae.part");
@@ -197,6 +202,9 @@ internal sealed partial class GameSession
         internal Dictionary<Guid, GameItem> Live = new();
         internal Dictionary<Guid, GameInventory> Sources = new();
         internal CatalogSearch Search = null!;
+        internal CatalogSearch LiquidSearch=null!;
+        internal Dictionary<Guid,LiquidSnapshot> Liquids=new();
+        internal Dictionary<GameItem,List<StoragePolicy>> LiquidPolicies=new();
 
     }
     private View Read(GameItem terminal)
@@ -214,6 +222,11 @@ internal sealed partial class GameSession
             if (bc.Status != DeviceStatus.Online || bc.CoreId != connection.CoreId) continue;
             var owner = board.Layout.FrontOwner(bus);
             if (owner == null || IsPart(owner) || DiskStorage.IsDisk(owner) || !board.Layout.Owned.Contains(owner)) continue;
+            if(LiquidStorage.IsContainer(owner))
+            {
+                if(!view.LiquidPolicies.TryGetValue(owner,out var liquidPolicies)) view.LiquidPolicies.Add(owner,liquidPolicies=new List<StoragePolicy>());
+                liquidPolicies.Add(PartStorage.Policy(bus));
+            }
             if (!view.Inventories.TryGetValue(owner, out var invs)) { invs = Contents(owner); view.Inventories.Add(owner, invs); }
             if (invs.Count == 0) continue;
             var policy = PartStorage.Policy(bus); view.Owners.Add(bus, owner); view.Policies.Add(bus, policy);
@@ -245,6 +258,19 @@ internal sealed partial class GameSession
             }
         }
         view.Search = new CatalogSearch(records);
+        var liquidRows=new List<CatalogRecord>();
+        foreach(var pair in view.LiquidPolicies)
+        {
+            var owner=pair.Key; var tags=PartStorage.Tags(owner);
+            bool readable=pair.Value.Any(p=>p.CanExtract(owner.identifier,tags));
+            if(!readable && !pair.Value.Any(p=>p.CanInsert(owner.identifier,tags))) continue;
+            var id=GuidFor(owner); var snapshot=LiquidStorage.Read(owner); snapshot.Readable=readable;
+            view.Liquids.Add(id,snapshot); view.Live.Add(id,owner); view.Sources.Add(id,owner.parentInventory);
+            liquidRows.Add(new CatalogRecord(id,"liquid:"+(readable?snapshot.Composition.Signature:id.ToString()),
+                (readable?snapshot.Name:UiText.Get("ui_liquid_insert_only"))+" · "+owner.name,
+                new[]{"deepspaceae.liquid"},readable?checked((int)snapshot.Composition.Volume):0));
+        }
+        view.LiquidSearch=new CatalogSearch(liquidRows);
         return view;
     }
     private void Error(Exception e)

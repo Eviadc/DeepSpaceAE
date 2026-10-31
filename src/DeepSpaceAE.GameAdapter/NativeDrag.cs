@@ -135,7 +135,7 @@ internal sealed partial class GameSession
     internal int DepositFromNative(VirtualInventory target, GameItemElement item)
     {
         var source = item.parentInventory;
-        if (source == null || writing || writeFault) return 0;
+        if (target.IsLiquid || source == null || writing || writeFault) return 0;
         var previousItem = NativeDrag.OriginItem; var previousSource = NativeDrag.OriginSource;
         int count = item.unitCount;
         try
@@ -149,6 +149,7 @@ internal sealed partial class GameSession
     internal bool PreserveUncertain(GameItem item) => uncertainItems.Contains(item);
     internal bool ValidateProjection(ProjectionGesture gesture)
     {
+        if(gesture.Surface.IsLiquid) return false;
         try
         {
             if (writing || writeFault || gesture.Cancelled || !gesture.Surface.handler.gameObject.activeInHierarchy) return false;
@@ -167,6 +168,7 @@ internal sealed partial class GameSession
         writing = true;
         try
         {
+            if(target?.IsLiquid==true) throw new Rejected(UiText.Get("error_liquid_use_native"));
             if (gesture?.Cancelled == true) return;
             if (writeFault) throw new Rejected(UiText.Get("error_transfer_locked"));
             if (gesture != null && (gesture.Cancelled || !gesture.Allowed)) throw new Rejected(UiText.Get("error_gesture_expired"));

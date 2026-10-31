@@ -122,7 +122,7 @@ internal sealed class CableVisuals
                     if (active && item.identifier == "deepspaceae.item_storage_bus")
                     {
                         var owner = layout.FrontOwner(item);
-                        active = owner != null && layout.Owned.Contains(owner) && !GameSession.IsPart(owner) && GameSession.Contents(owner).Count > 0;
+                        active = owner != null && layout.Owned.Contains(owner) && !GameSession.IsPart(owner) && (LiquidStorage.IsContainer(owner) || GameSession.Contents(owner).Count > 0);
                     }
                     string path = item.identifier == "deepspaceae.pipeline" ? "pipeline-" + layout.CableMask(item) : Base(item);
                     Apply(item, path + (active ? "" : "-off"));

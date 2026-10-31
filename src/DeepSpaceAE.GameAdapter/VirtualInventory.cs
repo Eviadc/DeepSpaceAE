@@ -17,6 +17,8 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
     private IReadOnlyDictionary<Guid, GameInventory> sources = new Dictionary<Guid, GameInventory>();
     private readonly List<TreeNodeRender> tiles = new();
     private readonly Dictionary<Guid, ItemTile> itemTiles = new();
+    private IReadOnlyDictionary<Guid,LiquidSnapshot>? liquids;
+    internal bool IsLiquid=>liquids!=null;
     internal VirtualInventory(GameItem owner, int width, int height) : base(width, height, height, 0)
     {
         Owner = owner;
@@ -25,9 +27,9 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
         inner.rectTransform.anchorMin = inner.rectTransform.anchorMax = inner.rectTransform.pivot = new Vector2(0, 1);
         inner.rectTransform.anchoredPosition = Vector2.zero;
     }
-    internal void Populate(VirtualInventoryLayout layout, int page, IReadOnlyDictionary<Guid, GameItem> live, IReadOnlyDictionary<Guid, GameInventory> observedSources)
+    internal void Populate(VirtualInventoryLayout layout, int page, IReadOnlyDictionary<Guid, GameItem> live, IReadOnlyDictionary<Guid, GameInventory> observedSources,IReadOnlyDictionary<Guid,LiquidSnapshot>? liquidEntries=null)
     {
-        ClearTiles(); Layout = layout; PageIndex = page; items = live; sources = observedSources;
+        ClearTiles(); liquids=liquidEntries; Layout = layout; PageIndex = page; items = live; sources = observedSources;
         SetShape(layout.Width, 12, Math.Max(13, layout.Height));
         RefreshVisible();
     }
@@ -76,7 +78,7 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
     {
         int cell = UISettings.current.gridSize;
         var shape = item.modifiedShape;
-        var tile = new ItemTile(this, id, item, shape.globalWidth * cell, shape.globalHeight * cell);
+        var tile = new ItemTile(this, id, item, IsLiquid?6*cell:shape.globalWidth * cell, IsLiquid?3*cell:shape.globalHeight * cell);
         tile.handler.SetParent(inner);
         tile.rectTransform.anchorMin = tile.rectTransform.anchorMax = tile.rectTransform.pivot = new Vector2(0, 1);
         MachineryStyle.Place(tile.handler, x * cell, y * cell, shape.globalWidth * cell, shape.globalHeight * cell);
@@ -132,6 +134,7 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
     internal List<GameItemElement> BandItems(Rect band)
     {
         var result=new List<GameItemElement>(); var found=new HashSet<Guid>(); var eligibility=new Dictionary<Guid,bool>();
+        if(IsLiquid) return result;
         if(handler==null || !handler.gameObject.activeInHierarchy) return result;
         var clip=Bounds(inner.parent.rectTransform); var window=handler.FindParentWindow();
         foreach(var cell in ViewCells())
@@ -221,13 +224,13 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
     public override bool SupportsGroupPlacement => false;
     public override bool UncheckedAccept(GameItem item) => false;
     public override bool Expel(GameItem item) => false;
-    public override bool MayHaveValidInventorySlot(GameItem item) => item != null;
-    public override SlotMarker TryFindOneValidInventorySlot(GameItem item) => new SlotMarker { item = item, inventory = this, numTransfer = item.unitCount };
+    public override bool MayHaveValidInventorySlot(GameItem item) => !IsLiquid && item != null;
+    public override SlotMarker TryFindOneValidInventorySlot(GameItem item) => IsLiquid?null!:new SlotMarker { item = item, inventory = this, numTransfer = item.unitCount };
     public override SlotMarker TryInventorySlot(GameItem item, int requestedNum, Vector2 position, GridShape shape, TagSystem state)
     {
         var (x,y) = Cell(position);
         return new SlotMarker { item = item, inventory = this, itemGridShape = shape, index = y * 9 + x,
-            numTransfer = x >= 0 && y >= 0 && x < width && y < height && requestedNum >= item.unitCount ? item.unitCount : 0 };
+            numTransfer = !IsLiquid && x >= 0 && y >= 0 && x < width && y < height && requestedNum >= item.unitCount ? item.unitCount : 0 };
     }
     internal sealed class ItemTile : EmptyPixelElement, TooltipListener
     {
@@ -235,6 +238,7 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
         internal GameItem Item => item;
         private static readonly Dictionary<GameItemElement, ItemTile> views = new();
         private TreeNodeRender? mirror;
+        private TreeNodeRender? liquidLabel;
         private bool queued, disposed;
         internal void CreateView()
         {
@@ -258,6 +262,31 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
             if (mirror == null) mirror = NativeItemMirror.Copy(element.middle, handler, element);
             else NativeItemMirror.Sync(element.middle, mirror);
             mirror.rectTransform.anchoredPosition = Vector2.zero;
+            if(Surface.IsLiquid && Surface.liquids!.TryGetValue(Instance,out var snapshot))
+            {
+                int cell=UISettings.current.gridSize;
+                float scale=Math.Min(2f/Math.Max(1,item.modifiedShape.globalWidth),2f/Math.Max(1,item.modifiedShape.globalHeight));
+                mirror.rectTransform.localScale=Vector3.one*scale;
+                if(liquidLabel==null)
+                {
+                    var caption=snapshot.Readable?snapshot.Name:UiText.Get("ui_liquid_insert_only");
+                    if(caption.Length>18) caption=caption.Substring(0,17)+"…";
+                    var label=NativeWidgets.Text(caption+"\n"+(snapshot.Readable?LiquidSnapshot.Volume(snapshot.Composition.Volume):""));
+                    // Copy only the native text render tree and bind its root to the
+                    // real container. A MachineryText element here would intercept
+                    // RaycastElement<GameItem> and make the label impossible to target.
+                    liquidLabel=NativeItemMirror.Copy(label.handler,handler,element);
+                    UnityEngine.Object.Destroy(label.handler.gameObject);
+                    MachineryStyle.Place(liquidLabel,2*cell,0,4*cell,3*cell);
+                    foreach(var node in liquidLabel.GetComponentsInChildren<TreeNodeRender>(true))
+                    {
+                        var text=typeof(TreeNodeRender).GetProperty("text")!.GetValue(node);
+                        if(text==null) continue;
+                        text.GetType().GetProperty("raycastTarget")!.SetValue(text,true);
+                        MachineryStyle.Place(node,0,0,4*cell,3*cell);
+                    }
+                }
+            }
         }
         internal void DisposeView()
         {
@@ -270,7 +299,9 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
         internal ItemTile(VirtualInventory surface, Guid instance, GameItem item, int width, int height) : base(width, height)
         { Surface = surface; Instance = instance; this.item = item; }
         public bool HasTooltip() => true;
-        public RichText GetTooltip() => item is GameItemElement element ? element.GetTooltip() : new RichTextBuilder().Add(item.name).Build();
-        public RichText GetTooltipAdvanced() => item is GameItemElement element ? element.GetTooltipAdvanced() : GetTooltip();
+        public RichText GetTooltip() => Surface.IsLiquid && Surface.liquids!.TryGetValue(Instance,out var snapshot)
+            ?new RichTextBuilder().Add(snapshot.Readable?snapshot.Description:UiText.Get("ui_liquid_insert_only")).Build()
+            :item is GameItemElement element ? element.GetTooltip() : new RichTextBuilder().Add(item.name).Build();
+        public RichText GetTooltipAdvanced() => Surface.IsLiquid?GetTooltip():item is GameItemElement element ? element.GetTooltipAdvanced() : GetTooltip();
     }
 }

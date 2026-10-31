@@ -1,5 +1,13 @@
 # API 核验与剩余未知
 
+## 0.6.0 液体增量（2026-11-01）
+
+仍绑定同一 Rev6 / Build 26337366 DLL。真实反编译与编译核验：现代 WaterHelper 以 LIQUID_CONTAINER_CAPACITY 与 Liquid.Liquids 的 CURRENT_PART_* 整数存储，单位为 μl。TransferLiquid(source,target) 按接收空间和源体积取较小值，SplitProportionally 分配后经 HandleFilter、HandleReceiveLiquidTemp 和水质回调；不是可重复的纯函数，也不保证跨容器原子性。
+
+原版 ItemSelectHandler 选中容器后，以 GameItem.MayTarget/CanTarget/Target 执行真实回调；空滴管回调反向调用 TransferLiquid(target,source)。WineHelper 某些状态禁用化学液体标签，不能只凭容器名称推测成分。旧 LiquidContainerHelper 共享 tag 但使用不同 current/max 字段和相反参数顺序，未作为现代化学液体接入。
+
+新增六项具体补丁，共 37 项元数据审计；97 项模型/贴图测试覆盖成分精度、比例、零量、顺序、溢出和独立来源目录。倒液、文字区域命中、过滤、温度、原生菜单/酒瓶限制与保存往返仍待实机，见 LIQ 用例。
+
 ## 0.5.0 本地 Rev6 增量（2026-11-01）
 
 当前目标 100-Rev6 / Steam Build 26337366；本机合法安装 Managed 中 Assembly-CSharp.dll SHA-256 为 `6398d44aa1675e1f02b63bc668868f970e0f5d3ae5a50f2aced8d06ca084e3b5`。以下由真实反编译实现及编译绑定核验，仍不是游戏执行证据。下文 REV3 保留为历史记录。

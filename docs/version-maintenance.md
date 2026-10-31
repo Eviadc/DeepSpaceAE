@@ -36,3 +36,11 @@
 - 新版本若改变保存图，先明确旧存档迁移策略再实现；不擅自丢盘、卡或真实内容。用户只豁免旧“独立总线”的兼容。
 - 贴图生成使用固定 AE2 来源和 Pillow 12.3.0；常规构建不需 Pillow。新增贴图必须同步生成脚本、package-game.py 白名单/尺寸、测试、许可说明与资产数量。
 - 维护 API 记录时注明版本、程序集哈希、发现方式、调用前后副作用及待实机项。文档之间冲突时，以当前版本规格和已核验代码为准，明确标注历史段落。
+
+## 0.6 液体维护增量
+
+LiquidStorage / LiquidComposition 读取原生化学成分，GameSession.Read 发现无子库存的总线前方液体容器，VirtualInventory 复用可见区域 UI 镜像并增加液体卡片。NativeLiquidInteraction 只桥接原生选择/Target、权限和刷新。
+
+新增六项具体补丁：ItemSelectHandler.SelectItem、OnEventReset，GameItem.Target，WaterHelper.TransferLiquid，GameItemElement.GetTooltip、GetTooltipAdvanced（总计 37）。升级须复查原生 Target 回调及空滴管反向语义、TransferLiquid 的比例/过滤/温度/水质副作用和 skipValidate 更新时机。不能将旧 LiquidContainerHelper.TransferLiquid(target,source) 与现代 WaterHelper.TransferLiquid(source,target) 混用。
+
+TreeNodeRender.RaycastElement 的首次非空 element 决定原生目标。液体卡片文字必须用以真实容器为命中身份的纯渲染树，不能直接嵌独立 MachineryText 拦截原生目标；Tooltip 在液体镜像下局部替换，源主栏仍用原版提示。UI 与倒液实机用例为 LIQ-*。

@@ -25,6 +25,7 @@ internal static class NativeWidgets
     private static int localeFrame = -1;
     internal static string TagName(string tag)
     {
+        if(tag=="deepspaceae.liquid") return UiText.Get("ui_liquids");
         if (localeFrame != Time.frameCount)
         {
             localeFrame = Time.frameCount; string current = LocHelper.GetCurrentLocaleCode();

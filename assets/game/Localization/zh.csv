@@ -114,3 +114,10 @@ ui_daily_peak,当日耗电峰值
 ui_grid_power,电网供电（原版夜间账单）
 ui_grid_unpaid,电费未缴：锁定并断电
 ui_power_shortfall,电量不足：更换电池或等待次日
+ui_items,物品
+ui_liquids,液体
+ui_liquid_empty,空液体容器
+ui_liquid_insert_only,仅存入
+ui_liquid_count,{0} 个液体容器 · 按原版选中容器后点击目标倒液
+error_liquid_access,存储总线当前规则不允许此方向的液体操作。
+error_liquid_use_native,液体使用原版交互：选中容器后点击目标倒液。

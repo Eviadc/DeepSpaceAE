@@ -1,6 +1,6 @@
-# DeepSpaceAE 0.5.0-alpha · 安装和联合验收
+# DeepSpaceAE 0.6.0-alpha · 安装和联合验收
 
-编译目标为本机真实安装的 100-Rev6 / Steam Build 26337366，Windows x64。新阶段游戏行为、存档往返及夜间现金扣费仍须联合测试。93 项模型/贴图测试及 31 项 PE 补丁审计不是 Unity/Harmony 实际运行证据。
+编译目标为本机真实安装的 100-Rev6 / Steam Build 26337366，Windows x64。新阶段游戏行为、存档往返及夜间现金扣费仍须联合测试。97 项模型/贴图测试及 37 项 PE 补丁审计不是 Unity/Harmony 实际运行证据。
 
 ## 安装和本地开发
 
@@ -18,6 +18,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-game.ps1
 默认游戏目录 G:\SteamLibrary\steamapps\common\Probably Stolen，部署位置为其 Mods\DeepSpaceAE。部署脚本发现游戏运行会停止，不强制结束游戏。旧版备份位于仓库 artifacts/mod-backups，安装包位于 artifacts/packages。
 
 包内仅两个自有 DLL、67 张授权 PNG、2 CSV、manifest、说明、来源/许可、日志提取脚本及构建记录，不含游戏引用、测试宿主、存档或凭据。源码完整说明见 docs/feature-spec.md、docs/functional-cases.md、docs/version-maintenance.md；包内另附“功能规格.md”“功能用例.md”“版本维护.md”。
+
+## 0.6 液体测试入口
+
+总线外侧朝向原版水罐/液体容器，打开终端顶部切“液体”。空罐和每个独立来源都显示；悬停查看完整成分、体积和温度。按原版选中容器后点击目标：普通装液瓶→终端罐可存入，终端源→普通瓶可取出，空滴管按原版吸取。混液/过滤保留原版规则；液体卡片不用于拖走整罐。详细验收见功能用例 LIQ-01～15；文字区域命中和实际保存仍待验证。
 
 ## 本轮优先测试
 
