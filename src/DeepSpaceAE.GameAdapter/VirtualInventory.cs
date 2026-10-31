@@ -37,7 +37,7 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
         visibilityQueued = true;
         LetterboxManager.RunNextUpdate(() => {
             visibilityQueued = false;
-            if (handler.gameObject.activeInHierarchy) RefreshVisible();
+            if (handler != null && handler.gameObject.activeInHierarchy) RefreshVisible();
         });
     }
     internal void RefreshVisible()
