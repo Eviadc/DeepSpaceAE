@@ -136,3 +136,7 @@ CurrentConverterHelper.GetHostMachine 通过 converter.parentInventory.GetParent
 同一本地引用的只读方法体显示：GameItem.GetUniqueID 在 uniqueId == 0 时向 PlayerStore 分配身份；直接读字段不保证已分配。SlotMarker.TryAcceptOnce 只裁剪数量/MaxNumRemove，堆叠时直接 StackItemUnchecked，否则移除/拆分来源后 UncheckedAccept，不重新验证目标准入。因此增加 NativeTransfer，在写入前调用实际目标 TryInventorySlot 或 GetStackSlot，并检查实时来源、拥有权、锁及循环包含；自动化写入后核对目标入库和增量。
 
 GameInventory.CheckAcceptParentShapeStateModifier 处理新物品加入父链，CheckChangeParentShapeStateModifier 用于在库变化；硬盘新接收改用前者。GameSlotInventory 的现有物品自校验与新物品准入分开，避免为防堆叠而拒绝同一个已在槽实例。未新增 Harmony 目标，仍是 38 项，只读核验不等于这些原生回调已经实机运行。
+
+## 0.9.2 首次真实启动发现的注册时序错误
+
+2026-11-01，本机实际 Player.log 记录 0.9.1 在 Acquisition.Enable → ModHelper.AddNetworkUpgrade → NetworkUpgrade.RegisterModUpgrade → PlayerStore.Instance → PlayerStore 构造处抛 NullReferenceException，ModLoader running=False。原因是官方 RegisterModUpgrade 读取惰性 PlayerStore 单例，而 ModLoader.OnEnable 时 NewGameData 尚未存在。修订只在已有 PlayerStore/新游戏开始/读档初始化时注册，读档晚期做幂等兜底；禁用清理也先检查 HasInstance，避免清理触发构造。模型与补丁审计未覆盖这一真实冷启动时序。本轮实测结果另见独立运行时试验记录，不能将修订编译成功填作实机通过。

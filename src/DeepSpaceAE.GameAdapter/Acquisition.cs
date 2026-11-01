@@ -10,33 +10,46 @@ internal sealed class Acquisition
     private readonly ModLog log;
     private readonly GameSession session;
     private Sprite? portrait;
-    private bool delivering;
+    private bool delivering,registered;
     internal Acquisition(ModLog log,GameSession session) { this.log=log; this.session=session; }
     private static int Get(string key,int fallback=0)=>ModHelper.GetModDataInt(ModEntry.ModId,key,fallback);
     private static void Put(string key,int value)=>ModHelper.SetModDataInt(ModEntry.ModId,key,value);
     internal void Enable()
     {
-        // Providers resolve after native resources are ready, never in static Init.
-        ModHelper.AddNetworkUpgrade(ModEntry.ModId,Upgrade,AcquisitionCatalog.EngineerCost,"Referral",
-            ()=>UiText.Get("upgrade_engineer_name"),()=>UiText.Get("upgrade_engineer_desc"),StartGift,
-            alreadyBought:()=>Get("gift_inflight")!=0?UiText.Get("upgrade_engineer_fault"):
-                UiText.Get("upgrade_engineer_done",Math.Max(0,AcquisitionCatalog.Starter.Count-Get("gift_cursor"))));
+        // RegisterModUpgrade accesses the lazy PlayerStore singleton. OnEnable runs
+        // before NewGameData exists, so defer until a real new/loaded world is ready.
+        ModHook.OnNewGameStarted+=NewGameStarted;
+        ModHook.OnGameLoadedInit+=RegisterUpgrade;
         ModHook.OnGenerateCustomerNormal+=Generate;
         ModHook.OnGameLoadedLate+=Loaded;
         ModHook.OnWakingUpLate+=Deliver;
         ModHook.OnShutterOpenedLate+=Deliver;
+        if(PlayerStore.HasInstance && NewGameData.Instance!=null) RegisterUpgrade();
+    }
+    private void RegisterUpgrade()
+    {
+        if(registered || !PlayerStore.HasInstance || NewGameData.Instance==null) return;
+        ModHelper.AddNetworkUpgrade(ModEntry.ModId,Upgrade,AcquisitionCatalog.EngineerCost,"Referral",
+            ()=>UiText.Get("upgrade_engineer_name"),()=>UiText.Get("upgrade_engineer_desc"),StartGift,
+            alreadyBought:()=>Get("gift_inflight")!=0?UiText.Get("upgrade_engineer_fault"):
+                UiText.Get("upgrade_engineer_done",Math.Max(0,AcquisitionCatalog.Starter.Count-Get("gift_cursor"))));
+        registered=true;
     }
     internal void Disable()
     {
+        ModHook.OnNewGameStarted-=NewGameStarted;
+        ModHook.OnGameLoadedInit-=RegisterUpgrade;
         ModHook.OnGenerateCustomerNormal-=Generate; ModHook.OnGameLoadedLate-=Loaded;
         ModHook.OnWakingUpLate-=Deliver; ModHook.OnShutterOpenedLate-=Deliver;
-        ModHelper.RemoveNetworkUpgrades(ModEntry.ModId);
-        PlayerStore.Instance?.storeClientManager?.clientStack?.RemoveAll(c=>c?.identifier==Steve && c.sourceModId==ModEntry.ModId);
+        if(registered && PlayerStore.HasInstance) ModHelper.RemoveNetworkUpgrades(ModEntry.ModId);
+        registered=false;
+        if(PlayerStore.HasInstance) PlayerStore.Instance.storeClientManager?.clientStack?.RemoveAll(c=>c?.identifier==Steve && c.sourceModId==ModEntry.ModId);
         var sprites=SpriteDict.Instance?.spriteDictionary;
         if(sprites!=null && sprites.TryGetValue(Steve,out var current) && ReferenceEquals(current,portrait)) sprites.Remove(Steve);
         if(portrait!=null) UnityEngine.Object.Destroy(portrait); portrait=null;
     }
-    internal void Loaded() { EnsurePortrait(); Deliver(); }
+    private void NewGameStarted(string _) { RegisterUpgrade(); EnsurePortrait(); Deliver(); }
+    internal void Loaded() { RegisterUpgrade(); EnsurePortrait(); Deliver(); }
     internal void EnsurePortrait()
     {
         var dictionary=SpriteDict.Instance?.spriteDictionary;

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp" HintPath="$(GameManagedDir)/Assembly-CSharp.dll" Private="false" />
+    <Reference Include="UnityEngine" HintPath="$(GameManagedDir)/UnityEngine.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(GameManagedDir)/UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.JSONSerializeModule" HintPath="$(GameManagedDir)/UnityEngine.JSONSerializeModule.dll" Private="false" />
+  </ItemGroup>
+  <Target Name="RequireRealRuntime" BeforeTargets="PrepareForBuild">
+    <Error Condition="!Exists('$(GameModDir)/DeepSpaceAE.Core.dll')" Text="Build against the installed production mod; no game or mod stubs." />
+    <Error Condition="!Exists('$(GameManagedDir)/Assembly-CSharp.dll')" Text="Real local game references are required." />
+    <GetFileHash Files="$(GameManagedDir)/Assembly-CSharp.dll" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="VerifiedGame" />
+    </GetFileHash>
+    <Error Condition="'%(VerifiedGame.FileHash)' != '6398D44AA1675E1F02B63BC668868F970E0F5D3AE5A50F2ACED8D06CA084E3B5'" Text="Reverify APIs for this game version before running." />
+  </Target>
+</Project>

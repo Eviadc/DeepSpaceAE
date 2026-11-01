@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Manifest>
+  <ID>deepspaceae.runtime-tests</ID>
+  <Name>DeepSpaceAE Runtime Pilot</Name>
+  <Author>Eviadc</Author>
+  <ModVersion>0.1.0</ModVersion>
+  <Description>Opt-in isolated runtime tests. Requires a one-shot run.json; never operates on ordinary saves.</Description>
+  <GameVersions><Version>100-Rev6</Version></GameVersions>
+  <Prerequisites><Mod>deepspaceae</Mod></Prerequisites>
+  <Assemblies><Assembly>DeepSpaceAE.RuntimeTests.dll</Assembly></Assemblies>
+  <Capabilities><Capability>files</Capability><Capability>reflection-external</Capability></Capabilities>
+</Manifest>

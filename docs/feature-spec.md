@@ -1,4 +1,4 @@
-# DeepSpaceAE 功能规格 · 0.9.1-alpha
+# DeepSpaceAE 功能规格 · 0.9.2-alpha
 
 维护基线：100-Rev6 / Steam Build 26337366，Windows x64。本文描述当前代码的预期行为；不把编译、模型或静态审计当作游戏运行结论。具体操作和验收记录见 [功能用例](functional-cases.md)，版本升级入口见 [维护指南](version-maintenance.md)。自动合成尚未实现。
 

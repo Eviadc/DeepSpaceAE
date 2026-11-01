@@ -1,4 +1,4 @@
-# DeepSpaceAE 0.9.1-alpha · 安装和联合验收
+# DeepSpaceAE 0.9.2-alpha · 安装和联合验收
 
 编译目标为本机真实安装的 100-Rev6 / Steam Build 26337366，Windows x64。新阶段游戏行为、存档往返及夜间现金扣费仍须联合测试。120 项模型/贴图测试及 38 项 PE 补丁审计不是 Unity/Harmony 实际运行证据。
 
