@@ -318,14 +318,15 @@ internal sealed partial class GameSession
         if (writing) return;
         try
         {
-            if (part.identifier == "deepspaceae.terminal" || DrawerStorage.IsDrawer(part)) { Open(part); return; }
+            if (part.identifier == "deepspaceae.terminal") { Open(part); return; }
             if (IoBus.IsBus(part))
             {
                 if (PartStorage.CanConfigure(part)) ShowBus(part); else ShowNotice(UiText.Get("ui_install_bus_first"));
                 return;
             }
             if (!ReferenceEquals(part.parentInventory, MainInventory()) || !GeneralHelper.IsItemEffectivelyOwned(part)) throw new Rejected(UiText.Get("error_part_main"));
-            if (DiskStorage.IsDrive(part)) ShowDrive(part);
+            if (DrawerStorage.IsDrawer(part)) ShowDrawer(part);
+            else if (DiskStorage.IsDrive(part)) ShowDrive(part);
             else if(EnergyReceiver.IsReceiver(part)) ShowReceiver(part);
             else if (part.identifier == "deepspaceae.core") ShowCore(part);
             // Cables have no independent UI; double-click is routed by hit face.

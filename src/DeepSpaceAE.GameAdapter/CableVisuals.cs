@@ -85,6 +85,7 @@ internal sealed class CableVisuals
     internal void ShapeChanged(GameItem item)
     {
         session.ItemChanged(item);
+        if (item.parentInventory is DrawerInventory drawer) drawer.RefreshItemDisplay(item);
         if (GameSession.IsPart(item) && !ReferenceEquals(item.parentInventory, root)) Inactive(item);
         if (root == null) return;
         if (ReferenceEquals(item.parentInventory, root))

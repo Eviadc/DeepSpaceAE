@@ -8,6 +8,7 @@ internal sealed class BorrowedInventoryView : PixelElement, MachineryWidget
     private readonly StealPixelElement borrowed = new(false);
     private readonly Vector2 savedPosition;
     private bool returned;
+    internal System.Action? AfterValidate;
     public bool fillWidth { get; set; }
     public bool canResize => false;
     public int widthPixels { get; private set; }
@@ -35,6 +36,7 @@ internal sealed class BorrowedInventoryView : PixelElement, MachineryWidget
         MachineryStyle.Place(borrowed.inner, 0, 0, widthPixels, heightPixels);
         MachineryStyle.Place(borrowed.handler, 0, 0, widthPixels, heightPixels);
         rectTransform.sizeDelta = new Vector2(widthPixels, heightPixels);
+        AfterValidate?.Invoke();
     }
     internal void Return()
     {

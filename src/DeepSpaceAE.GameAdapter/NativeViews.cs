@@ -128,6 +128,17 @@ internal sealed partial class GameSession
             terminalStatus.SetText(UiText.Get("ui_drawer_count", DrawerStorage.Data(openTerminal).Used, DrawerStorage.Capacity(openTerminal)));
         terminalWindow?.Validate();
     }
+    private void ShowDrawer(GameItem drawer)
+    {
+        ClosePart(); displayedPart = drawer;
+        var data = DrawerStorage.Data(drawer); data.PrepareDisplay(); data.SetMachineryStyle();
+        var stock = new BorrowedInventoryView(data) { AfterValidate = data.HideOtherStock }; driveBorrowed.Add(stock);
+        var cards = new BorrowedInventoryView(DrawerStorage.Upgrades(drawer)); driveBorrowed.Add(cards);
+        var body = MachineryStack.Vertical(NativeWidgets.Text(UiText.Get("ui_drawer_count", data.Used, DrawerStorage.Capacity(drawer))),
+            new MachineryIntake(stock, true, false), NativeWidgets.Text(UiText.Get("ui_upgrade_data")), new MachineryIntake(cards, true, false));
+        partWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel(UiText.Get("item_drawer_name"), body, "drawer", false));
+        partWindow.closeCallback = ClosePart; partWindow.Show().Center();
+    }
     private void ShowDrive(GameItem drive)
     {
         ClosePart(); displayedPart=drive;
@@ -323,6 +334,11 @@ internal sealed partial class GameSession
             if (displayedPart == null || ItemMouseDragHandler.current?.IsDraggingItem == true) return;
             if (!(ReferenceEquals(displayedPart.parentInventory, MainInventory()) || PartStorage.CanConfigure(displayedPart)) || !GeneralHelper.IsItemEffectivelyOwned(displayedPart)) { ClosePart(); return; }
             if (filterGrid != null) RenderFilters();
+            else if(DrawerStorage.IsDrawer(displayedPart))
+            {
+                var position=partWindow?.rectTransform.position; ShowDrawer(displayedPart);
+                if(position.HasValue && partWindow!=null) { partWindow.rectTransform.position=position.Value; partWindow.FixBounds(); }
+            }
             else if(DiskStorage.IsDrive(displayedPart))
             {
                 var position=partWindow?.rectTransform.position; ShowDrive(displayedPart);

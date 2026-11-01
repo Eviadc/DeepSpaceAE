@@ -261,8 +261,10 @@ public sealed class RuntimePilot : MonoBehaviour
         var extra=Paper(1); Check(data.TryFindOneValidInventorySlot(extra)?.numTransfer is not >0,"Drawer exceeded base 16 units.");
         var card=Spawn("deepspaceae.capacity_upgrade"); Add(card); Adapter.Move(card,cards);
         Check((int)Adapter.Static("DrawerStorage","Capacity",drawer)! == 64,"Drawer upgrade was not x4.");
-        Adapter.Call(Adapter.Session,"Open",drawer); var grid=Adapter.Field(Adapter.Session,"terminalGrid");
-        Check(grid!=null && (int)Adapter.Call(Adapter.Session,"DepositFromNative",grid,extra)! == 1,"Local drawer surface did not accept a real deposit.");
+        Adapter.Call(Adapter.Session,"Open",terminal); var terminalWindow=Adapter.Field(Adapter.Session,"terminalWindow");
+        Adapter.Call(Adapter.Session,"OpenPart",drawer);
+        Check(Adapter.Field(Adapter.Session,"partWindow")!=null && ReferenceEquals(terminalWindow,Adapter.Field(Adapter.Session,"terminalWindow")),"Drawer panel closed or replaced the terminal.");
+        Adapter.Move(extra,data);
         Check(ReferenceEquals(extra.parentInventory,data) && card.MaxNumRemove()==0,"Over-capacity card removal was not blocked.");
         Adapter.Move(extra,root); Check(card.MaxNumRemove()>0,"Card stayed locked at the lower capacity."); Adapter.Move(card,root);
         foreach(var item in data.childItems.ToArray()) Adapter.Move(item,Adapter.Data(large));
@@ -274,7 +276,9 @@ public sealed class RuntimePilot : MonoBehaviour
         var live=(System.Collections.IDictionary)Adapter.Field(Adapter.Field(Adapter.Session,"displayedView")!,"Live")!;
         Check(live.Values.Cast<GameItem>().Any(i=>ReferenceEquals(i,different)) && ReferenceEquals(different.parentInventory,data),"Storage bus did not expose the same drawer instance.");
         Check(GameSessionContentsAreDataOnly(),"Drawer upgrade inventory was exposed as stock.");
-        details="Real drawer: 16-unit limit, differing tag value rejected, x4 card, guarded removal, local deposit, empty/retype, physical bus and same-instance network visibility.";
+        Check(Adapter.Field(Adapter.Session,"partWindow")!=null,"Terminal refresh closed the native drawer panel.");
+        Check(data.childItems.OfType<GameItemElement>().Count(i=>i.handler.gameObject.activeSelf)==1,"Native drawer pile did not expose exactly one real representative.");
+        details="Real drawer: 16-unit limit, differing tag value rejected, x4 card, guarded removal, independent native panel coexists with terminal, empty/retype, physical bus and same-instance network visibility.";
         bool GameSessionContentsAreDataOnly()
         {
             var contents=(System.Collections.IList)Adapter.Static("GameSession","Contents",drawer)!;

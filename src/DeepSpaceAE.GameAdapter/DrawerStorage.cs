@@ -26,13 +26,23 @@ internal static class DrawerStorage
             && GeneralHelper.IsItemEffectivelyOwned(card) && GeneralHelper.IsItemEffectivelyOwned(item)
             && ReferenceEquals(item.parentInventory, GameSession.MainInventory());
         data.Cards.maxSlotRemoveItemFunc = (_, _, _) => data.Data.Used <= DrawerCapacity.Limit(Math.Max(0, Math.Min(5, data.Cards.childItems.Count - 1))) ? int.MaxValue : 0;
-        void Changed(GameItem _, GameInventory __, SlotMarker ___) => ModEntry.ActiveSession?.NativeStorageChanged(item);
+        void Changed(GameItem stock, GameInventory inventory, SlotMarker ___)
+        {
+            if (ReferenceEquals(inventory, data.Data))
+            {
+                // A hidden non-representative instance must become visible when
+                // it leaves the pile for an ordinary native inventory.
+                if (!ReferenceEquals(stock.parentInventory, data.Data) && stock is GameItemElement removed) removed.handler.gameObject.SetActive(true);
+                data.Data.PrepareDisplay();
+            }
+            ModEntry.ActiveSession?.NativeStorageChanged(item);
+        }
         foreach (var inv in new GameInventory[] { data.Data, data.Cards })
         {
             inv.onSlotAddItemEndFunc += Changed; inv.onSlotRemoveItemEndFunc += Changed; inv.onSlotChangeAmountItemFunc += Changed;
         }
-        // Only this persistent native graph owns the stock. The open window uses
-        // the same non-owning mirrors as the terminal, never a staging inventory.
+        // Only this persistent graph owns stock. The local native panel borrows
+        // this inventory's render; terminal mirrors remain independent.
         var graph = new PixelWindow(true, UiText.Get("item_drawer_name"));
         var layout = new GridPixelElement(1, 2, true); layout.AttachPos(data.Data, 0, 0); layout.AttachPos(data.Cards, 0, 1);
         graph.Attach(layout); item.SetContentWindow(graph);
@@ -66,7 +76,24 @@ internal static class DrawerStorage
 internal sealed class DrawerInventory : GameGridInventory
 {
     internal GameItem Drawer { get; }
+    private GameItem? representative;
     internal long Used => childItems.Sum(i => (long)i.unitCount);
+    internal void PrepareDisplay()
+    {
+        var first = childItems.FirstOrDefault(); representative = first;
+        int width = first?.modifiedShape.globalWidth ?? 2, height = first?.modifiedShape.globalHeight ?? 2;
+        if (inventoryShape.width != width || inventoryShape.height != height) SetShape(width, height);
+        HideOtherStock();
+    }
+    internal void HideOtherStock()
+    {
+        foreach (var item in childItems) if (item is GameItemElement element)
+            element.handler.gameObject.SetActive(ReferenceEquals(item, representative));
+    }
+    internal void RefreshItemDisplay(GameItem item)
+    {
+        if (item is GameItemElement element) element.handler.gameObject.SetActive(ReferenceEquals(representative, item));
+    }
     internal DrawerInventory(GameItem drawer) : base(1, 1)
     {
         Drawer = drawer;
@@ -89,6 +116,7 @@ internal sealed class DrawerInventory : GameGridInventory
     public override SlotMarker TryFindOneValidInventorySlot(GameItem item) => TryInventorySlot(item, item.unitCount, Vector2.zero, item.modifiedShape, item.modifiedState);
     public override SlotMarker TryInventorySlot(GameItem item, int amount, Vector2 position, GridShape shape, TagSystem state)
     {
+        shape = new GridShapeBuilder(shape).SetTransform(0, 0, false, 0).Build();
         var slot = new SlotMarker { item = item, inventory = this, itemGridShape = shape };
         if (amount >= item.unitCount && MayHaveValidInventorySlot(item) && item.CheckIsStateValid(this, slot, shape, state)
             && CheckAcceptParentShapeStateModifier(item, slot, shape, state) && item.MaxNumRemove() >= item.unitCount && item.MaxNumAdd(slot) >= item.unitCount)
