@@ -1,6 +1,6 @@
-# DeepSpaceAE 0.7.0-alpha · 安装和联合验收
+# DeepSpaceAE 0.8.0-alpha · 安装和联合验收
 
-编译目标为本机真实安装的 100-Rev6 / Steam Build 26337366，Windows x64。新阶段游戏行为、存档往返及夜间现金扣费仍须联合测试。102 项模型/贴图测试及 38 项 PE 补丁审计不是 Unity/Harmony 实际运行证据。
+编译目标为本机真实安装的 100-Rev6 / Steam Build 26337366，Windows x64。新阶段游戏行为、存档往返及夜间现金扣费仍须联合测试。108 项模型/贴图测试及 38 项 PE 补丁审计不是 Unity/Harmony 实际运行证据。
 
 ## 安装和本地开发
 
@@ -17,7 +17,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-game.ps1
 
 默认游戏目录 G:\SteamLibrary\steamapps\common\Probably Stolen，部署位置为其 Mods\DeepSpaceAE。部署脚本发现游戏运行会停止，不强制结束游戏。旧版备份位于仓库 artifacts/mod-backups，安装包位于 artifacts/packages。
 
-包内仅两个自有 DLL、87 张授权 PNG、2 CSV、manifest、说明、来源/许可、日志提取脚本及构建记录，不含游戏引用、测试宿主、存档或凭据。源码完整说明见 docs/feature-spec.md、docs/functional-cases.md、docs/version-maintenance.md；包内另附“功能规格.md”“功能用例.md”“版本维护.md”。
+包内仅两个自有 DLL、88 张 PNG（87 AE2 衍生组件及 1 独立史蒂夫头像）、2 CSV、manifest、说明、来源/许可、日志提取脚本及构建记录，不含游戏引用、测试宿主、存档或凭据。源码完整说明见 docs/feature-spec.md、docs/functional-cases.md、docs/version-maintenance.md；包内另附“功能规格.md”“功能用例.md”“版本维护.md”。
+
+## 0.8 获取路径测试
+
+王尔德基础升级页的 Referral 分类中应有“AE工程师”，费用 200，与葡萄酒酿造同档。购买后基础组件直接进入主栏；礼包共 16 件，电池需自备。主栏满时不会取消权益，腾出空间后开门/次日续发。先验证 ACQ-01～04，尤其存档不重复领取。
+
+史蒂夫从第 15 天起每天有 5% 概率成为营业顾客候选。货品覆盖全部十二种 AE 组件，每种独立概率，价格表见功能规格；线缆保证有货，大盘较稀有。保持原版单件购买，检查独立立绘、余额不足、购买所有权及同日不重复供货（ACQ-07、08、10、11）。不必通过反复读档强刷概率，也不将尚无实测的随机分布当作已验证。
 
 ## 0.7 机器总线测试入口
 

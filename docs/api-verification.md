@@ -1,5 +1,15 @@
 # API 核验与剩余未知
 
+## 0.8.0 升级、来访及礼包（2026-11-01）
+
+同一 Rev6 真实程序集核验：ModHelper.AddNetworkUpgrade 接受本地化提供器、source、费用、分类和一次性回调；NetworkUpgrade.Unlock 先设 state=2 再调用 UnlockActions，随后发事件。原版 WINEMAKER 是基础页 Referral、费用 200。RegisterModUpgrade 为旧存档补定义但保留已有运行状态。
+
+ModHook.OnGenerateCustomerNormal 在原版供应/故事客户之后、普通随机客户之前，可通过 StoreClientManager.AddClient 添加来源标记的自定义 StoreClient。原版 currentClientInstance、clientStack 是 ES3NonSerializable，不能承诺原样恢复正在交易的 NPC。ModHelper 的 Set/GetModDataInt/String 使用 PlayerStore.ModData 的存档内字典，适合记录每日判定、货单、供货日和礼包进度。
+
+原版商人用 ClientIntent.SELL、原生货台和 AddBasicDialog/CompleteClientCreation。TryAddDirectSellingItemToTable 返回放置是否成功；底层满货台可能清理未放置商品，须记录拒收，不据此补货重刷。SpriteDict.spriteDictionary 可登记自有像素头像，GetSprite 按键解析；头像尺寸和柜台比例仍须实机。
+
+重要差异：原版酿酒奖励使用 GraphUtils.EmporiumTryAdd，其所有库存均满时 DestroyIfUnplaced。本模组只向正确主库存预检并排队，未进入原生写入前可清理全新候选，未知写入后不销毁/重发。基础升级物品和价格配置已编译核验，108 项模型/贴图测试；未新增补丁，仍为 38 项 PE 审计。
+
 ## 0.7.0 原版料斗与机器槽（2026-11-01）
 
 仍为同一 Rev6 真实程序集。HopperHelper.RunUnguarded 在真实 parentInventory 之间，先 GraphUtils.CanAccept 再 TryAcceptAll；后者内部最多 40 次 SlotMarker.TryAcceptOnce，返回的是剩余量。不能把返回值误读为移动量。SlotMarker 原生负责拆分、堆叠及进出库存回调。

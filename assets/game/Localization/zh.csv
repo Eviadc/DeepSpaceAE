@@ -134,3 +134,9 @@ ui_io_no_slots,未找到兼容的机器进料/出料槽
 ui_io_moved,已传输 {0} 件
 ui_io_idle,没有可传物品或目标满/锁定
 ui_io_error,传输已停止，请检查日志
+upgrade_engineer_name,AE工程师
+upgrade_engineer_desc,王尔德为你介绍一位AE工程师，赠送核心×1、线缆×8、存储总线×2、终端×1、硬盘驱动器×1、小硬盘×2及扳手×1。电池需自备。请腾出主物品栏；未送达部分在开卷帘门或次日继续发放。
+upgrade_engineer_done,已介绍AE工程师。基础组件尚待送达：{0}件。
+upgrade_engineer_fault,基础组件发放结果不明，请保留日志；不会自动重复发放。
+npc_steve_name,史蒂夫
+npc_steve_greeting,你好！我是史蒂夫，做应用能源设备生意。看看我这次带来了些什么吧。

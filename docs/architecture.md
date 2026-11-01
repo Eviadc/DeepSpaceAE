@@ -1,6 +1,6 @@
 # 架构边界
 
-> 当前 0.7.0 行为以 [完整功能规格](feature-spec.md)、[用例矩阵](functional-cases.md) 为准。下文按版本保留历史实现背景，不能恢复旧终端渲染借用、独立总线或旧电源策略。
+> 当前 0.8.0 行为以 [完整功能规格](feature-spec.md)、[用例矩阵](functional-cases.md) 为准。下文按版本保留历史实现背景，不能恢复旧终端渲染借用、独立总线或旧电源策略。
 
 ## 目标与阶段
 
@@ -63,3 +63,7 @@ GameSession.Read 同时发现总线前方化学液体容器，不要求 GameInve
 ## 0.7 机器自动化
 
 ImportBus / ExportBus 是追加的频道叶子，沿用线缆四面升级与独立五卡槽保存图。IoBus 用机器原生 input/output 面板角色确定端口；Automation 复用 GameSession.ReadStorage 的当前网络候选并独立于终端运行，实际移动仍经原生槽校验。原生料斗夜间窗口触发一次有界批次，不增加每帧扫描。已付预算的夜间网络使用权由 AutomationRules/PartPower 检查，保持一次扣费与未知结果锁定。
+
+## 0.8 获取与经济
+
+AcquisitionCatalog / DeliveryProgress 为无游戏对象的平衡配置和一次性交付进度。Acquisition 将其绑定官方升级与顾客生成钩子，使用存档内 ModData；不另建数据库、不强制存档，不把候选货单当成真实库存。基础礼包放置与商人售货保持分离：前者确认主栏归属后推进，后者使用原版货台和购买回调。未确认交付停止，日内供货先标记后执行以防重入刷货。新增一个独立 NPC 头像，组件贴图仍为 87 张。

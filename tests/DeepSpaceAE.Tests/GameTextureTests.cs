@@ -15,7 +15,7 @@ public sealed class GameTextureTests
     [Fact]
     public void CoreTextureCoversAllNineCellsAndWhitelistContainsAllActiveAndInactiveImages()
     {
-        Assert.Equal(87, Directory.GetFiles(Root, "*.png").Length);
+        Assert.Equal(88, Directory.GetFiles(Root, "*.png").Length);
         foreach (var name in new[] { "core", "terminal", "item-storage-bus", "pipeline" })
             Assert.True(File.Exists(Path.Combine(Root, name + "-off.png")));
         for (int mask = 0; mask < 16; mask++) Assert.True(File.Exists(Path.Combine(Root, $"pipeline-{mask}-off.png")));
@@ -26,6 +26,15 @@ public sealed class GameTextureTests
             foreach (int x in new[] { 8, 24, 40 }) Assert.Equal(255, pixels[(y * width + x) * 4 + 3]);
     }
 
+    [Fact]
+    public void StevePortraitUsesItsOwnTransparentCanvas()
+    {
+        var (width,height,pixels)=Decode("steve-portrait.png");
+        Assert.Equal(256,width); Assert.Equal(384,height);
+        Assert.Equal(0,pixels[3]); bool visible=false;
+        for(int i=3;i<pixels.Length;i+=4) if(pixels[i]>0) { visible=true; break; }
+        Assert.True(visible);
+    }
     [Fact]
     public void IoBusProfilesKeepTheExistingFourFaceHitGeometry()
     {

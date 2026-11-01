@@ -134,3 +134,9 @@ ui_io_no_slots,No compatible machine input/output slot
 ui_io_moved,Transferred {0} units
 ui_io_idle,No eligible transfer / full or locked
 ui_io_error,Transfer stopped - check log
+upgrade_engineer_name,AE Engineer
+upgrade_engineer_desc,Wilde introduces an AE engineer. Receive a controller + 8 cables + 2 storage buses + a terminal + a disk drive + 2 small disks + a wrench. Bring your own battery. Make room in the main inventory; pending items resume when you open the shutter or next morning.
+upgrade_engineer_done,Engineer introduced. Starter components still pending: {0}.
+upgrade_engineer_fault,Starter delivery outcome unknown. Retain the log; it will not be sent again automatically.
+npc_steve_name,Steve
+npc_steve_greeting,Good day! I trade in applied energistics. Take a look at what I managed to bring this time.

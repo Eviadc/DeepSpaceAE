@@ -54,3 +54,13 @@ Automation.RunAutomation 以原生 HopperHelper.RunWindow Postfix 驱动，手�
 AutomationMove 调用 SlotMarker.TryAcceptOnce 并验证原实例在源中的剩余量或完整移除结果，允许原生拆分与堆叠；异常结果锁写，保留 slot.item 可能产生的孤立分裂实例。升级时复核来源对象销毁/数量清理语义，不能套用终端“整实例不变”的检查到料斗。
 
 PartPower 的夜间分支只承认同日、同源、已结算且不超已付预算，避免先扣完电池后把已付网络当成没电，也不能绕过未付/未知扣费。新增 IO 类型只追加 NetworkPart 枚举，保存图不修改既有节点顺序。新增 20 PNG，总白名单 87。
+
+## 0.8 获取路径维护
+
+AcquisitionCatalog 集中记录 12 种组件的基础价格、史蒂夫有货概率/数量及基础礼包；新增组件必须同步工厂、该表和测试，避免商品目录漏项。费用 200、首日 15、每日 5% 是用户确认的初始平衡值，可后续修改，不是游戏原生常数。
+
+Acquisition 使用 AddNetworkUpgrade 与 GenerateCustomerNormal 官方钩子，无额外 Harmony 目标。升级本地化必须用 provider 延迟解析；礼包先持久化 in-flight，确认实际主栏放置后再推进。必须重新核验 PlayerStore.ModData 的保存边界、NetworkUpgrade.Unlock 调用时序、SlotMarker 接受结果和原生满库存兜底，禁止恢复 EmporiumTryAdd 的丢弃路径来“完成”礼包。
+
+客户蓝图/队列/当前客户不序列化。每日 roll/货单/served 记录用于重建未到访候选与阻止当天重复供货，不能声称可恢复未购货台。升级时核验 AddBasicDialog、ClientIntent.SELL、货台购买和 owned 标记，不给 NPC 手写现金结算。头像只登记独立键 deepspaceae.steve，保持原版 sprite 高度/轴心，禁用只移除自有内容。
+
+头像由内置 imagegen 生成，原图、提示词和缩放说明保存在 assets/steve-source；最终 PNG 256×384、透明。它不属于 AE2 素材许可；包总计 88 PNG，需同时分发独立来源说明。

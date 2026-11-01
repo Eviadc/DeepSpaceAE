@@ -20,13 +20,15 @@ public sealed class ModEntry : IMod
     internal static GameSession? ActiveSession { get; private set; }
     private ModLog log = null!;
     private GameSession session = null!;
+    private Acquisition acquisition=null!;
 
     public void Init(ModManifest manifest)
     {
         log = new ModLog(manifest); // Manifest Name is ASCII; keep official metadata intact.
         session = new GameSession(log);
         ActiveSession = session;
-        log.Log("DeepSpaceAE 0.7.0 / 100-Rev6 initialized.");
+        acquisition=new Acquisition(log,session);
+        log.Log("DeepSpaceAE 0.8.0 / 100-Rev6 initialized.");
     }
 
     public void OnEnable()
@@ -39,6 +41,7 @@ public sealed class ModEntry : IMod
         ModHook.OnGoingSleepEarly += session.Night;
         ModHook.OnGoingSleepLate += session.NightLate;
         ModHook.OnLootTablesLoaded += LootLoaded;
+        acquisition.Enable();
         log.Log("Enabled.");
     }
 
@@ -51,6 +54,7 @@ public sealed class ModEntry : IMod
         ModHook.OnGoingSleepEarly -= session.Night;
         ModHook.OnGoingSleepLate -= session.NightLate;
         ModHook.OnLootTablesLoaded -= LootLoaded;
+        acquisition.Disable();
         foreach (var group in lootGroups) ModHelper.RemoveLootGroupEntry(ModId, group, "deepspaceae.scavenging");
         lootGroups.Clear();
         session.Close();
@@ -62,6 +66,7 @@ public sealed class ModEntry : IMod
     {
         if (mod.Manifest.ID != ModId) return;
         session.Visuals.AssetsLoaded(mod);
+        acquisition.EnsurePortrait();
         log.Log("Assets ready: sprites=" + mod.Sprites.Count + "; locales=" + mod.Localization.Count + ".");
     }
 
@@ -82,7 +87,7 @@ public sealed class ModEntry : IMod
                 item.name = UiText.Get(definition.NameKey);
                 item.shortDescription = IoBus.IsBus(item) ? UiText.Get(IoBus.IsIo(item)?"item_io_desc":"item_bus_desc") : definition.Part == NetworkPart.Pipeline ? UiText.Get("item_cable_desc") : UiText.Get("item_part_desc");
                 item.flavorText = UiText.Get("item_flavor");
-                item.unitValue = 1;
+                item.unitValue = AcquisitionCatalog.Price(item.identifier);
                 item.SetSpriteAndShapeFromMod(ModId, definition.Sprite + "-off");
                 // Intentional custom part definition, not a guess about other inventory shapes.
                 int size = definition.Part == NetworkPart.Core ? 3 : definition.Part == NetworkPart.DiskDrive ? 2 : 1;
@@ -105,7 +110,7 @@ public sealed class ModEntry : IMod
             var definition = entry;
             directory.Add(definition.Item1, () => {
                 var item = ItemDirectory.CreateEmptyItem(definition.Item1);
-                item.name = UiText.Get(definition.Item2); item.unitValue = 20;
+                item.name = UiText.Get(definition.Item2); item.unitValue = AcquisitionCatalog.Price(item.identifier);
                 item.SetSpriteAndShapeFromMod(ModId, definition.Item3);
                 item.SetShape(new GridShapeBuilder(1, 1).SetDataFill(1).Build());
                 item.mayStackItemFunc = (_, _) => false;
@@ -128,7 +133,7 @@ public sealed class ModEntry : IMod
             var definition=entry;
             directory.Add(definition.Item1,()=>{
                 var item=ItemDirectory.CreateEmptyItem(definition.Item1); item.name=UiText.Get(definition.Item2);
-                item.shortDescription=UiText.Get("item_disk_desc",DiskStorage.Capacity(item)); item.unitValue=DiskStorage.Capacity(item);
+                item.shortDescription=UiText.Get("item_disk_desc",DiskStorage.Capacity(item)); item.unitValue=AcquisitionCatalog.Price(item.identifier);
                 item.SetSpriteAndShapeFromMod(ModId,definition.Item3);
                 item.SetShape(new GridShapeBuilder(1,2).SetDataFill(1).Build()); item.mayStackItemFunc=(_,_)=>false;
                 DiskStorage.CreateDisk(item); return item;
