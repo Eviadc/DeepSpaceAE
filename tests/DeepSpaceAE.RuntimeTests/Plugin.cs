@@ -56,5 +56,7 @@ public sealed class PilotReport
     public string activeScene="",nativeScenario="";
     public bool hasGameRoot,hasPlayerStore,scenarioCallbackSeen,sessionLoading=true;
     public int nativeSaveSlot=-1;
-    public System.Collections.Generic.List<CaseResult> cases=new();
+    public bool startupHintInitiallyVisible,startupHintClosed;
+    public string startupHintHandledBy="";
+    [NonSerialized] public System.Collections.Generic.List<CaseResult> cases=new();
 }

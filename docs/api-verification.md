@@ -1,5 +1,7 @@
 # API 核验与剩余未知
 
+2026-11-01 的独立新存档已完成八项真实运行时用例及操作提示复跑，见 [精简运行时试验结果](runtime-pilot-results-20261101.md)。下文各版本的“未运行”是当时的静态核验边界；本轮仅补充报告中列出的八项，不覆盖鼠标、跨日和读取存档。
+
 ## 0.8.0 升级、来访及礼包（2026-11-01）
 
 同一 Rev6 真实程序集核验：ModHelper.AddNetworkUpgrade 接受本地化提供器、source、费用、分类和一次性回调；NetworkUpgrade.Unlock 先设 state=2 再调用 UnlockActions，随后发事件。原版 WINEMAKER 是基础页 Referral、费用 200。RegisterModUpgrade 为旧存档补定义但保留已有运行状态。

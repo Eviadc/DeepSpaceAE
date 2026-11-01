@@ -1,5 +1,7 @@
 # 独立真实运行时试验插件
 
+首轮及操作提示复跑已完成，八项均通过。被测版本、证据边界和实际 token 统计见 [运行结果](../../docs/runtime-pilot-results-20261101.md)。
+
 只用于用户明确授权的新测试存档。独立于正式模组安装包、默认解决方案和现代 .NET 模型测试，直接引用本机 Rev6 游戏 DLL 编译；不分发游戏引用或测试存档。它通过窄范围反射调用**实际安装的** DeepSpaceAE，不复制生产逻辑，也没有对正式模组加入测试入口。
 
 ## 执行
@@ -30,6 +32,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/runtime-pilot.ps1 -L
 | PILOT-08 | 原版 SaveGame 写入新测试槽，文件存在且非空 | 保存不等于保存后重载成功 |
 
 报告逐项写入 `result.json`，记录 PASS/FAIL、耗时、错误、游戏槽及版本上下文。加载/信任阻断单独记录为启动失败，不能当作八项执行结果。失效后续项保留未执行，不补填 PASS。
+
+进入专用存档后检测 `StoreUIManager.controlHintOverlay`，如可见则调用原版 `ToggleControlHintOverlay`（包含 `TutorialUIManager.OnHintClosed`），记录初始状态与关闭结果；这属于原生回调测试，不冒充真实鼠标点击。测试期间临时启用后台运行并写入场景/就绪心跳，销毁测试宿主时恢复原值。
 
 ## Token 记录
 

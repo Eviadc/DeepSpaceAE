@@ -16,7 +16,7 @@ public sealed class RuntimePilot : MonoBehaviour
     private float menuReadyAt=-1;
     private float heartbeat;
     private bool priorBackground;
-    private bool booted,done;
+    private bool booted,done,hintChecked;
     private int step;
     private GameItem core=null!,drive=null!,receiver=null!,terminal=null!,small=null!,large=null!,overflow=null!;
     private GameGridInventory root=null!;
@@ -74,11 +74,26 @@ public sealed class RuntimePilot : MonoBehaviour
                 report.freshScenarioConfirmed=true; report.status="running"; Write();
             }
             Guard();
+            if(!hintChecked)
+            {
+                var ui=StoreUIManager.Instance;
+                if(ui==null || ui.controlHintOverlay==null) throw new InvalidOperationException("Native startup hint UI is unavailable.");
+                report.startupHintInitiallyVisible=ui.controlHintOverlay.activeSelf;
+                if(report.startupHintInitiallyVisible)
+                {
+                    ui.ToggleControlHintOverlay();
+                    report.startupHintHandledBy="StoreUIManager.ToggleControlHintOverlay -> TutorialUIManager.OnHintClosed";
+                }
+                else report.startupHintHandledBy="already closed";
+                report.startupHintClosed=!ui.controlHintOverlay.activeSelf;
+                Check(report.startupHintClosed,"Native startup hint did not close.");
+                hintChecked=true; Write(); return;
+            }
             var actions=new Action[]{Load,Slots,Network,Power,Capacity,Terminal,Disconnect,Save};
             if(step==actions.Length) { Finish(); return; }
             var watch=System.Diagnostics.Stopwatch.StartNew();
             string id="PILOT-"+(step+1).ToString("00");
-            try { actions[step](); report.cases.Add(new CaseResult{id=id,status="PASS",detail=details,elapsedMs=watch.Elapsed.TotalMilliseconds}); }
+            try { actions[step](); report.cases.Add(new CaseResult{id=id,status="PASS",detail=details,elapsedMs=watch.Elapsed.TotalMilliseconds}); Debug.Log("[AE-PILOT] "+id+" PASS: "+details); }
             catch(Exception e)
             {
                 report.cases.Add(new CaseResult{id=id,status="FAIL",detail=e.ToString(),elapsedMs=watch.Elapsed.TotalMilliseconds});
@@ -155,6 +170,9 @@ public sealed class RuntimePilot : MonoBehaviour
             if(Enumerable.Range(0,42).All(i=>!occupied.Contains((gx+i%7,gy+i/7)))) {x=gx;y=gy;found=true;}
         Check(found,"No free fixture rectangle; no starting items were removed.");
         At(core,x,y); At(drive,x+4,y+2); At(receiver,x+1,y+3); At(terminal,x+6,y+1);
+        // Occupy the complete network fixture before staging ordinary items;
+        // otherwise native automatic placement may use a future cable cell.
+        for(int dx=3;dx<=5;dx++) At(Spawn("deepspaceae.pipeline"),x+dx,y+1);
         var bays=Adapter.Slots("DiskStorage","Bays",drive); var power=Adapter.Slots("EnergyReceiver","Slots",receiver);
         Check(bays.Length==6 && power.Length==3,"Actual bay count mismatch.");
         var paper=Spawn("toilet_paper"); Add(paper);
@@ -166,7 +184,6 @@ public sealed class RuntimePilot : MonoBehaviour
     }
     private void Network()
     {
-        for(int dx=3;dx<=5;dx++) At(Spawn("deepspaceae.pipeline"),x+dx,y+1);
         var evaluation=Adapter.Evaluation(Adapter.Board()); string coreId=Adapter.Id(core);
         foreach(var item in new[]{drive,receiver,terminal})
             Check(Adapter.DeviceStatus(evaluation,Adapter.Id(item))=="Online" && Equals(Adapter.Property(Adapter.Indexed(evaluation,"Devices",Adapter.Id(item)),"CoreId"),coreId),"Physical leaf not connected: "+item.identifier);
@@ -217,7 +234,7 @@ public sealed class RuntimePilot : MonoBehaviour
     }
     private void Disconnect()
     {
-        At(terminal,x+6,y+4);
+        At(terminal,root.inventoryShape.width-1,root.inventoryShape.height-1);
         Check(Adapter.DeviceStatus(Adapter.Evaluation(Adapter.Board()),Adapter.Id(terminal))!="Online","Detached terminal stayed online.");
         At(terminal,x+6,y+1);
         Check(Adapter.DeviceStatus(Adapter.Evaluation(Adapter.Board()),Adapter.Id(terminal))=="Online","Terminal did not reconnect.");
@@ -239,7 +256,11 @@ public sealed class RuntimePilot : MonoBehaviour
     }
     private void Write()
     {
-        File.WriteAllText(Path.Combine(config.outputDirectory,"result.json"),JsonUtility.ToJson(report,true));
+        // Unity's dynamic-mod serializer omits the nested List<CaseResult> on
+        // this build. Serialize each flat record explicitly, preserving real rows.
+        string meta=JsonUtility.ToJson(report,true).TrimEnd();
+        string rows=string.Join(",\n",report.cases.Select(c=>JsonUtility.ToJson(c,true)));
+        File.WriteAllText(Path.Combine(config.outputDirectory,"result.json"),meta.Substring(0,meta.LastIndexOf('}'))+",\n\"cases\": [\n"+rows+"\n]}\n");
     }
     private void OnDestroy() { if(config!=null) Application.runInBackground=priorBackground; }
 }
