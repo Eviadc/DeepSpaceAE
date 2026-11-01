@@ -140,3 +140,7 @@ GameInventory.CheckAcceptParentShapeStateModifier 处理新物品加入父链，
 ## 0.9.2 首次真实启动发现的注册时序错误
 
 2026-11-01，本机实际 Player.log 记录 0.9.1 在 Acquisition.Enable → ModHelper.AddNetworkUpgrade → NetworkUpgrade.RegisterModUpgrade → PlayerStore.Instance → PlayerStore 构造处抛 NullReferenceException，ModLoader running=False。原因是官方 RegisterModUpgrade 读取惰性 PlayerStore 单例，而 ModLoader.OnEnable 时 NewGameData 尚未存在。修订只在已有 PlayerStore/新游戏开始/读档初始化时注册，读档晚期做幂等兜底；禁用清理也先检查 HasInstance，避免清理触发构造。模型与补丁审计未覆盖这一真实冷启动时序。本轮实测结果另见独立运行时试验记录，不能将修订编译成功填作实机通过。
+
+## 0.9.3 新开局生命周期
+
+独立运行时插件真实进入 InventoryScene 和新建的 6 号测试存档，确认场景 deepspaceae.runtime-pilot、原生 PlayerStore/主栏及开局回调均存在，但 GameSession.Loading 仍为 true，八项用例未能开始。OnGameLoadedLate 是读档事件，不能替代 OnNewGameStarted。补上新开局 session.Reset → AttachInventory/DayStarted，防止首次新档一直拒绝网络供电，并在同进程新开局时清理前档会话状态。结果以随后完整运行时报告为准。

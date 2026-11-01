@@ -29,7 +29,7 @@ public sealed class ModEntry : IMod
         session = new GameSession(log);
         ActiveSession = session;
         acquisition=new Acquisition(log,session);
-        log.Log("DeepSpaceAE 0.9.2 / 100-Rev6 initialized.");
+        log.Log("DeepSpaceAE 0.9.3 / 100-Rev6 initialized.");
     }
 
     public void OnEnable()
@@ -38,6 +38,7 @@ public sealed class ModEntry : IMod
         ModHook.OnModItemDirectoryInit += Register;
         ModHook.OnGameLoadedEarly += Reset;
         ModHook.OnGameLoadedLate += AttachInventory;
+        ModHook.OnNewGameStarted += NewGameStarted;
         ModHook.OnModAssetsLoaded += AssetsLoaded;
         ModHook.OnGoingSleepEarly += session.Night;
         ModHook.OnGoingSleepLate += session.NightLate;
@@ -51,6 +52,7 @@ public sealed class ModEntry : IMod
         ModHook.OnModItemDirectoryInit -= Register;
         ModHook.OnGameLoadedEarly -= Reset;
         ModHook.OnGameLoadedLate -= AttachInventory;
+        ModHook.OnNewGameStarted -= NewGameStarted;
         ModHook.OnModAssetsLoaded -= AssetsLoaded;
         ModHook.OnGoingSleepEarly -= session.Night;
         ModHook.OnGoingSleepLate -= session.NightLate;
@@ -77,6 +79,7 @@ public sealed class ModEntry : IMod
     }
 
     private void AttachInventory() { session.Visuals.Attach(); session.DayStarted(); }
+    private void NewGameStarted(string _) { session.Reset(); AttachInventory(); }
 
     private void Register(ModItemDirectory directory)
     {

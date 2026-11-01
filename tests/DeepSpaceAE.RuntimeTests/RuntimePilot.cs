@@ -14,6 +14,8 @@ public sealed class RuntimePilot : MonoBehaviour
     private readonly PilotReport report=new();
     private float next,deadline;
     private float menuReadyAt=-1;
+    private float heartbeat;
+    private bool priorBackground;
     private bool booted,done;
     private int step;
     private GameItem core=null!,drive=null!,receiver=null!,terminal=null!,small=null!,large=null!,overflow=null!;
@@ -24,6 +26,7 @@ public sealed class RuntimePilot : MonoBehaviour
     internal void Configure(PilotConfig settings)
     {
         config=settings; report.runId=config.runId; report.productCommit=config.productCommit;
+        priorBackground=Application.runInBackground; Application.runInBackground=true;
         report.startedUtc=DateTime.UtcNow.ToString("O"); report.unityVersion=Application.unityVersion;
         deadline=Time.realtimeSinceStartup+120; Write();
     }
@@ -33,6 +36,12 @@ public sealed class RuntimePilot : MonoBehaviour
         next=Time.realtimeSinceStartup+0.25f;
         try
         {
+            report.activeScene=SceneManager.GetActiveScene().name;
+            report.hasGameRoot=EmporiumEntry.Instance!=null;
+            report.hasPlayerStore=PlayerStore.HasInstance;
+            report.scenarioCallbackSeen=FreshScenarioStarted;
+            if(PlayerStore.HasInstance) {report.nativeScenario=ModHelper.GetStartingScenarioId();report.nativeSaveSlot=PlayerStore.Instance.saveSlotId;}
+            if(Time.realtimeSinceStartup>=heartbeat) {heartbeat=Time.realtimeSinceStartup+5;Write();}
             if(Time.realtimeSinceStartup>deadline) throw new TimeoutException("Pilot timed out at "+report.status);
             if(!booted)
             {
@@ -57,7 +66,9 @@ public sealed class RuntimePilot : MonoBehaviour
                 if(EmporiumEntry.Instance?.invElement==null || PlayerStore.Instance==null || PlayerStore.Instance.saveSlotId<0 || !FreshScenarioStarted) return;
                 if(!ModHelper.IsStartingScenario(Plugin.Scenario) || config.existingSlots.Contains(PlayerStore.Instance.saveSlotId))
                     throw new InvalidOperationException("Not a newly allocated pilot slot; no test writes permitted.");
-                if(Adapter.Session==null || (bool)Adapter.Property(Adapter.Session,"Loading")!) return;
+                if(Adapter.Session==null) return;
+                report.sessionLoading=(bool)Adapter.Property(Adapter.Session,"Loading")!;
+                if(report.sessionLoading) return;
                 root=EmporiumEntry.Instance.invElement;
                 report.saveSlot=PlayerStore.Instance.saveSlotId; report.day=StoreStation.GetDayCounter();
                 report.freshScenarioConfirmed=true; report.status="running"; Write();
@@ -230,4 +241,5 @@ public sealed class RuntimePilot : MonoBehaviour
     {
         File.WriteAllText(Path.Combine(config.outputDirectory,"result.json"),JsonUtility.ToJson(report,true));
     }
+    private void OnDestroy() { if(config!=null) Application.runInBackground=priorBackground; }
 }

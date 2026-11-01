@@ -53,5 +53,8 @@ public sealed class PilotReport
     public string runId="",status="waiting_for_menu",productCommit="",startedUtc="",finishedUtc="",unityVersion="",error="";
     public int saveSlot=-1,day=-1;
     public bool freshScenarioConfirmed,mouseInputTested=false,saveReloadTested=false;
+    public string activeScene="",nativeScenario="";
+    public bool hasGameRoot,hasPlayerStore,scenarioCallbackSeen,sessionLoading=true;
+    public int nativeSaveSlot=-1;
     public System.Collections.Generic.List<CaseResult> cases=new();
 }
