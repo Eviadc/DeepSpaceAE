@@ -140,3 +140,10 @@ upgrade_engineer_done,Engineer introduced. Starter components still pending: {0}
 upgrade_engineer_fault,Starter delivery outcome unknown. Retain the log; it will not be sent again automatically.
 npc_steve_name,Steve
 npc_steve_greeting,Good day! I trade in applied energistics. Take a look at what I managed to bring this time.
+item_receiver_name,AE Energy Receiver
+ui_receiver_slots,AE Receiver Batteries
+ui_empty_power_slot,Empty battery slot
+ui_receiver_hint,Shares power with the controller. Only necessary sources are locked.
+ui_pool_summary,Power plan: {0} selected / {1} connected sources
+ui_source_reserved,Reserved: {0} kJ
+ui_core_slot_empty,Controller slot empty - receivers can supply power.

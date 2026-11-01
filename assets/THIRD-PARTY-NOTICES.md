@@ -16,7 +16,7 @@ light frames; storage-bus model up faces projected with their original/default U
 profiles with internal glass-cable connectors; blue/orange tinted derivatives distinguish import/export buses; terminal layers composited; glass-cable model up faces and their UVs projected into four-port shapes;
 inactive variants darkened/desaturated; fuzzy-card texture adapted with a tag symbol.
 Disk-drive rack and 1x2 storage disks are new pixel compositions derived from the
-controller and capacity-card textures. Capacity card and certus-quartz wrench textures are retained. Derivative artwork is
+controller and capacity-card textures. The 2x2 energy receiver reuses the controller background with three pixel battery symbols. Capacity card and certus-quartz wrench textures are retained. Derivative artwork is
 also CC BY-NC-SA 3.0: retain this notice and attribution, share adaptations under the
 same license, and do not use the artwork commercially without separate permission.
 No endorsement by the AE2 project is implied. No AE2 Java code or Minecraft/game

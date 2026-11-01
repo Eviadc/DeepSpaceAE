@@ -112,7 +112,7 @@ public sealed class NetworkEvaluation
         ChannelsUsed = new ReadOnlyDictionary<string, int>(used);
     }
 
-    public static int NightCost(NetworkPart part) => part == NetworkPart.Core ? 2 : part == NetworkPart.Pipeline ? 0 : 1;
+    public static int NightCost(NetworkPart part) => part == NetworkPart.Core ? 2 : part == NetworkPart.Pipeline || part == NetworkPart.EnergyReceiver ? 0 : 1;
 
     private Dictionary<string, RoutePath> Reachable(NetworkTopology topology, string core,
         Dictionary<string, int> used, List<RoutePath> order)

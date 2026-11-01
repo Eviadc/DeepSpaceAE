@@ -103,6 +103,15 @@ def assets():
             draw.rectangle((x+2,y+3,x+5,y+8),fill=(151,160,161,255))
             draw.point((x+5,y+10),fill=(116,230,128,255))
     result['drive.png']=rack
+    receiver=image('controller_powered.png').resize((32,32),Image.Resampling.NEAREST)
+    draw=ImageDraw.Draw(receiver)
+    for col in range(3):
+        x=3+col*9
+        draw.rectangle((x+2,4,x+5,5),fill=(181,188,192,255))
+        draw.rectangle((x,6,x+7,27),fill=(32,39,41,255),outline=(164,176,180,255))
+        draw.rectangle((x+2,9,x+5,24),fill=(98,222,127,255))
+        draw.line((x+1,17,x+6,17),fill=(220,246,224,255))
+    result['energy-receiver.png']=receiver
     for name,img in list(result.items()):
         if not name.endswith('-off.png') and name[:-4]+'-off.png' not in result: result[name[:-4]+'-off.png']=inactive(img)
     lights=image('controller_lights.png')

@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace DeepSpaceAE.Core.Network;
 
-public enum NetworkPart { Core, Pipeline, ItemStorageBus, Terminal, DiskDrive, ImportBus, ExportBus }
+public enum NetworkPart { Core, Pipeline, ItemStorageBus, Terminal, DiskDrive, ImportBus, ExportBus, EnergyReceiver }
 
 /// <summary>Logical model node. No grid coordinates, game types or rotation assumptions.</summary>
 public sealed class NetworkNode

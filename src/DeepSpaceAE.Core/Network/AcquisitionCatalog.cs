@@ -21,7 +21,8 @@ public static class AcquisitionCatalog
         new ComponentOffer("disk_drive",500,25,1,1),new ComponentOffer("disk_small",200,60,1,2),
         new ComponentOffer("disk_large",800,10,1,1),new ComponentOffer("capacity_upgrade",80,75,1,2),
         new ComponentOffer("tag_upgrade",100,35,1,1),new ComponentOffer("wrench",60,85,1,1),
-        new ComponentOffer("import_bus",150,50,1,1),new ComponentOffer("export_bus",150,45,1,1)});
+        new ComponentOffer("import_bus",150,50,1,1),new ComponentOffer("export_bus",150,45,1,1),
+        new ComponentOffer("energy_receiver",350,30,1,1)});
     public static IReadOnlyList<string> Starter { get; }=Array.AsReadOnly(new[]{"deepspaceae.core"}
         .Concat(Enumerable.Repeat("deepspaceae.pipeline",8)).Concat(Enumerable.Repeat("deepspaceae.item_storage_bus",2))
         .Concat(new[]{"deepspaceae.terminal","deepspaceae.disk_drive","deepspaceae.disk_small","deepspaceae.disk_small","deepspaceae.wrench"}).ToArray());

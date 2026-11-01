@@ -50,6 +50,13 @@
       "name": "输出总线",
       "icon": "export.svg",
       "channelCost": 1
+    },
+    {
+      "id": "deepspaceae.energy_receiver",
+      "part": "EnergyReceiver",
+      "name": "能源接收器",
+      "icon": "energy-receiver.svg",
+      "channelCost": 1
     }
   ]
 }

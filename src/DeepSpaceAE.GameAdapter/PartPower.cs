@@ -9,17 +9,18 @@ namespace DeepSpaceAE.GameAdapter;
 internal static partial class PartStorage
 {
     private static readonly HashSet<GameItem> gridDebits=new();
-    internal static void ResetPowerSettlement()=>gridDebits.Clear();
+    internal static void ResetPowerSettlement() { gridDebits.Clear(); reservationCores.Clear(); }
     internal static bool IsGrid(GameItem source)=>CurrentConverterHelper.IsCurrentConverter(source);
     internal static bool GridUnpaid(GameItem core)=>Int(core,"grid_unpaid")!=0;
     internal static bool CanSupply(GameItem source,int cost)=>source.unitCount==1 && GeneralHelper.IsItemEffectivelyOwned(source)
         && (IsGrid(source)?CurrentConverterHelper.IsOn(source) && !CurrentConverterHelper.IsBlackedOut()
             :source.IsTag(PowerHelper.POWER_SOURCE_ITEM_TAG) && PowerHelper.CanDrawPowerSource(source,cost));
-    internal static bool CanRemovePower(GameItem core)=>!GridUnpaid(core) && Lease(core).CanRemove(Day);
+    internal static bool CanRemovePower(GameItem core)=>UsesPool(core)?Battery(core)==null || CanRemoveSource(Battery(core)!):!GridUnpaid(core) && Lease(core).CanRemove(Day);
     internal static bool CanInstall(GameItem core,GameItem source)
     {
         if(!ReferenceEquals(core.parentInventory,GameSession.MainInventory()) || !GeneralHelper.IsItemEffectivelyOwned(core) || !CanRemovePower(core)) return false;
         int cost=ModEntry.ActiveSession?.CoreCost(core) ?? 2;
+        if(UsesPool(core)) return IsPowerItem(source) && CanRemoveSource(source);
         var lease=Lease(core); // trial does not mutate the saved reservation
         return lease.Reserve(Day,Math.Max(2,cost),source.uniqueId,n=>CanSupply(source,n));
     }
@@ -39,6 +40,7 @@ internal static partial class PartStorage
     internal static bool Powered(GameItem core,int cost,bool reserve=false)
     {
         if(ModEntry.ActiveSession?.Loading!=false) return false;
+        if(UsesPool(core)) return PoolPowered(core,cost);
         if(ModEntry.ActiveSession.NightAutomation)
         {
             var paid=Lease(core); var battery=Battery(core);
@@ -59,9 +61,10 @@ internal static partial class PartStorage
         RestoreLocks(core); return powered;
     }
     internal static void RestoreLocks(GameItem core)
-    { if(CanRemovePower(core)) Inventory(core).UnlockInv(); else Inventory(core).LockInv(); }
+    { if(EnergyReceiver.IsReceiver(core) || UsesPool(core)) PoolLocks(core); else if(CanRemovePower(core)) Inventory(core).UnlockInv(); else Inventory(core).LockInv(); }
     internal static void Settle(GameItem core,int cost,ModLog log)
     {
+        if(UsesPool(core)) { PoolSettle(core,cost,log); return; }
         var source=Battery(core); if(source==null || !GeneralHelper.IsItemEffectivelyOwned(core) || !GeneralHelper.IsItemEffectivelyOwned(source)) return;
         var lease=Lease(core);
         if(IsGrid(source))
@@ -99,16 +102,17 @@ internal static partial class PartStorage
     }
     internal static void GridNightComplete(GameItem core)
     {
-        var source=Battery(core);
+        var source=UsesPool(core)?PoolGrid(core):Battery(core);
         if(gridDebits.Contains(core) && source!=null && IsGrid(source) && Int(core,"grid_pending_day",-1)==Day && Int(core,"grid_paid_day",-1)!=Day)
-        { Number(core,"grid_unpaid",1); Inventory(core).LockInv(); }
+        { Number(core,"grid_unpaid",1); RestoreLocks(core); if(UsesPool(core)) RestorePoolLocks(); }
         gridDebits.Remove(core);
     }
     internal static Dictionary<GameItem,GameItem> GridCores()=>GameSession.AllCores().Where(c=>GeneralHelper.IsItemEffectivelyOwned(c))
-        .Select(c=>(Core:c,Source:Battery(c))).Where(p=>p.Source!=null && IsGrid(p.Source)).ToDictionary(p=>p.Source!,p=>p.Core);
+        .Select(c=>(Core:c,Source:UsesPool(c)?PoolGrid(c):Battery(c))).Where(p=>p.Source!=null && IsGrid(p.Source)).ToDictionary(p=>p.Source!,p=>p.Core);
     internal static void UpdateGridService(StoreService service)
     {
-        var cores=GridCores(); if(cores.Count==0) return;
+        var cores=GridCores();
+        if(cores.Count==0 && !EnergyReceiver.Hosts().Any(h=>EnergyReceiver.IsReceiver(h) && EnergyReceiver.Slots(h).Any(s=>s.childItem!=null && IsGrid(s.childItem)))) return;
         float total=0; bool owned=false;
         foreach(var source in PlayerStore.Instance.FindAllItem())
         {
@@ -116,9 +120,10 @@ internal static partial class PartStorage
             if(cores.TryGetValue(source,out var core))
             {
                 var lease=Lease(core); owned=true;
-                if(lease.Phase!=NightPhase.DebitStarted || GridUnpaid(core) || gridDebits.Contains(core))
+                if(lease.Phase!=NightPhase.Fault && (lease.Phase!=NightPhase.DebitStarted || GridUnpaid(core) || gridDebits.Contains(core)))
                     total+=lease.Required*CurrentConverterHelper.GetRate(source);
             }
+            else if(source.parentInventory?.GetParentItem() is GameItem hostOwner && (EnergyReceiver.IsReceiver(hostOwner) || hostOwner.identifier=="deepspaceae.core" && UsesPool(hostOwner))) { }
             else if(!source.IsTag("ITEM_BEHIND_LOCK_TAG") && CurrentConverterHelper.IsOn(source))
             { var host=CurrentConverterHelper.GetHostMachine(source); if(host!=null) total+=CurrentConverterHelper.GetHostUsage(host)*CurrentConverterHelper.GetRate(source); }
         }
@@ -135,6 +140,7 @@ internal static partial class PartStorage
         {
             var lease=Lease(pair.Value); if(lease.Phase!=NightPhase.DebitStarted) continue;
             lease.Complete(true,Day); Save(pair.Value,lease); Number(pair.Value,"grid_paid_day",Day); Number(pair.Value,"grid_unpaid",0);
+            if(UsesPool(pair.Value)) PoolGridPaid(pair.Value);
         }
     }
 }

@@ -95,7 +95,7 @@ internal sealed class CableVisuals
         {
             var drive=DiskStorage.HostDrive(area.Disk); if(drive!=null) session.NativeStorageChanged(drive);
         }
-        else if (item.parentInventory?.GetParentItem() is GameItem owner && owner.identifier == "deepspaceae.core")
+        else if (item.parentInventory?.GetParentItem() is GameItem owner && (owner.identifier == "deepspaceae.core" || EnergyReceiver.IsReceiver(owner)))
         {
             int energy = PowerHelper.GetAvailableEnergyFromItem(item, false);
             int output = HypertechBatteryHelper.IsHypertechBattery(item) ? HypertechBatteryHelper.GetOutput(item) : 0;

@@ -131,6 +131,7 @@ internal sealed partial class GameSession
         internal NetworkEvaluation Evaluation = null!;
         internal Dictionary<string, GameItem> ById = new(StringComparer.Ordinal);
         internal HashSet<string> Powered = new(StringComparer.Ordinal);
+        internal Dictionary<string,GameItem[]> Receivers=new(StringComparer.Ordinal);
     }
     internal Board ReadBoard(bool reserve = false)
     {
@@ -141,8 +142,14 @@ internal sealed partial class GameSession
             i.identifier == "deepspaceae.item_storage_bus" || DiskStorage.IsDrive(i) ? Id(i) : null));
         board.Topology = PhysicalNetworkProjection.Build(nodes, board.Layout.Edges(Id), new ChannelSettings());
         board.Evaluation = new NetworkEvaluation(board.Topology);
+        foreach(var group in board.Layout.Parts.Where(EnergyReceiver.IsReceiver)
+            .Where(r=>board.Evaluation.Devices[Id(r)].Status==DeviceStatus.Online && board.Evaluation.Devices[Id(r)].CoreId!=null)
+            .GroupBy(r=>board.Evaluation.Devices[Id(r)].CoreId!)) board.Receivers.Add(group.Key,group.ToArray());
         foreach (var pair in board.Evaluation.NightCosts)
+        {
+            PartStorage.PoolLinks(board.ById[pair.Key],board.Receivers.TryGetValue(pair.Key,out var receivers)?receivers:Array.Empty<GameItem>());
             if (PartStorage.Powered(board.ById[pair.Key], pair.Value, reserve)) board.Powered.Add(pair.Key);
+        }
         return board;
     }
     internal int CoreCost(GameItem core)
@@ -165,7 +172,7 @@ internal sealed partial class GameSession
                     item.flavorText = UiText.Get("item_flavor");
                 }
                 if (IsPart(item) && !ReferenceEquals(item.parentInventory, MainInventory())) Visuals.Inactive(item);
-                if (item.identifier == "deepspaceae.core") PartStorage.RestoreLocks(item);
+                if (item.identifier == "deepspaceae.core" || EnergyReceiver.IsReceiver(item)) PartStorage.RestoreLocks(item);
             }
         Visuals.Invalidate();
     }
@@ -181,6 +188,7 @@ internal sealed partial class GameSession
             try
             {
                 int cost = board != null && board.Evaluation.NightCosts.TryGetValue(Id(core), out var n) ? n : 0;
+                PartStorage.PoolLinks(core,board!=null && board.Receivers.TryGetValue(Id(core),out var receivers)?receivers:Array.Empty<GameItem>());
                 PartStorage.Settle(core, cost, log);
             }
             catch (Exception e) { log.Error(Diagnostics.ConsoleText(e.ToString())); }
@@ -296,6 +304,7 @@ internal sealed partial class GameSession
             }
             if (!ReferenceEquals(part.parentInventory, MainInventory()) || !GeneralHelper.IsItemEffectivelyOwned(part)) throw new Rejected(UiText.Get("error_part_main"));
             if (DiskStorage.IsDrive(part)) ShowDrive(part);
+            else if(EnergyReceiver.IsReceiver(part)) ShowReceiver(part);
             else if (part.identifier == "deepspaceae.core") ShowCore(part);
             // Cables have no independent UI; double-click is routed by hit face.
         }

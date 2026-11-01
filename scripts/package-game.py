@@ -27,7 +27,8 @@ keys += [f"bus-face-{side}{suffix}" for side in range(4) for suffix in ("", "-of
 keys += ["drive", "drive-off", "disk-small", "disk-large"]
 keys += [f"{kind}-{part}{suffix}" for kind in ("import","export") for part in ("bus",*(f"face-{side}" for side in range(4))) for suffix in ("","-off")]
 keys += ["steve-portrait"]
-assert len(keys) == len(set(keys)) == 88
+keys += ["energy-receiver","energy-receiver-off"]
+assert len(keys) == len(set(keys)) == 90
 for key in keys:
     files[f"DeepSpaceAE/Textures/Items/{key}.png"] = root / f"assets/game/Textures/Items/{key}.png"
 files["DeepSpaceAE/THIRD-PARTY-NOTICES.md"] = root / "assets/THIRD-PARTY-NOTICES.md"
@@ -50,10 +51,10 @@ for name, path in files.items():
     if name.endswith(".png"):
         data = path.read_bytes()
         stem = Path(name).stem
-        dimensions = (256,384) if stem=="steve-portrait" else (48,48) if stem == "core" or stem.startswith("core-") else (32,32) if stem in ("drive","drive-off") else (16,32) if stem in ("disk-small","disk-large") else (16,16)
+        dimensions = (256,384) if stem=="steve-portrait" else (48,48) if stem == "core" or stem.startswith("core-") else (32,32) if stem in ("drive","drive-off","energy-receiver","energy-receiver-off") else (16,32) if stem in ("disk-small","disk-large") else (16,16)
         assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", data[16:24]) == dimensions
 version = ET.parse(files["DeepSpaceAE/manifest.xml"]).getroot().findtext("ModVersion")
-assert version == "0.8.0-alpha"
+assert version == "0.9.0-alpha"
 audit_path = root / "artifacts/validation/game-patch-audit.json"
 if not audit_path.is_file():
     raise SystemExit("Missing game patch metadata audit; run scripts/build-game.ps1 (Windows) or scripts/build-game.sh first.")

@@ -15,7 +15,8 @@ public sealed class ModEntry : IMod
         ("deepspaceae.terminal", "item_terminal_name", "terminal", NetworkPart.Terminal),
         (DiskStorage.Drive, "item_drive_name", "drive", NetworkPart.DiskDrive),
         (IoBus.Import,"item_import_name","import-bus",NetworkPart.ImportBus),
-        (IoBus.Export,"item_export_name","export-bus",NetworkPart.ExportBus) };
+        (IoBus.Export,"item_export_name","export-bus",NetworkPart.ExportBus),
+        (EnergyReceiver.Id,"item_receiver_name","energy-receiver",NetworkPart.EnergyReceiver) };
     internal static readonly Dictionary<string, NetworkPart> PartKinds = Parts.ToDictionary(part => part.Id, part => part.Part, StringComparer.Ordinal);
     internal static GameSession? ActiveSession { get; private set; }
     private ModLog log = null!;
@@ -28,7 +29,7 @@ public sealed class ModEntry : IMod
         session = new GameSession(log);
         ActiveSession = session;
         acquisition=new Acquisition(log,session);
-        log.Log("DeepSpaceAE 0.8.0 / 100-Rev6 initialized.");
+        log.Log("DeepSpaceAE 0.9.0 / 100-Rev6 initialized.");
     }
 
     public void OnEnable()
@@ -90,7 +91,7 @@ public sealed class ModEntry : IMod
                 item.unitValue = AcquisitionCatalog.Price(item.identifier);
                 item.SetSpriteAndShapeFromMod(ModId, definition.Sprite + "-off");
                 // Intentional custom part definition, not a guess about other inventory shapes.
-                int size = definition.Part == NetworkPart.Core ? 3 : definition.Part == NetworkPart.DiskDrive ? 2 : 1;
+                int size = definition.Part == NetworkPart.Core ? 3 : definition.Part == NetworkPart.DiskDrive || definition.Part==NetworkPart.EnergyReceiver ? 2 : 1;
                 item.SetShape(new GridShapeBuilder(size, size).SetDataFill(1).Build());
                 item.mayStackItemFunc = (_, _) => false;
                 // Native default activation runs on single press. All AE windows use the
@@ -98,7 +99,7 @@ public sealed class ModEntry : IMod
                 item.activateDefault = false;
                 item.mayActivateSlotItemFunc = (_, _, _) => false;
                 item.canActivateSlotItemFunc = (_, _, _) => false;
-                if (definition.Part == NetworkPart.DiskDrive) DiskStorage.CreateDrive(item); else PartStorage.Create(item);
+                if (definition.Part == NetworkPart.DiskDrive) DiskStorage.CreateDrive(item); else if(definition.Part==NetworkPart.EnergyReceiver) EnergyReceiver.Create(item); else PartStorage.Create(item);
                 if (definition.Part == NetworkPart.Pipeline)
                 { NativeWidgets.FullCellHit(item); item.getItemSpriteModifierForItemFunc = CableVisuals.BusMarkers; }
                 return item;
@@ -139,7 +140,7 @@ public sealed class ModEntry : IMod
                 DiskStorage.CreateDisk(item); return item;
             });
         }
-        log.Log("Registration complete: 12 AE item factories.");
+        log.Log("Registration complete: 13 AE item factories.");
     }
 
     private readonly HashSet<string> lootGroups = new(StringComparer.Ordinal);
@@ -149,6 +150,7 @@ public sealed class ModEntry : IMod
         if (!LootRegistry.HasTable(table)) ModHelper.RegisterLootTable(ModId, table, ("deepspaceae.core", 1f), ("deepspaceae.pipeline", 8f),
             ("deepspaceae.item_storage_bus", 3f), ("deepspaceae.terminal", 2f),
             (IoBus.Import,2f),(IoBus.Export,2f),
+            (EnergyReceiver.Id,1f),
             (PartStorage.Capacity, 2f), (PartStorage.Tag, 1f), (PartStorage.Wrench, 3f),
             (DiskStorage.Drive, 1f), (DiskStorage.Small, 2f), (DiskStorage.Large, 0.5f));
         foreach (var group in LootRegistry.GroupIds.ToArray())

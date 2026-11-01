@@ -173,14 +173,31 @@ internal sealed partial class GameSession
         int maximum = battery == null || infinite ? 0 : battery.GetTagReadonly(PowerHelper.POWER_SOURCE_ITEM_MAX_ENERGY).GetInt();
         var bar = new MachineryProgressBar(infinite ? 1 : Math.Min(1, (float)remaining / Math.Max(1, maximum)), 120);
         string batteryState = battery == null ? UiText.Get("ui_insert_battery") : PartStorage.GridUnpaid(core) ? UiText.Get("ui_grid_unpaid") : lease.Phase == NightPhase.Shortfall ? UiText.Get("ui_power_shortfall") : lease.Phase == NightPhase.Fault || lease.Phase == NightPhase.DebitStarted ? UiText.Get("ui_billing_unknown") : lease.CanRemove(PartStorage.Day) ? UiText.Get("ui_replaceable") : UiText.Get("ui_battery_locked");
+        if(PartStorage.UsesPool(core)) batteryState=battery==null?UiText.Get("ui_core_slot_empty"):PartStorage.SourceStatus(battery);
         var overview = MachineryStack.Vertical(stats, power, bar,
             MachineryText.Status(UiText.Get("ui_energy"), gridPower ? UiText.Get("ui_grid_power") : infinite ? UiText.Get("ui_hypertech_battery") : remaining + " / " + maximum + " kJ"),
             MachineryText.Status(UiText.Get("ui_daily_peak"), (lease.Day == PartStorage.Day ? lease.Required : 0) + " kJ"),
             MachineryText.Status(UiText.Get("ui_channels"), used + " / 32"), NativeWidgets.Text(batteryState));
+        if(PartStorage.UsesPool(core)) overview=MachineryStack.Vertical(overview,NativeWidgets.Text(PartStorage.PoolSummary(core)));
         partWindow = MachineHelper.CreateMachineryWindow(true,
             MachineHelper.IconPanel(MachineryStyle.IconPower, Borrow(core), "power"),
             MachineHelper.Panel(UiText.Get("ui_controller"), overview, "network", false));
         partWindow.SetTitle(UiText.Get("ui_controller_title")); partWindow.closeCallback = ClosePart; partWindow.Show().Center();
+    }
+    private void ShowReceiver(GameItem receiver)
+    {
+        ClosePart(); displayedPart=receiver; ReadBoard();
+        var grid=new GridPixelElement(3,1,true).SetSpacing(6,6); var slots=EnergyReceiver.Slots(receiver);
+        for(int i=0;i<slots.Length;i++)
+        {
+            var borrowed=new BorrowedInventoryView(slots[i]); driveBorrowed.Add(borrowed);
+            var source=slots[i].childItem;
+            grid.AttachPos(MachineryStack.Vertical(NativeWidgets.Text(source==null?UiText.Get("ui_empty_power_slot"):PartStorage.SourceStatus(source)),
+                new MachineryIntake(borrowed,true,false)),i,0);
+        }
+        partWindow=MachineHelper.CreateMachineryWindow(true,MachineHelper.Panel(UiText.Get("item_receiver_name"),
+            MachineryStack.Vertical(grid,NativeWidgets.Text(UiText.Get("ui_receiver_hint"))),"energy_receiver",false));
+        partWindow.closeCallback=ClosePart; partWindow.Show().Center();
     }
     private static string FaceName(int side) => UiText.Get(new[] { "ui_face_north", "ui_face_east", "ui_face_south", "ui_face_west" }[side]);
     internal GameItem? CableBusAt(GameItem cable, Vector2 pointer)
@@ -314,6 +331,11 @@ internal sealed partial class GameSession
             else if(DiskStorage.IsDrive(displayedPart))
             {
                 var position=partWindow?.rectTransform.position; ShowDrive(displayedPart);
+                if(position.HasValue && partWindow!=null) { partWindow.rectTransform.position=position.Value; partWindow.FixBounds(); }
+            }
+            else if(EnergyReceiver.IsReceiver(displayedPart))
+            {
+                var position=partWindow?.rectTransform.position; ShowReceiver(displayedPart);
                 if(position.HasValue && partWindow!=null) { partWindow.rectTransform.position=position.Value; partWindow.FixBounds(); }
             }
             else if (displayedPart.identifier == "deepspaceae.core")

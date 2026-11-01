@@ -122,3 +122,11 @@ CustomUIMachineryStyle.SCALE=2，Reskin 会替换所有 Image，输入/下拉依
 Windows 脚本直接引用安装目录，不上传或入库游戏 DLL。此前 REV3 的行为分析是历史依据；本次须以当前 DLL 的编译与补丁审计另行记录，均不证明真实游戏交互、搬运或存档安全。
 
 本次 Windows 实际验证：SDK 10.0.403；`scripts/verify.ps1` 的 77 项模型测试全部通过；`scripts/build-game.ps1` 使用上述 Rev6 引用编译成功，0 警告 / 0 错误，14 项补丁元数据审计全部 PASS。现有 API 调用未需业务逻辑修改。审计只读 PE，不执行游戏或 Harmony；本次未运行游戏，也未验证真实交互或存档往返。
+
+## 0.9 共用电池核验（2026-11-01，100-Rev6）
+
+在同一已门禁的本地 Assembly-CSharp 中只读核对：PowerHelper.CanDrawPowerSource 的普通电池分支只检查 power_source_item_energy >= amount，不限制瞬时 bandwidth，整数份额上单调；DrawPowerSource 对普通电池扣相应 energy 并更新精灵，对 Hypertech 使用 CanSupply，对转换器调用 Supply。GetAvailableEnergyFromItem(source,false) 用于普通电池扣前/扣后核对，不能以编译代替实际扣电试验。
+
+CurrentConverterHelper.GetHostMachine 通过 converter.parentInventory.GetParentItem 读取带 machinery_drawn_power 的宿主，GetHostUsage 读取其整数值；UpdateServiceCost 遍历原版物品并汇总宿主用量。Supply 在非夜间阶段会直接扣现金，因此 AE 继续只在原版服务账单阶段结算，不对转换器调用 DrawPowerSource。多槽宿主存在未选转换器时必须按已选来源重建 AE 部分账单，避免三个槽重复计算宿主峰值。
+
+接收器复用已有 GameSlotInventory、MachineryIntake 与借用槽包装，不新增 Harmony 目标。0.9 的 114 项模型/贴图测试、真实引用构建和 38 项补丁元数据审计通过；未执行游戏、原生扣费或保存往返。

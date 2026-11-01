@@ -57,10 +57,18 @@ PartPower 的夜间分支只承认同日、同源、已结算且不超已付预�
 
 ## 0.8 获取路径维护
 
-AcquisitionCatalog 集中记录 12 种组件的基础价格、史蒂夫有货概率/数量及基础礼包；新增组件必须同步工厂、该表和测试，避免商品目录漏项。费用 200、首日 15、每日 5% 是用户确认的初始平衡值，可后续修改，不是游戏原生常数。
+AcquisitionCatalog 集中记录 13 种组件的基础价格、史蒂夫有货概率/数量及基础礼包；新增组件必须同步工厂、该表和测试，避免商品目录漏项。费用 200、首日 15、每日 5% 是用户确认的初始平衡值，可后续修改，不是游戏原生常数。
 
 Acquisition 使用 AddNetworkUpgrade 与 GenerateCustomerNormal 官方钩子，无额外 Harmony 目标。升级本地化必须用 provider 延迟解析；礼包先持久化 in-flight，确认实际主栏放置后再推进。必须重新核验 PlayerStore.ModData 的保存边界、NetworkUpgrade.Unlock 调用时序、SlotMarker 接受结果和原生满库存兜底，禁止恢复 EmporiumTryAdd 的丢弃路径来“完成”礼包。
 
 客户蓝图/队列/当前客户不序列化。每日 roll/货单/served 记录用于重建未到访候选与阻止当天重复供货，不能声称可恢复未购货台。升级时核验 AddBasicDialog、ClientIntent.SELL、货台购买和 owned 标记，不给 NPC 手写现金结算。头像只登记独立键 deepspaceae.steve，保持原版 sprite 高度/轴心，禁用只移除自有内容。
 
 头像由内置 imagegen 生成，原图、提示词和缩放说明保存在 assets/steve-source；最终 PNG 256×384、透明。它不属于 AE2 素材许可；包总计 88 PNG，需同时分发独立来源说明。
+
+## 0.9 供电池维护
+
+新增 NetworkPart 只能追加枚举值。energy_receiver 是 2×2、三真实槽、1 频道/0 kJ 叶子；PowerSelection 的最少数和同数保留偏好需同时保持。Core pool_active、pool_plan、pool_rejected 与各电源 supply_core/share/day/phase 共同定义保存协议，必须保留 GetUniqueID 的稳定身份，不用 UI 镜像身份或数组下标代替。
+
+核验 PowerHelper.CanDrawPowerSource 对整数 kJ 的单调性、DrawPowerSource 的实际普通/无限电池行为、GetAvailableEnergyFromItem 的计量，以及 CurrentConverterHelper/RunStats 账单和付款时序。不要用电池剩余能量否定已付夜间预算，也不要让未选转换器沿用宿主旧用量。断线只影响供电，不解除已有费用责任；未知扣费与欠费锁定必须跨加载保持。新源注册应事件触发，禁止恢复逐帧扫描。
+
+回归 ENERGY-01～14；适配时保留旧核心/线缆保存节点顺序，首次启用池仅迁移已存在的单槽预留，不重扣。接收器商品价值 350、有货概率 30%、数量 1，基础礼包仍 16 件；新增 PNG 为 energy-receiver 及其 off 版，32×32，白名单总量 90。

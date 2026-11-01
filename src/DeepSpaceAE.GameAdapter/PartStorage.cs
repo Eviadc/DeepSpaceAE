@@ -58,17 +58,19 @@ internal static partial class PartStorage
         {
             var slot = new GameSlotInventory();
             slots.Add(item, new Slots { Inventory = slot });
+            EnergyReceiver.RegisterHost(item);
             // Same native battery backdrop and audio as MachineHelper.SetupBatterySlot,
             // without registering a second native machinery power consumer.
             slot.SetBackgroundFadeSprite("Items/items_tool", "battery100");
             slot.onSlotAddItemFunc += (_, _, _) => AudioManager.Instance.Play3("battery_insert");
             slot.onSlotRemoveItemFunc += (_, _, _) => AudioManager.Instance.Play3("battery_removed");
-            slot.mayInventoryAddItemFunc = (battery, _) => CanInstall(item, battery);
+            slot.mayInventoryAddItemFunc = (battery, _) => slot.childItem==null && CanInstall(item, battery);
             slot.onSlotRemoveItemEndFunc += (_, _, _) => { ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item,true); };
             slot.maxSlotRemoveItemFunc = (_, _, _) => CanRemovePower(item) ? int.MaxValue : 0;
             slot.onSlotAddItemEndFunc += (battery, _, _) => {
                 if (ModEntry.ActiveSession?.Loading != false || item.parentInventory == null) { RestoreLocks(item); return; }
                 int cost = ModEntry.ActiveSession.CoreCost(item);
+                if(UsesPool(item)) { RestoreLocks(item); ModEntry.ActiveSession.Visuals.Invalidate(); return; }
                 var lease = Lease(item);
                 if (!lease.Reserve(Day, cost, battery.uniqueId, n => CanSupply(battery, n)))
                     throw new InvalidOperationException("Battery reservation failed after native insertion.");

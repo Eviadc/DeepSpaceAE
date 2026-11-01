@@ -140,3 +140,10 @@ upgrade_engineer_done,已介绍AE工程师。基础组件尚待送达：{0}件�
 upgrade_engineer_fault,基础组件发放结果不明，请保留日志；不会自动重复发放。
 npc_steve_name,史蒂夫
 npc_steve_greeting,你好！我是史蒂夫，做应用能源设备生意。看看我这次带来了些什么吧。
+item_receiver_name,AE 能源接收器
+ui_receiver_slots,AE 接收器 · 电池槽
+ui_empty_power_slot,空电池槽
+ui_receiver_hint,与控制器共用供电，仅锁定必要电池。
+ui_pool_summary,整网供电：已选 {0} / 已接 {1} 个电源
+ui_source_reserved,已预留 {0} kJ
+ui_core_slot_empty,控制器电池槽为空，可由接收器供电。
