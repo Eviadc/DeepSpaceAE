@@ -16,6 +16,8 @@ files = {
     "DeepSpaceAE/功能规格.md": root / "docs/feature-spec.md",
     "DeepSpaceAE/功能用例.md": root / "docs/functional-cases.md",
     "DeepSpaceAE/版本维护.md": root / "docs/version-maintenance.md",
+    "DeepSpaceAE/drawers-and-filters.md": root / "docs/drawers-and-filters.md",
+    "DeepSpaceAE/runtime-pilot-results-0.10.md": root / "docs/runtime-pilot-results-0.10.md",
     "DeepSpaceAE/代码审查.md": root / "docs/code-review-0.9.1.md",
     "DeepSpaceAE/加载诊断.md": root / "docs/load-troubleshooting.md",
     "DeepSpaceAE/extract-load-log.py": root / "scripts/extract-load-log.py",

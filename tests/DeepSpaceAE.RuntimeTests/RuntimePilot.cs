@@ -251,7 +251,7 @@ public sealed class RuntimePilot : MonoBehaviour
         var cards=(GameInventory)Adapter.Static("DrawerStorage","Upgrades",drawer)!;
         GameItem Paper(int value)
         {
-            var paper=Spawn("toilet_paper"); paper.ModifyTag("PILOT_DRAWER_STATE",t=>t.Enable().SetInt(value),true); Add(paper); return paper;
+            var paper=Spawn("toilet_paper"); paper.ModifyTag("PILOT_DRAWER_STATE",t=>t.Enable().SetInt(value)); Add(paper); return paper;
         }
         var first=Paper(1); Adapter.Move(first,data);
         var different=Paper(2);
@@ -283,7 +283,8 @@ public sealed class RuntimePilot : MonoBehaviour
     }
     private void Filters()
     {
-        overflow.ModifyTag("PILOT_FILTER_TAG",t=>t.Enable().SetInt(7),true);
+        // The final boolean is skipValidate, not force/immediate validation.
+        overflow.ModifyTag("PILOT_FILTER_TAG",t=>t.Enable().SetInt(7));
         Adapter.Call(Adapter.Session,"Open",terminal);
         var view=Adapter.Field(Adapter.Session,"displayedView")!;
         Check(!(bool)Adapter.Property(Adapter.Session,"HasTagUpgrade")! && Adapter.SearchCount(Adapter.Field(view,"Search")!,"#PILOT_FILTER_TAG")==0,"Advanced tags available without a card.");
@@ -292,7 +293,9 @@ public sealed class RuntimePilot : MonoBehaviour
         Check((bool)Adapter.Property(Adapter.Session,"HasTagUpgrade")!,"Terminal did not detect installed tag card.");
         Adapter.SetField(Adapter.Session,"tag","PILOT_FILTER_TAG");
         int Count()=>(int)Adapter.Property(Adapter.Call(Adapter.Session,"TerminalRows")!,"Count")!;
-        Check(Count()==1,"Raw tag filter did not isolate the matching real instance.");
+        int filtered=Count();
+        Check(filtered==1,"Raw tag filter count="+filtered+" selected="+Adapter.Field(Adapter.Session,"tag")
+            +" enabled="+overflow.modifiedState.IsTag("PILOT_FILTER_TAG")+"; expected exactly one real instance.");
         var prior=PlayerStore.Instance.currentClientInstance;
         try
         {
