@@ -29,12 +29,15 @@ keys += ["drive", "drive-off", "disk-small", "disk-large"]
 keys += [f"{kind}-{part}{suffix}" for kind in ("import","export") for part in ("bus",*(f"face-{side}" for side in range(4))) for suffix in ("","-off")]
 keys += ["steve-portrait"]
 keys += ["energy-receiver","energy-receiver-off"]
-assert len(keys) == len(set(keys)) == 90
+keys += ["drawer"]
+assert len(keys) == len(set(keys)) == 91
 for key in keys:
     files[f"DeepSpaceAE/Textures/Items/{key}.png"] = root / f"assets/game/Textures/Items/{key}.png"
 files["DeepSpaceAE/THIRD-PARTY-NOTICES.md"] = root / "assets/THIRD-PARTY-NOTICES.md"
 files["DeepSpaceAE/artwork-sources.json"] = root / "assets/ae2-source/sources.json"
 files["DeepSpaceAE/steve-artwork-source.md"] = root / "assets/steve-source/README.md"
+files["DeepSpaceAE/drawer-artwork-sources.json"] = root / "assets/drawers-source/sources.json"
+files["DeepSpaceAE/StorageDrawers-LICENSE.txt"] = root / "assets/drawers-source/LICENSE"
 for locale in ("en", "zh"):
     files[f"DeepSpaceAE/Localization/{locale}.csv"] = root / f"assets/game/Localization/{locale}.csv"
 for source in files.values():
@@ -52,10 +55,10 @@ for name, path in files.items():
     if name.endswith(".png"):
         data = path.read_bytes()
         stem = Path(name).stem
-        dimensions = (256,384) if stem=="steve-portrait" else (48,48) if stem == "core" or stem.startswith("core-") else (32,32) if stem in ("drive","drive-off","energy-receiver","energy-receiver-off") else (16,32) if stem in ("disk-small","disk-large") else (16,16)
+        dimensions = (256,384) if stem=="steve-portrait" else (48,48) if stem == "core" or stem.startswith("core-") else (32,32) if stem in ("drive","drive-off","energy-receiver","energy-receiver-off","drawer") else (16,32) if stem in ("disk-small","disk-large") else (16,16)
         assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", data[16:24]) == dimensions
 version = ET.parse(files["DeepSpaceAE/manifest.xml"]).getroot().findtext("ModVersion")
-assert version == "0.9.3-alpha"
+assert version == "0.10.0-alpha"
 audit_path = root / "artifacts/validation/game-patch-audit.json"
 if not audit_path.is_file():
     raise SystemExit("Missing game patch metadata audit; run scripts/build-game.ps1 (Windows) or scripts/build-game.sh first.")
@@ -86,7 +89,7 @@ info = {
     "configuration": "Release",
     "patchMetadataAudit": {"status": "PASS", "declarations": len(audit["findings"]), "execution": "NOT RUN"},
     "modVersion": version,
-    "artworkLicense": "CC-BY-NC-SA-3.0; see THIRD-PARTY-NOTICES.md",
+    "artworkLicense": "AE2: CC-BY-NC-SA-3.0; StorageDrawers: MIT; Steve: see THIRD-PARTY-NOTICES.md",
     "targetFramework": "netstandard2.1",
     "gameRuntimeTest": "NOT RUN; to be tested by the user on Windows x64",
     "files": hashes,

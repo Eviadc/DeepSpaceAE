@@ -8,8 +8,8 @@ item_wrench_name,AE 扳手
 item_bus_desc,安装在线缆侧面以访问相邻容器；双击对应部位配置，总线所在面不连接外部线缆。
 item_part_desc,放置于主物品栏接入网络。双击打开。
 item_flavor,深空中的应用能源。
-item_capacity_desc,安装至存储总线，每张增加 9 个筛选槽。
-item_tag_desc,将总线筛选切换为标签。每条总线限一张。
+item_capacity_desc,安装至总线，每张增加9个筛选槽；安装至抽屉，每张使容量上限×4。最多五张。
+item_tag_desc,总线切换为标签筛选；终端解锁完整标签和当前顾客需求筛选。每个设备限一张。
 item_wrench_desc,对线缆上对应总线部位使用可卸下该总线；对独立总线使用可拆出最后一张升级卡。
 error_enter_game,请先进入游戏。
 error_terminal_main,终端未激活：请直接放入主物品栏。
@@ -147,3 +147,8 @@ ui_receiver_hint,与控制器共用供电，仅锁定必要电池。
 ui_pool_summary,整网供电：已选 {0} / 已接 {1} 个电源
 ui_source_reserved,已预留 {0} kJ
 ui_core_slot_empty,控制器电池槽为空，可由接收器供电。
+item_drawer_name,抽屉
+item_drawer_desc,2×2 单种物品抽屉，基础容量16件。每张容量卡使上限×4，最多五张。保留真实物品状态；放空后可改存其他物品。用存储总线接入AE网络。
+ui_drawer_count,抽屉存量：{0} / {1} 件
+ui_all_tags,全部标签
+ui_customer_demand,当前顾客需求

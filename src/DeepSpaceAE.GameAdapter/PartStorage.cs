@@ -107,6 +107,17 @@ internal static partial class PartStorage
             };
             var window = new PixelWindow(true, UiText.Get("ui_cable_bus_data")); window.Attach(grid); item.SetContentWindow(window);
         }
+        else if (item.identifier == "deepspaceae.terminal")
+        {
+            var slot = new GameSlotInventory(); slots.Add(item, new Slots { Inventory = slot });
+            slot.SetMachineryStyle();
+            slot.mayInventoryAddItemFunc = (card, _) => (slot.childItem == null || ReferenceEquals(slot.childItem, card))
+                && card.identifier == Tag && card.unitCount == 1 && GeneralHelper.IsItemEffectivelyOwned(card)
+                && GeneralHelper.IsItemEffectivelyOwned(item) && ReferenceEquals(item.parentInventory, GameSession.MainInventory());
+            slot.onSlotAddItemEndFunc += (_, _, _) => ModEntry.ActiveSession?.NativeStorageChanged(item);
+            slot.onSlotRemoveItemEndFunc += (_, _, _) => ModEntry.ActiveSession?.NativeStorageChanged(item);
+            var window = new PixelWindow(true, UiText.Get("ui_upgrade_data")); window.Attach(slot); item.SetContentWindow(window);
+        }
         else if (IoBus.IsBus(item))
         {
             var grid = new GameGridInventory(5, 1);

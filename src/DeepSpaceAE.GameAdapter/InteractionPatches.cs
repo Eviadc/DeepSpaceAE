@@ -10,7 +10,7 @@ internal static class DoubleClickPatch
     [HarmonyPrefix]
     private static bool Prefix(GameItem __0, Vector2 __1)
     {
-        if (__0 == null || __0.isDebugMenu || !GameSession.IsPart(__0) || ModEntry.ActiveSession == null) return true;
+        if (__0 == null || __0.isDebugMenu || (!GameSession.IsPart(__0) && !DrawerStorage.IsDrawer(__0)) || ModEntry.ActiveSession == null) return true;
         if (__0.identifier == "deepspaceae.pipeline") ModEntry.ActiveSession.OpenCableBusAt(__0, __1);
         else ModEntry.ActiveSession.OpenPart(__0);
         return false;
@@ -22,7 +22,7 @@ internal static class SingleClickPatch
 {
     [HarmonyPrefix]
     private static bool Prefix(GameItem __0)
-        => __0 == null || __0.isDebugMenu || !GameSession.IsPart(__0) || ModEntry.ActiveSession == null;
+        => __0 == null || __0.isDebugMenu || (!GameSession.IsPart(__0) && !DrawerStorage.IsDrawer(__0)) || ModEntry.ActiveSession == null;
 }
 
 [HarmonyPatch(typeof(GameItem), nameof(GameItem.ValidateShapeState))]
@@ -53,7 +53,9 @@ internal static class LockedBatterySwapPatch
         { __result=false; return false; }
         // Native swapping skips slot validation. Disk data is accessed by terminal
         // transfers, which re-check capacity; it must not enter unchecked swaps.
-        if(source.parentInventory is DiskAreaInventory || target.parentInventory is DiskAreaInventory)
+        bool CardBay(GameItem item) => item.parentInventory?.GetParentItem() is GameItem owner
+            && (owner.identifier == "deepspaceae.terminal" || DrawerStorage.IsDrawer(owner));
+        if(source.parentInventory is DiskAreaInventory or DrawerInventory || target.parentInventory is DiskAreaInventory or DrawerInventory || CardBay(source) || CardBay(target))
         { __result=false; return false; }
         if((DriveBay(source) && !DiskStorage.IsDisk(target)) || (DriveBay(target) && !DiskStorage.IsDisk(source)))
         { __result=false; return false; }
@@ -82,5 +84,5 @@ internal static class DayStartedPatch
 internal static class CableContentWindowPatch
 {
     [HarmonyPrefix]
-    private static bool Prefix(GameItem __0) => __0?.identifier != "deepspaceae.pipeline" && (__0==null || (!DiskStorage.IsDisk(__0) && !DiskStorage.IsDrive(__0) && !EnergyReceiver.IsReceiver(__0)));
+    private static bool Prefix(GameItem __0) => __0?.identifier != "deepspaceae.pipeline" && (__0==null || (!DiskStorage.IsDisk(__0) && !DiskStorage.IsDrive(__0) && !EnergyReceiver.IsReceiver(__0) && !DrawerStorage.IsDrawer(__0)));
 }

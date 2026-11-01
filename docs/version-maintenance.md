@@ -80,3 +80,6 @@ NightReservation.CanSettle 是普通/共用/电网账单一致的入口约束；
 NativeTransfer 统一紧邻写入的原生槽复核，覆盖终端/扳手和 IO；不要因 TryAcceptOnce 名字含 Try 就省略这一层，它会直接移除来源再调用 UncheckedAccept。自动化还须检查目标根库存及增量，拆分后 SlotMarker.item 可能变为新实例。供电候选 PowerSnapshot 只活在本次读图/结算内，不能缓存跨事件；它不是实际扣电授权。稳定拓扑身份必须从 GetUniqueID 获得。
 
 PowerSelection 用前缀和完成保留数量的可行性检查，排序后线性选择；不要恢复每个保留数重建数组/求和。供电恢复锁只访问当前核心和该核心原有预留宿主，批次索引一次遍历全部供电宿主；路由查 ID 使用字典而非每个候选 Single 枚举。更新时同时回归 REVIEW 和 ENERGY、IO 用例。
+# 0.10 新增核验点
+
+升级时核验TagState各数值类型/启用状态、原生物品特征字段，以及StoreClientInstance.GetClientBlueprint / StoreClient.IsClientBuyingThisItem / IsClientBusinessDone。抽屉真实数据与五卡子图、新终端单卡子图必须做保存/重载验收。保持原生交换门禁覆盖DrawerInventory及新卡槽；终端与本地抽屉共用镜像时，本地免电仅限玩家主栏拥有的抽屉，不能让网络终端绕过供电。素材总数91及分立MIT/CC许可见 [0.10说明](drawers-and-filters.md)。

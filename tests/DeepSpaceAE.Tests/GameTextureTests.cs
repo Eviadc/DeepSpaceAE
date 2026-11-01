@@ -15,7 +15,7 @@ public sealed class GameTextureTests
     [Fact]
     public void CoreTextureCoversAllNineCellsAndWhitelistContainsAllActiveAndInactiveImages()
     {
-        Assert.Equal(90, Directory.GetFiles(Root, "*.png").Length);
+        Assert.Equal(91, Directory.GetFiles(Root, "*.png").Length);
         foreach (var name in new[] { "core", "terminal", "item-storage-bus", "pipeline" })
             Assert.True(File.Exists(Path.Combine(Root, name + "-off.png")));
         for (int mask = 0; mask < 16; mask++) Assert.True(File.Exists(Path.Combine(Root, $"pipeline-{mask}-off.png")));
@@ -101,10 +101,10 @@ public sealed class GameTextureTests
     [Fact]
     public void BusFaceHitRegionsCoverTheirActualModelPixelsAndLeaveCenterFree()
     {
-        for(int side=0;side<4;side++)
+        foreach (var kind in new[] { "bus", "import", "export" }) for(int side=0;side<4;side++)
         {
-            var (width,height,pixels)=Decode($"bus-face-{side}.png");
-            var inactive=Decode($"bus-face-{side}-off.png");
+            var (width,height,pixels)=Decode($"{kind}-face-{side}.png");
+            var inactive=Decode($"{kind}-face-{side}-off.png");
             Assert.Equal(16,width); Assert.Equal(16,height); int visible=0;
             for(int y=0;y<height;y++) for(int x=0;x<width;x++)
             {

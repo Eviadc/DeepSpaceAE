@@ -30,6 +30,7 @@ internal sealed partial class GameSession
         NativeLiquidSelection.EndFor(openTerminal);
         if (NativeDrag.Gesture != null && ReferenceEquals(NativeDrag.Gesture.Surface.Owner, openTerminal)) NativeDrag.Gesture.Cancelled = true;
         terminalGrid?.ClearTiles();
+        terminalUpgrades?.Return(); terminalUpgrades = null;
         Unobserve(); displayedView = null; terminalGrid = null; packedRows = null; packing = null;
         terminalStatus = null; tagField = null; displayedTags = Array.Empty<string>();
         if (terminalWindow != null) { var w = terminalWindow; terminalWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); }
@@ -86,43 +87,35 @@ internal sealed partial class GameSession
         }
         if (create)
         {
+            if (DrawerStorage.IsDrawer(terminal)) liquidMode = false;
             terminalGrid = new VirtualInventory(terminal, 18, 12);
             terminalGrid.Redraw = RenderTerminal;
             var query = NativeWidgets.Input(UiText.Get("ui_search"), search, value => { if (search == value) return; search = value; terminalGrid?.SetScroll(0); RenderTerminal(); }, 150);
             tagField = NativeWidgets.Dropdown(new[] { UiText.Get("ui_all_categories") }, 0, i => { tag = i > 0 && i <= displayedTags.Length ? displayedTags[i - 1] : ""; terminalGrid?.SetScroll(0); RenderTerminal(); }, 100);
             var sortField = NativeWidgets.Dropdown(new[] { UiText.Get("ui_native_order"), UiText.Get("ui_name"), UiText.Get("ui_quantity") }, (int)sort, i => { sort = (CatalogSort)i; terminalGrid?.SetScroll(0); RenderTerminal(); }, 70);
-            var modeField=NativeWidgets.Dropdown(new[]{UiText.Get("ui_items"),UiText.Get("ui_liquids")},liquidMode?1:0,i=>{
+            var modeField=NativeWidgets.Dropdown(DrawerStorage.IsDrawer(terminal) ? new[]{UiText.Get("ui_items")} : new[]{UiText.Get("ui_items"),UiText.Get("ui_liquids")},liquidMode?1:0,i=>{
                 NativeLiquidSelection.EndFor(openTerminal); liquidMode=i==1; tag=""; packedRows=null;
                 terminalGrid?.SetScroll(0); RenderTerminal();
             },60);
             terminalStatus = NativeWidgets.Text("").SetFillWidth(false);
             var searchBar = MachineryStack.Horizontal(modeField,query, tagField, sortField).SetMainAlign(MachineryStack.Align.Start);
-            var body = MachineryStack.Vertical(searchBar, new MachineryIntake(terminalGrid),
+            var upgrades = DrawerStorage.IsDrawer(terminal) ? DrawerStorage.Upgrades(terminal) : PartStorage.Inventory(terminal);
+            terminalUpgrades = new BorrowedInventoryView((PixelElement)upgrades);
+            var body = MachineryStack.Vertical(MachineryStack.Horizontal(NativeWidgets.Text(UiText.Get("ui_upgrade_data")), new MachineryIntake(terminalUpgrades, true, false)), searchBar, new MachineryIntake(terminalGrid),
                 terminalStatus);
             terminalWindow = MachineHelper.CreateMachineryWindow(true, new MachineryPanel(UiText.Get("ui_network"), body, "terminal"));
             terminalWindow.SetTitle(UiText.Get("ui_terminal_title")); terminalWindow.closeCallback = CloseTerminal;
+            if (DrawerStorage.IsDrawer(terminal)) terminalWindow.SetTitle(UiText.Get("item_drawer_name"));
+            terminalWindow.handler.gameObject.AddComponent<TerminalCustomerWatch>().Session = this;
         }
-        var tags = (liquidMode?view.LiquidSearch:view.Search).Tags.ToArray();
-        if (!displayedTags.SequenceEqual(tags) || create)
-        {
-            displayedTags = tags;
-            int selected = Array.IndexOf(tags, tag) + 1; if (selected == 0) tag = "";
-            tagField!.Control.SetOptions(new[] { UiText.Get("ui_all_categories") }.Concat(tags.Select(NativeWidgets.TagName)).ToArray()).SetIndex(selected);
-        }
+        if (create) displayedTags = new[] { "" }; // Force initial options, including an empty catalog.
         RenderTerminal();
         if (create) terminalWindow!.Show().Center();
     }
     private void RenderTerminal()
     {
         if (displayedView == null || terminalGrid == null) return;
-        var catalog=liquidMode?displayedView.LiquidSearch:displayedView.Search;
-        var tags=catalog.Tags.ToArray();
-        if(!displayedTags.SequenceEqual(tags))
-        {
-            displayedTags=tags; if(!tags.Contains(tag)) tag="";
-            tagField!.Control.SetOptions(new[]{UiText.Get("ui_all_categories")}.Concat(tags.Select(NativeWidgets.TagName)).ToArray()).SetIndex(Array.IndexOf(tags,tag)+1);
-        }
-        var rows = catalog.Find(search, string.IsNullOrEmpty(tag) ? null : tag, sort);
+        var rows = TerminalRows();
         if (!ReferenceEquals(rows, packedRows))
         {
             packing = new VirtualInventoryLayout(rows.Select(r => liquidMode?
@@ -131,6 +124,8 @@ internal sealed partial class GameSession
         }
         terminalGrid.Populate(packing!, 0, displayedView.Live, displayedView.Sources,liquidMode?displayedView.Liquids:null);
         terminalStatus!.SetText(writeFault ? UiText.Get("ui_transfer_locked") : string.IsNullOrEmpty(message) ? UiText.Get(liquidMode?"ui_liquid_count":"ui_item_count", rows.Count) : message);
+        if (openTerminal != null && DrawerStorage.IsDrawer(openTerminal) && !writeFault && string.IsNullOrEmpty(message))
+            terminalStatus.SetText(UiText.Get("ui_drawer_count", DrawerStorage.Data(openTerminal).Used, DrawerStorage.Capacity(openTerminal)));
         terminalWindow?.Validate();
     }
     private void ShowDrive(GameItem drive)

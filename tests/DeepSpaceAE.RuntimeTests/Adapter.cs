@@ -12,6 +12,7 @@ internal static class Adapter
     private static Type Type(string name)=>Product.GetType("DeepSpaceAE.GameAdapter."+name,true)!;
     internal static object Session=>Type("ModEntry").GetProperty("ActiveSession",Flags)!.GetValue(null)!;
     internal static object? Field(object owner,string name)=>owner.GetType().GetField(name,Flags)!.GetValue(owner);
+    internal static void SetField(object owner,string name,object value)=>owner.GetType().GetField(name,Flags)!.SetValue(owner,value);
     internal static object? Property(object owner,string name)=>owner.GetType().GetProperty(name,Flags)!.GetValue(owner);
     internal static object? Call(object owner,string name,params object?[] args)=>Invoke(owner.GetType(),owner,name,args);
     internal static object? Static(string type,string name,params object?[] args)=>Invoke(Type(type),null,name,args);

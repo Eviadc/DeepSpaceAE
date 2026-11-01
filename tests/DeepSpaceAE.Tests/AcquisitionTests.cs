@@ -8,9 +8,9 @@ public sealed class AcquisitionTests
     [Fact]
     public void StockCatalogCoversEveryComponentWithDistinctNonzeroAppearanceChances()
     {
-        Assert.Equal(13,AcquisitionCatalog.Offers.Count);
-        Assert.Equal(13,AcquisitionCatalog.Offers.Select(o=>o.Id).Distinct().Count());
-        Assert.Equal(13,AcquisitionCatalog.Offers.Select(o=>o.Chance).Distinct().Count());
+        Assert.Equal(14,AcquisitionCatalog.Offers.Count);
+        Assert.Equal(14,AcquisitionCatalog.Offers.Select(o=>o.Id).Distinct().Count());
+        Assert.Equal(14,AcquisitionCatalog.Offers.Select(o=>o.Chance).Distinct().Count());
         Assert.All(AcquisitionCatalog.Offers,o=>{ Assert.InRange(o.Chance,1,100); Assert.True(o.Price>0); Assert.InRange(o.Minimum,1,o.Maximum); });
         Assert.Equal(AcquisitionCatalog.Offers.Count,AcquisitionCatalog.RollStock(_=>true,(min,_)=>min).Distinct().Count());
         Assert.All(AcquisitionCatalog.Starter,id=>Assert.Contains(AcquisitionCatalog.Offers,o=>o.Id==id));

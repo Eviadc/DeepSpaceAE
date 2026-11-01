@@ -1,0 +1,16 @@
+{
+  "commit": "62a33ab1aa3e79e0c13e149f34fca4d30f07df8a",
+  "license": "MIT",
+  "files": [
+    {
+      "file": "drawers_oak_front_1.png",
+      "source": "https://raw.githubusercontent.com/jaquadro/StorageDrawers/62a33ab1aa3e79e0c13e149f34fca4d30f07df8a/common/src/main/resources/assets/storagedrawers/textures/block/drawers_oak_front_1.png",
+      "sha256": "3ab9cb3daa799083855d69ae1e76b54acccfdb764b50f7d701c7853a604fead0"
+    },
+    {
+      "file": "LICENSE",
+      "source": "https://raw.githubusercontent.com/jaquadro/StorageDrawers/62a33ab1aa3e79e0c13e149f34fca4d30f07df8a/LICENSE",
+      "sha256": "0b59d262ceba4892b08700d3a5039f1bd7e455ab1cefad5049609e1d555abe8d"
+    }
+  ]
+}

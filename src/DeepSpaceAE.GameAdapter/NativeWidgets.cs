@@ -26,6 +26,8 @@ internal static class NativeWidgets
     internal static string TagName(string tag)
     {
         if(tag=="deepspaceae.liquid") return UiText.Get("ui_liquids");
+        if(tag==GameSession.CustomerFilter) return UiText.Get("ui_customer_demand");
+        if(tag.StartsWith("deepspaceae.", StringComparison.Ordinal)) return tag;
         if (localeFrame != Time.frameCount)
         {
             localeFrame = Time.frameCount; string current = LocHelper.GetCurrentLocaleCode();

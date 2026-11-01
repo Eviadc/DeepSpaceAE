@@ -146,3 +146,8 @@ GameInventory.CheckAcceptParentShapeStateModifier 处理新物品加入父链，
 ## 0.9.3 新开局生命周期
 
 独立运行时插件真实进入 InventoryScene 和新建的 6 号测试存档，确认场景 deepspaceae.runtime-pilot、原生 PlayerStore/主栏及开局回调均存在，但 GameSession.Loading 仍为 true，八项用例未能开始。OnGameLoadedLate 是读档事件，不能替代 OnNewGameStarted。补上新开局 session.Reset → AttachInventory/DayStarted，防止首次新档一直拒绝网络供电，并在同进程新开局时清理前档会话状态。结果以随后完整运行时报告为准。
+## 0.10 抽屉与筛选核验（100-Rev6）
+
+真实程序集确认TagState的启用位及int/long/float/double/bool/string字段；GameItem.MaxNumAdd会查询目标库存maxSlotAddItemFunc，原生GetStackSlot也会走已有目标的MaxNumAdd。抽屉以该回调阻止原生堆叠绕过件数预算，原有实例的CheckInventorySlotStillValid不复用新插入规则，避免状态变化或加载超容时误拒已有实例。没有新增Harmony目标，仍38项元数据审计。
+
+当前顾客来自PlayerStore.currentClientInstance.GetClientBlueprint，原版IsClientBuyingThisItem会先检查IsClientRefusingItem；使用真实购买意图与IsClientBusinessDone过滤非收购/已完成情况。未根据客户需求文案自行推测标签。122项模型/素材测试及适配器编译通过，运行结果按后续独立测试记录解释，未证明鼠标输入或保存重载。

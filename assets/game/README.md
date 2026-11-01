@@ -9,3 +9,8 @@
 0.8 另加 steve-portrait.png（256×384，RGBA），总计 88 PNG。它由内置 imagegen 生成、保留透明度缩放，来源/完整提示词和可复现缩放步骤见 assets/steve-source/README.md。该 NPC 头像与 87 张 AE2 衍生组件许可分开，不声称源自 AE2。
 
 0.9 新增 energy-receiver.png 和 energy-receiver-off.png，32×32，以已授权控制器背景与三个电池符号组合；生成过程见 scripts/generate-game-assets.py。当前合计 90 PNG（89 AE2 衍生 + 1 独立史蒂夫头像）。
+# 0.10 素材更新
+
+当前91 PNG：89张AE2原图/衍生图、1张MIT Storage Drawers抽屉、1张独立头像。驱动器/硬盘/接收器/输入输出总线已改用对应AE2源素材，抽屉固定来源见 ../drawers-source/sources.json。许可及改动见 ../THIRD-PARTY-NOTICES.md。
+
+Windows生成贴图可用忽略目录内的工具环境：`python -m venv artifacts/artwork-env`，随后运行 `artifacts/artwork-env/Scripts/python.exe -m pip install Pillow==12.3.0` 及 `artifacts/artwork-env/Scripts/python.exe scripts/generate-game-assets.py`。普通模组构建使用已入库PNG，不需要Pillow。

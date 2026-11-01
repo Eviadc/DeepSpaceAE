@@ -19,6 +19,7 @@ public sealed class RuntimePilot : MonoBehaviour
     private bool booted,done,hintChecked;
     private int step;
     private GameItem core=null!,drive=null!,receiver=null!,terminal=null!,small=null!,large=null!,overflow=null!;
+    private GameItem drawer=null!,drawerCable=null!;
     private GameGridInventory root=null!;
     private readonly List<GameItem> stored=new();
     private readonly List<GameItem> fixture=new();
@@ -89,7 +90,7 @@ public sealed class RuntimePilot : MonoBehaviour
                 Check(report.startupHintClosed,"Native startup hint did not close.");
                 hintChecked=true; Write(); return;
             }
-            var actions=new Action[]{Load,Slots,Network,Power,Capacity,Terminal,Disconnect,Save};
+            var actions=new Action[]{Load,Slots,Network,Power,Capacity,Terminal,Disconnect,Drawer,Filters,Save};
             if(step==actions.Length) { Finish(); return; }
             var watch=System.Diagnostics.Stopwatch.StartNew();
             string id="PILOT-"+(step+1).ToString("00");
@@ -155,6 +156,7 @@ public sealed class RuntimePilot : MonoBehaviour
     {
         core=Spawn("deepspaceae.core"); drive=Spawn("deepspaceae.disk_drive"); receiver=Spawn("deepspaceae.energy_receiver");
         terminal=Spawn("deepspaceae.terminal"); small=Spawn("deepspaceae.disk_small"); large=Spawn("deepspaceae.disk_large");
+        drawer=Spawn("deepspaceae.drawer"); Check(Cells(drawer)==4,"Drawer footprint mismatch.");
         Check(Cells(core)==9 && Cells(drive)==4 && Cells(receiver)==4 && Cells(small)==2 && Cells(large)==2,"Factory footprint mismatch.");
         details="Real registered factories; core=9, drive/receiver=4, both disks=2 occupied cells.";
     }
@@ -173,6 +175,8 @@ public sealed class RuntimePilot : MonoBehaviour
         // Occupy the complete network fixture before staging ordinary items;
         // otherwise native automatic placement may use a future cable cell.
         for(int dx=3;dx<=5;dx++) At(Spawn("deepspaceae.pipeline"),x+dx,y+1);
+        At(Spawn("deepspaceae.pipeline"),x+3,y+2);
+        drawerCable=Spawn("deepspaceae.pipeline"); At(drawerCable,x+3,y+3); At(drawer,x+3,y+4);
         var bays=Adapter.Slots("DiskStorage","Bays",drive); var power=Adapter.Slots("EnergyReceiver","Slots",receiver);
         Check(bays.Length==6 && power.Length==3,"Actual bay count mismatch.");
         var paper=Spawn("toilet_paper"); Add(paper);
@@ -240,6 +244,69 @@ public sealed class RuntimePilot : MonoBehaviour
         Check(Adapter.DeviceStatus(Adapter.Evaluation(Adapter.Board()),Adapter.Id(terminal))=="Online","Terminal did not reconnect.");
         Check(ReferenceEquals(overflow.parentInventory,Adapter.Data(large)),"Disconnect changed disk data ownership.");
         details="Real root movement caused offline/online transitions; disk contents retained.";
+    }
+    private void Drawer()
+    {
+        var data=(GameInventory)Adapter.Static("DrawerStorage","Data",drawer)!;
+        var cards=(GameInventory)Adapter.Static("DrawerStorage","Upgrades",drawer)!;
+        GameItem Paper(int value)
+        {
+            var paper=Spawn("toilet_paper"); paper.ModifyTag("PILOT_DRAWER_STATE",t=>t.Enable().SetInt(value),true); Add(paper); return paper;
+        }
+        var first=Paper(1); Adapter.Move(first,data);
+        var different=Paper(2);
+        Check(data.TryFindOneValidInventorySlot(different)?.numTransfer is not >0,"Drawer accepted a different tag value.");
+        for(int i=1;i<16;i++) Adapter.Move(Paper(1),data);
+        Check(first.MaxNumAdd()==0,"Native stacking could bypass the drawer budget.");
+        var extra=Paper(1); Check(data.TryFindOneValidInventorySlot(extra)?.numTransfer is not >0,"Drawer exceeded base 16 units.");
+        var card=Spawn("deepspaceae.capacity_upgrade"); Add(card); Adapter.Move(card,cards);
+        Check((int)Adapter.Static("DrawerStorage","Capacity",drawer)! == 64,"Drawer upgrade was not x4.");
+        Adapter.Call(Adapter.Session,"Open",drawer); var grid=Adapter.Field(Adapter.Session,"terminalGrid");
+        Check(grid!=null && (int)Adapter.Call(Adapter.Session,"DepositFromNative",grid,extra)! == 1,"Local drawer surface did not accept a real deposit.");
+        Check(ReferenceEquals(extra.parentInventory,data) && card.MaxNumRemove()==0,"Over-capacity card removal was not blocked.");
+        Adapter.Move(extra,root); Check(card.MaxNumRemove()>0,"Card stayed locked at the lower capacity."); Adapter.Move(card,root);
+        foreach(var item in data.childItems.ToArray()) Adapter.Move(item,Adapter.Data(large));
+        Adapter.Move(different,data); Check(data.childItems.Count==1 && ReferenceEquals(data.childItems[0],different),"Empty drawer could not change its stored state.");
+        var bus=Spawn("deepspaceae.item_storage_bus"); Add(bus);
+        Adapter.Move(bus,(GameInventory)Adapter.Static("PartStorage","Inventory",drawerCable)!);
+        Check((int)Adapter.Static("PartStorage","Int",bus,"cable_face",-1)! == 2,"Bus did not choose the free drawer-facing side.");
+        Adapter.Call(Adapter.Session,"Open",terminal);
+        var live=(System.Collections.IDictionary)Adapter.Field(Adapter.Field(Adapter.Session,"displayedView")!,"Live")!;
+        Check(live.Values.Cast<GameItem>().Any(i=>ReferenceEquals(i,different)) && ReferenceEquals(different.parentInventory,data),"Storage bus did not expose the same drawer instance.");
+        Check(GameSessionContentsAreDataOnly(),"Drawer upgrade inventory was exposed as stock.");
+        details="Real drawer: 16-unit limit, differing tag value rejected, x4 card, guarded removal, local deposit, empty/retype, physical bus and same-instance network visibility.";
+        bool GameSessionContentsAreDataOnly()
+        {
+            var contents=(System.Collections.IList)Adapter.Static("GameSession","Contents",drawer)!;
+            return contents.Count==1 && ReferenceEquals(contents[0],data);
+        }
+    }
+    private void Filters()
+    {
+        overflow.ModifyTag("PILOT_FILTER_TAG",t=>t.Enable().SetInt(7),true);
+        Adapter.Call(Adapter.Session,"Open",terminal);
+        var view=Adapter.Field(Adapter.Session,"displayedView")!;
+        Check(!(bool)Adapter.Property(Adapter.Session,"HasTagUpgrade")! && Adapter.SearchCount(Adapter.Field(view,"Search")!,"#PILOT_FILTER_TAG")==0,"Advanced tags available without a card.");
+        var card=Spawn("deepspaceae.tag_upgrade"); Add(card); Adapter.Move(card,(GameInventory)Adapter.Static("PartStorage","Inventory",terminal)!);
+        Adapter.Call(Adapter.Session,"Open",terminal);
+        Check((bool)Adapter.Property(Adapter.Session,"HasTagUpgrade")!,"Terminal did not detect installed tag card.");
+        Adapter.SetField(Adapter.Session,"tag","PILOT_FILTER_TAG");
+        int Count()=>(int)Adapter.Property(Adapter.Call(Adapter.Session,"TerminalRows")!,"Count")!;
+        Check(Count()==1,"Raw tag filter did not isolate the matching real instance.");
+        var prior=PlayerStore.Instance.currentClientInstance;
+        try
+        {
+            var buyer=new StoreClient {identifier="deepspaceae.pilot_buyer",displayName="Pilot buyer",clientIntent=StoreClient.ClientIntent.BUY,useClientBudget=false};
+            buyer.clientBuyingIdList.Add("toilet_paper"); PlayerStore.Instance.currentClientInstance=StoreClientInstance.CreateClientInstance(buyer);
+            Adapter.SetField(Adapter.Session,"tag","deepspaceae.customer_demand"); Check(Count()>0,"Native customer demand was not matched.");
+            buyer.clientBlackIdList.Add("toilet_paper"); Check(Count()==0,"Native customer refusal was ignored.");
+            PlayerStore.Instance.currentClientInstance=null!; Check(Count()==0,"No-customer filter exposed items.");
+        }
+        finally { PlayerStore.Instance.currentClientInstance=prior; }
+        Adapter.Move(card,root); Adapter.Call(Adapter.Session,"Open",terminal);
+        var options=(string[])Adapter.Field(Adapter.Session,"displayedTags")!;
+        Check(!(bool)Adapter.Property(Adapter.Session,"HasTagUpgrade")! && !options.Contains("PILOT_FILTER_TAG") && !options.Contains("deepspaceae.customer_demand"),"Advanced filters survived card removal.");
+        details="Real terminal card gates raw tags/customer demand; native buyer accepts, native blacklist rejects, no customer matches none, removing card restores basic categories. No mouse input or live NPC transaction.";
     }
     private void Save()
     {

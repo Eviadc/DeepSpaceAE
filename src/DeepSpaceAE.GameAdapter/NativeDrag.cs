@@ -198,10 +198,11 @@ internal sealed partial class GameSession
                 deposit = Read(target.Owner);
                 if ((IsPart(item) && !IoBus.IsBus(item) && ReferenceEquals(source, deposit.Root)) || deposit.Inventories.ContainsKey(item)) throw new Rejected(UiText.Get("error_active_part"));
                 var policies = deposit.Policies.ToDictionary(p => Id(p.Key), p => p.Value, StringComparer.Ordinal);
+                var devices = deposit.Policies.Keys.ToDictionary(Id, p => p, StringComparer.Ordinal);
                 SlotMarker? found = null;
                 foreach (var busId in StorageRouting.InsertionOrder(policies, item.identifier, PartStorage.Tags(item)))
                 {
-                    var candidate = deposit.Board.ById[busId];
+                    var candidate = devices[busId];
                     try { found = Placement(item, deposit.Inventories[deposit.Owners[candidate]]); }
                     catch (Rejected) { continue; }
                     bus = candidate; owner = deposit.Owners[candidate]; break;
@@ -226,7 +227,7 @@ internal sealed partial class GameSession
             {
                 var current = Read(gesture.Surface.Owner);
                 if (!current.Live.ContainsKey(GuidFor(item)) || !ReferenceEquals(item.parentInventory, source)) throw new Rejected(UiText.Get("error_source_disconnected"));
-                if (!PartStorage.Powered(current.Core, current.Board.Evaluation.NightCosts[Id(current.Core)], true)) throw new Rejected(UiText.Get("error_power_lost"));
+                if (!PowerView(current)) throw new Rejected(UiText.Get("error_power_lost"));
             }
             if (deposit != null && target != null && bus != null)
             {
@@ -234,7 +235,7 @@ internal sealed partial class GameSession
                 if (!ReferenceEquals(current.Core, deposit.Core) || !current.Owners.TryGetValue(bus, out var currentOwner) || !ReferenceEquals(owner, currentOwner)
                     || !current.Inventories[currentOwner].Contains(placement.inventory) || !current.Policies[bus].CanInsert(item.identifier, PartStorage.Tags(item)))
                     throw new Rejected(UiText.Get("error_bus_changed"));
-                if (!PartStorage.Powered(current.Core, current.Board.Evaluation.NightCosts[Id(current.Core)], true)) throw new Rejected(UiText.Get("error_power_lost"));
+                if (!PowerView(current)) throw new Rejected(UiText.Get("error_power_lost"));
             }
             NativeMove(item, source, placement); message = "";
         }

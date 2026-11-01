@@ -8,8 +8,8 @@ item_wrench_name,AE Wrench
 item_bus_desc,Install on a cable face to access adjacent storage. Double-click that face to configure it.
 item_part_desc,Place directly in the main inventory to join the network. Double-click to open.
 item_flavor,Applied energy in deep space.
-item_capacity_desc,Install in a storage bus to add 9 filter slots.
-item_tag_desc,Switch the bus to category filters. One per bus.
+item_capacity_desc,Adds 9 bus filter slots or multiplies drawer capacity by four. Up to five cards.
+item_tag_desc,Enables bus tag filters or terminal raw-tag and current-customer filters. One per device.
 item_wrench_desc,Use on the bus face to remove that bus. Use on a detached bus to remove its last upgrade card.
 error_enter_game,Load a game first.
 error_terminal_main,Terminal inactive: place it directly in the main inventory.
@@ -147,3 +147,8 @@ ui_receiver_hint,Shares power with the controller. Only necessary sources are lo
 ui_pool_summary,Power plan: {0} selected / {1} connected sources
 ui_source_reserved,Reserved: {0} kJ
 ui_core_slot_empty,Controller slot empty - receivers can supply power.
+item_drawer_name,Storage Drawer
+item_drawer_desc,2x2 single-kind drawer with 16 units. Each capacity card multiplies the limit by four; five cards maximum. Preserves real item state. Empty it to change kind. Connect through a storage bus.
+ui_drawer_count,Drawer stock: {0} / {1} units
+ui_all_tags,All tags
+ui_customer_demand,Current customer demand

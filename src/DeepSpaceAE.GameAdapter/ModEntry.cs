@@ -29,7 +29,7 @@ public sealed class ModEntry : IMod
         session = new GameSession(log);
         ActiveSession = session;
         acquisition=new Acquisition(log,session);
-        log.Log("DeepSpaceAE 0.9.3 / 100-Rev6 initialized.");
+        log.Log("DeepSpaceAE 0.10.0 / 100-Rev6 initialized.");
     }
 
     public void OnEnable()
@@ -143,7 +143,15 @@ public sealed class ModEntry : IMod
                 DiskStorage.CreateDisk(item); return item;
             });
         }
-        log.Log("Registration complete: 13 AE item factories.");
+        directory.Add(DrawerStorage.Id, () => {
+            var item = ItemDirectory.CreateEmptyItem(DrawerStorage.Id); item.name = UiText.Get("item_drawer_name");
+            item.shortDescription = UiText.Get("item_drawer_desc"); item.unitValue = AcquisitionCatalog.Price(item.identifier);
+            item.SetSpriteAndShapeFromMod(ModId, "drawer"); item.SetShape(new GridShapeBuilder(2, 2).SetDataFill(1).Build());
+            item.mayStackItemFunc = (_, _) => false; item.activateDefault = false;
+            item.mayActivateSlotItemFunc = (_, _, _) => false; item.canActivateSlotItemFunc = (_, _, _) => false;
+            DrawerStorage.Create(item); return item;
+        });
+        log.Log("Registration complete: 14 component factories.");
     }
 
     private readonly HashSet<string> lootGroups = new(StringComparer.Ordinal);
@@ -155,7 +163,7 @@ public sealed class ModEntry : IMod
             (IoBus.Import,2f),(IoBus.Export,2f),
             (EnergyReceiver.Id,1f),
             (PartStorage.Capacity, 2f), (PartStorage.Tag, 1f), (PartStorage.Wrench, 3f),
-            (DiskStorage.Drive, 1f), (DiskStorage.Small, 2f), (DiskStorage.Large, 0.5f));
+            (DiskStorage.Drive, 1f), (DiskStorage.Small, 2f), (DiskStorage.Large, 0.5f), (DrawerStorage.Id, 2f));
         foreach (var group in LootRegistry.GroupIds.ToArray())
             if (group.StartsWith("POI_", StringComparison.Ordinal) && lootGroups.Add(group))
                 ModHelper.AddLootGroupEntry(ModId, group, table, 20f);

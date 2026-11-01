@@ -112,6 +112,7 @@ internal sealed partial class GameSession
     }
     internal static List<GameInventory> Contents(GameItem owner)
     {
+        if (DrawerStorage.IsDrawer(owner)) return new List<GameInventory> { DrawerStorage.Data(owner) };
         var result = new List<GameInventory>();
         if (owner.child == null) return result;
         var visited = new HashSet<GraphNodeStorage>(); var queue = new Queue<GraphNodeStorage>(); queue.Enqueue(owner.child);
@@ -214,6 +215,7 @@ internal sealed partial class GameSession
         internal Dictionary<Guid, GameItem> Live = new();
         internal Dictionary<Guid, GameInventory> Sources = new();
         internal CatalogSearch Search = null!;
+        internal CatalogSearch TagSearch = null!;
         internal CatalogSearch LiquidSearch=null!;
         internal Dictionary<Guid,LiquidSnapshot> Liquids=new();
         internal Dictionary<GameItem,List<StoragePolicy>> LiquidPolicies=new();
@@ -222,11 +224,22 @@ internal sealed partial class GameSession
     private View Read(GameItem terminal)
     {
         var board = ReadBoard(); var root = MainInventory()!;
+        if (DrawerStorage.IsDrawer(terminal))
+        {
+            if (!ReferenceEquals(terminal.parentInventory, root) || !GeneralHelper.IsItemEffectivelyOwned(terminal)) throw new Rejected(UiText.Get("error_part_main"));
+            var local = new View { Board = board, Root = root, Core = terminal };
+            var policy = new StoragePolicy(0, StorageAccess.ReadWrite, false, false, false, 0, Array.Empty<string>());
+            local.Owners.Add(terminal, terminal); local.Policies.Add(terminal, policy); local.Inventories.Add(terminal, Contents(terminal));
+            local.Attachments.Add(DrawerStorage.Upgrades(terminal));
+            return ReadCatalog(local, new Dictionary<GameItem, List<StoragePolicy>> { [terminal] = new List<StoragePolicy> { policy } });
+        }
         if (!ReferenceEquals(terminal.parentInventory, root) || !GeneralHelper.IsItemEffectivelyOwned(terminal)) throw new Rejected(UiText.Get("error_terminal_main"));
         if (!board.Evaluation.Devices.TryGetValue(Id(terminal), out var connection) || connection.Status != DeviceStatus.Online || connection.CoreId == null)
             throw new Rejected(UiText.Get("error_terminal_network"));
         if (!board.Powered.Contains(connection.CoreId)) throw new Rejected(UiText.Get("error_network_power"));
-        return ReadStorage(board,connection.CoreId);
+        var view = ReadStorage(board,connection.CoreId);
+        view.Attachments.Add(PartStorage.Inventory(terminal));
+        return view;
     }
     private View ReadStorage(Board board,string coreId)
     {
@@ -259,7 +272,11 @@ internal sealed partial class GameSession
             var policy=new StoragePolicy(0,StorageAccess.ReadWrite,false,false,false,0,Array.Empty<string>());
             view.Policies.Add(drive,policy); ownerPolicies.Add(drive,new List<StoragePolicy>{policy});
         }
-        var records = new List<CatalogRecord>();
+        return ReadCatalog(view, ownerPolicies);
+    }
+    private View ReadCatalog(View view, Dictionary<GameItem, List<StoragePolicy>> ownerPolicies)
+    {
+        var records = new List<CatalogRecord>(); var tagRecords = new List<CatalogRecord>();
         foreach (var pair in ownerPolicies)
         {
             var filter = new ExtractionFilter(pair.Value);
@@ -271,9 +288,11 @@ internal sealed partial class GameSession
                 var id = GuidFor(item); view.Live.Add(id, item); view.Sources.Add(id, inventory);
                 var publicTags = item.GetGameItemType();
                 records.Add(new CatalogRecord(id, item.identifier, item.name ?? "?", publicTags, item.unitCount, publicTags.Select(NativeWidgets.TagName)));
+                tagRecords.Add(new CatalogRecord(id, item.identifier, item.name ?? "?", itemTags, item.unitCount, itemTags.Select(NativeWidgets.TagName)));
             }
         }
         view.Search = new CatalogSearch(records);
+        view.TagSearch = new CatalogSearch(tagRecords);
         var liquidRows=new List<CatalogRecord>();
         foreach(var pair in view.LiquidPolicies)
         {
@@ -299,7 +318,7 @@ internal sealed partial class GameSession
         if (writing) return;
         try
         {
-            if (part.identifier == "deepspaceae.terminal") { Open(part); return; }
+            if (part.identifier == "deepspaceae.terminal" || DrawerStorage.IsDrawer(part)) { Open(part); return; }
             if (IoBus.IsBus(part))
             {
                 if (PartStorage.CanConfigure(part)) ShowBus(part); else ShowNotice(UiText.Get("ui_install_bus_first"));
@@ -319,7 +338,7 @@ internal sealed partial class GameSession
         try
         {
             var view = Read(terminal);
-            if (!PartStorage.Powered(view.Core, view.Board.Evaluation.NightCosts[Id(view.Core)], true)) throw new Rejected(UiText.Get("error_reserve"));
+            if (!PowerView(view)) throw new Rejected(UiText.Get("error_reserve"));
             Show(terminal, view);
         }
         catch (Exception e) { CloseTerminal(); CustomUIManager.Instance?.CloseWindow(WindowId); Error(e); }
