@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using DeepSpaceAE.Core;
@@ -14,8 +15,6 @@ internal sealed partial class GameSession
     private sealed class Token
     {
         internal Guid Id { get; } = Guid.NewGuid();
-        internal string Text { get; }
-        internal Token() => Text = Id.ToString("N");
     }
     private ConditionalWeakTable<GameItem, Token> identities = new();
     private sealed class Observation
@@ -55,7 +54,9 @@ internal sealed partial class GameSession
     internal CableVisuals Visuals { get; }
     internal GameSession(ModLog log) { this.log = log; Visuals = new CableVisuals(log, this); }
     internal static GameGridInventory? MainInventory() => EmporiumEntry.Instance?.invElement;
-    internal string Id(GameItem item) => identities.GetValue(item, _ => new Token()).Text;
+    // Persistent native identity makes channel allocation and equal-priority routes
+    // deterministic across save/load. Directory GUIDs remain view-only session keys.
+    internal string Id(GameItem item) => item.GetUniqueID().ToString("X8",CultureInfo.InvariantCulture);
     internal Guid GuidFor(GameItem item) => identities.GetValue(item, _ => new Token()).Id;
     internal static bool IsPart(GameItem item) => item.identifier != null && ModEntry.PartKinds.ContainsKey(item.identifier);
     internal void Reset()
@@ -145,10 +146,11 @@ internal sealed partial class GameSession
         foreach(var group in board.Layout.Parts.Where(EnergyReceiver.IsReceiver)
             .Where(r=>board.Evaluation.Devices[Id(r)].Status==DeviceStatus.Online && board.Evaluation.Devices[Id(r)].CoreId!=null)
             .GroupBy(r=>board.Evaluation.Devices[Id(r)].CoreId!)) board.Receivers.Add(group.Key,group.ToArray());
+        var power=new PowerSnapshot();
         foreach (var pair in board.Evaluation.NightCosts)
         {
             PartStorage.PoolLinks(board.ById[pair.Key],board.Receivers.TryGetValue(pair.Key,out var receivers)?receivers:Array.Empty<GameItem>());
-            if (PartStorage.Powered(board.ById[pair.Key], pair.Value, reserve)) board.Powered.Add(pair.Key);
+            if (PartStorage.Powered(board.ById[pair.Key], pair.Value, reserve,power)) board.Powered.Add(pair.Key);
         }
         return board;
     }
@@ -184,12 +186,13 @@ internal sealed partial class GameSession
         Board? board = null;
         try { if (MainInventory() != null) board = ReadBoard(true); }
         catch (Exception e) { log.Error(Diagnostics.ConsoleText(e.ToString())); }
+        var power=new PowerSnapshot();
         foreach (var core in AllCores())
             try
             {
                 int cost = board != null && board.Evaluation.NightCosts.TryGetValue(Id(core), out var n) ? n : 0;
                 PartStorage.PoolLinks(core,board!=null && board.Receivers.TryGetValue(Id(core),out var receivers)?receivers:Array.Empty<GameItem>());
-                PartStorage.Settle(core, cost, log);
+                PartStorage.Settle(core, cost, log,power);
             }
             catch (Exception e) { log.Error(Diagnostics.ConsoleText(e.ToString())); }
         Visuals.Invalidate();
@@ -283,7 +286,7 @@ internal sealed partial class GameSession
                 (readable?snapshot.Name:UiText.Get("ui_liquid_insert_only"))+" · "+owner.name,
                 new[]{"deepspaceae.liquid"},readable?checked((int)snapshot.Composition.Volume):0));
         }
-        view.LiquidSearch=new CatalogSearch(liquidRows);
+        view.LiquidSearch=new CatalogSearch(liquidRows,aggregateQuantity:false);
         return view;
     }
     private void Error(Exception e)
@@ -381,6 +384,7 @@ internal sealed partial class GameSession
         int count = item.unitCount;
         if (!ReferenceEquals(item.parentInventory, source) || !source.childItems.Any(i => ReferenceEquals(i, item)) || !item.MayRemove() || item.MaxNumRemove() < count)
             throw new Rejected(UiText.Get("error_source_changed"));
+        slot=NativeTransfer.Revalidate(item,source,slot,count) ?? throw new Rejected(UiText.Get("error_drop_here"));
         try
         {
             int moved = slot.TryAcceptOnce(count);

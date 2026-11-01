@@ -40,4 +40,15 @@ public sealed class AutomationTests
         Assert.Equal(DeviceStatus.Online,evaluation.Devices["import"].Status);
         Assert.Equal(DeviceStatus.Online,evaluation.Devices["export"].Status);
     }
+    [Fact]
+    public void SourceDecrementAloneCannotProveSuccessfulStackOrSplitDelivery()
+    {
+        Assert.True(AutomationRules.SourceRemainder(10,4,6,true,false,false));
+        Assert.False(AutomationRules.DestinationReceipt(4,0,0,false)); // lost split
+        Assert.False(AutomationRules.DestinationReceipt(4,20,20,true)); // unchanged target
+        Assert.False(AutomationRules.DestinationReceipt(4,20,25,true)); // unexpected callback
+        Assert.True(AutomationRules.DestinationReceipt(4,0,4,true));
+        Assert.True(AutomationRules.DestinationReceipt(4,20,24,true));
+        Assert.False(AutomationRules.DestinationReceipt(1,int.MaxValue,int.MinValue,true));
+    }
 }

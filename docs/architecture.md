@@ -1,6 +1,6 @@
 # 架构边界
 
-> 当前 0.9.0 行为以 [完整功能规格](feature-spec.md)、[用例矩阵](functional-cases.md) 为准。下文按版本保留历史实现背景，不能恢复旧终端渲染借用、独立总线或旧电源策略。
+> 当前 0.9.1 行为以 [完整功能规格](feature-spec.md)、[用例矩阵](functional-cases.md) 为准。下文按版本保留历史实现背景，不能恢复旧终端渲染借用、独立总线或旧电源策略。
 
 ## 目标与阶段
 
@@ -71,3 +71,7 @@ AcquisitionCatalog / DeliveryProgress 为无游戏对象的平衡配置和一次
 ## 0.9 多源供电
 
 Core/PowerSelection 只处理身份、可供 kJ 和保留偏好，排序选择最少数量，不依赖游戏对象。GameAdapter/EnergyReceiver 建立三槽真实保存图和弱引用供电宿主登记；PoolPower 负责逐核心连接源、持久份额、锁定及原生结算。GameSession 在既有事件触发的单次网络求值后分配在线接收器，不另做逐设备全图搜索。原核心没有接收器时沿用单槽模型，首次接入仅加 state 标记和计划，旧保存图不变。新增两张 32×32 接收器素材，当前总白名单 90 PNG（89 AE2 衍生 + 1 独立头像）。
+
+## 0.9.1 审查与公共写入预检
+
+NativeTransfer 集中处理现有 SlotMarker 的原生再预检，调用者继续负责新鲜网络/筛选授权和移动结果判断，避免把 UI 目录变成权限缓存。AutomationRules 新增目标回执检查，NightReservation 提供统一结算阶段门禁。PowerSnapshot 按批次索引实际候选源和旧核心归属，不存为长期状态；旧预留与当前接收器一起恢复局部槽锁。Core 保持 netstandard2.1、无游戏对象，新增真实 API 调用仍只在 Adapter。

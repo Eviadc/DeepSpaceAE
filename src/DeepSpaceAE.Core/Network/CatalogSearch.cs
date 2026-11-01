@@ -18,10 +18,12 @@ public sealed class CatalogRecord
 public sealed class CatalogSearch
 {
     private readonly CatalogRecord[] rows;
+    private readonly bool aggregateQuantity;
     private readonly Dictionary<string, List<CatalogRecord>> byTag = new(StringComparer.Ordinal);
     public IReadOnlyList<string> Tags { get; }
-    public CatalogSearch(IEnumerable<CatalogRecord> records)
+    public CatalogSearch(IEnumerable<CatalogRecord> records,bool aggregateQuantity = true)
     {
+        this.aggregateQuantity=aggregateQuantity;
         rows = records.ToArray();
         foreach (var row in rows) foreach (var tag in row.Tags)
         {
@@ -46,8 +48,12 @@ public sealed class CatalogSearch
         if (sort == CatalogSort.Quantity)
         {
             var matches = candidates.ToArray();
-            var totals = matches.GroupBy(r => r.ItemId, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Sum(r => (long)r.Quantity), StringComparer.Ordinal);
-            candidates = matches.OrderByDescending(r => totals[r.ItemId]).ThenBy(r => r.ItemId, StringComparer.Ordinal).ThenByDescending(r => r.Quantity);
+            if(aggregateQuantity)
+            {
+                var totals = matches.GroupBy(r => r.ItemId, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Sum(r => (long)r.Quantity), StringComparer.Ordinal);
+                candidates = matches.OrderByDescending(r => totals[r.ItemId]).ThenBy(r => r.ItemId, StringComparer.Ordinal).ThenByDescending(r => r.Quantity);
+            }
+            else candidates=matches.OrderByDescending(r=>r.Quantity).ThenBy(r=>r.ItemId,StringComparer.Ordinal);
         }
         return cachedResult = Array.AsReadOnly(candidates.ToArray());
     }

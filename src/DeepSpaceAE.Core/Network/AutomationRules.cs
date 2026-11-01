@@ -8,4 +8,6 @@ public static class AutomationRules
     public static bool SourceRemainder(int before,int moved,int remaining,bool inSource,bool inDestination,bool destroyed)
         =>moved>0 && moved<=before && (moved<before?inSource && remaining==before-moved:
             !inSource && (inDestination || destroyed || remaining==0));
+    public static bool DestinationReceipt(int moved,int before,int after,bool inDestination)
+        =>moved>0 && before>=0 && inDestination && (long)before+moved==after;
 }

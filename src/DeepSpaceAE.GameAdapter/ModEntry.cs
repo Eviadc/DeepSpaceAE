@@ -29,7 +29,7 @@ public sealed class ModEntry : IMod
         session = new GameSession(log);
         ActiveSession = session;
         acquisition=new Acquisition(log,session);
-        log.Log("DeepSpaceAE 0.9.0 / 100-Rev6 initialized.");
+        log.Log("DeepSpaceAE 0.9.1 / 100-Rev6 initialized.");
     }
 
     public void OnEnable()

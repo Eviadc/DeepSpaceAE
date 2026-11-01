@@ -1,6 +1,6 @@
-# DeepSpaceAE 0.9.0-alpha · 安装和联合验收
+# DeepSpaceAE 0.9.1-alpha · 安装和联合验收
 
-编译目标为本机真实安装的 100-Rev6 / Steam Build 26337366，Windows x64。新阶段游戏行为、存档往返及夜间现金扣费仍须联合测试。114 项模型/贴图测试及 38 项 PE 补丁审计不是 Unity/Harmony 实际运行证据。
+编译目标为本机真实安装的 100-Rev6 / Steam Build 26337366，Windows x64。新阶段游戏行为、存档往返及夜间现金扣费仍须联合测试。120 项模型/贴图测试及 38 项 PE 补丁审计不是 Unity/Harmony 实际运行证据。
 
 ## 安装和本地开发
 
@@ -17,7 +17,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-game.ps1
 
 默认游戏目录 G:\SteamLibrary\steamapps\common\Probably Stolen，部署位置为其 Mods\DeepSpaceAE。部署脚本发现游戏运行会停止，不强制结束游戏。旧版备份位于仓库 artifacts/mod-backups，安装包位于 artifacts/packages。
 
-包内仅两个自有 DLL、90 张 PNG（89 AE2 衍生组件及 1 独立史蒂夫头像）、2 CSV、manifest、说明、来源/许可、日志提取脚本及构建记录，不含游戏引用、测试宿主、存档或凭据。源码完整说明见 docs/feature-spec.md、docs/functional-cases.md、docs/version-maintenance.md；包内另附“功能规格.md”“功能用例.md”“版本维护.md”。
+包内仅两个自有 DLL、90 张 PNG（89 AE2 衍生组件及 1 独立史蒂夫头像）、2 CSV、manifest、说明、来源/许可、日志提取脚本及构建记录，不含游戏引用、测试宿主、存档或凭据。源码完整说明见 docs/feature-spec.md、docs/functional-cases.md、docs/version-maintenance.md；包内另附“功能规格.md”“功能用例.md”“版本维护.md”“代码审查.md”。
 
 ## 0.8 获取路径测试
 
@@ -53,3 +53,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-game.ps1
 ## 0.9 能源接收器联合测试入口
 
 先保留可回退的普通游戏存档，按功能用例 ENERGY-01、03～05 验证三槽和最少锁定；再测断线后仍应结算的 ENERGY-08，以及保存往返、跨夜份额、欠电费 ENERGY-09、10、12。示例峰值 9 kJ 的 6+4 电池应只扣合计 9，而非每块扣 9。需检查未选电池始终可取出，并回归单槽旧核心、夜间 IO 和电网服务其他机器账单。本次未启动游戏或操作存档，以上均待实机。
+
+## 0.9.1 审查修订回归
+
+在已有 ENERGY、TERM、DISK、IO、LIQ 用例上，补测 REVIEW-01～10，见功能用例末尾。优先确认：已结算核心移入其他容器后不继续扣电/电费；旧网络重载后频道选择稳定；自动化拆分与堆叠两端数量正确；核心/接收器的原生交换遵守准入。120 项模型测试、原型 smoke 和只读 PE 审计均不能证明这些 Unity 流程实际通过。

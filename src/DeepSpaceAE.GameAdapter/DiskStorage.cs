@@ -38,7 +38,7 @@ internal static class DiskStorage
         {
             var slot=new GameSlotInventory(1,2); slot.SetMachineryStyle();
             slot.SetBackgroundFadeSprite("Items/items_hydroponic_plant","dna_disk_black_full");
-            slot.mayInventoryAddItemFunc=(disk,_)=>IsDisk(disk) && disk.unitCount==1 && GeneralHelper.IsItemEffectivelyOwned(disk)
+            slot.mayInventoryAddItemFunc=(disk,_)=>(slot.childItem==null || ReferenceEquals(slot.childItem,disk)) && IsDisk(disk) && disk.unitCount==1 && GeneralHelper.IsItemEffectivelyOwned(disk)
                 && GeneralHelper.IsItemEffectivelyOwned(drive) && ReferenceEquals(drive.parentInventory,GameSession.MainInventory());
             void Changed(GameItem _,GameInventory __,SlotMarker ___) { ModEntry.ActiveSession?.NativeStorageChanged(drive,true); }
             slot.onSlotAddItemEndFunc+=Changed; slot.onSlotRemoveItemEndFunc+=Changed;
@@ -75,7 +75,9 @@ internal sealed class DiskAreaInventory : GameGridInventory
     public override SlotMarker TryInventorySlot(GameItem item,int amount,Vector2 position,GridShape shape,TagSystem state)
     {
         var slot=new SlotMarker{item=item,inventory=this,itemGridShape=shape};
-        if(amount>=item.unitCount && CheckInventorySlotStillValid(item,shape,state) && item.MaxNumAdd(slot)>=item.unitCount) slot.numTransfer=item.unitCount;
+        if(amount>=item.unitCount && MayHaveValidInventorySlot(item) && Budget(item,shape)
+            && item.CheckIsStateValid(this,slot,shape,state) && CheckAcceptParentShapeStateModifier(item,slot,shape,state)
+            && item.MaxNumRemove()>=item.unitCount && item.MaxNumAdd(slot)>=item.unitCount) slot.numTransfer=item.unitCount;
         return slot;
     }
     public override bool CheckInventorySlotStillValid(GameItem item,GridShape shape,TagSystem state)

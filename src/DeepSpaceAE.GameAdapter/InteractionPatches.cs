@@ -39,6 +39,7 @@ internal static class LockedBatterySwapPatch
     [HarmonyPrefix]
     private static bool Prefix(GameItem source, GameItem target, ref bool __result)
     {
+        if(source==null || target==null) return true;
         bool Locked(GameItem item)
         {
             var inv = item?.parentInventory;
@@ -56,7 +57,15 @@ internal static class LockedBatterySwapPatch
         { __result=false; return false; }
         if((DriveBay(source) && !DiskStorage.IsDisk(target)) || (DriveBay(target) && !DiskStorage.IsDisk(source)))
         { __result=false; return false; }
-        if (!Locked(source) && !Locked(target)) return true;
+        bool AcceptsPowerReplacement(GameItem current,GameItem incoming)
+        {
+            var owner=current.parentInventory?.GetParentItem();
+            if(owner==null || !(owner.identifier=="deepspaceae.core" || EnergyReceiver.IsReceiver(owner))) return true;
+            return owner.identifier=="deepspaceae.core"?PartStorage.CanInstall(owner,incoming):
+                ReferenceEquals(owner.parentInventory,GameSession.MainInventory()) && GeneralHelper.IsItemEffectivelyOwned(owner)
+                    && PartStorage.IsPowerItem(incoming) && PartStorage.CanRemoveSource(incoming);
+        }
+        if (!Locked(source) && !Locked(target) && AcceptsPowerReplacement(source,target) && AcceptsPowerReplacement(target,source)) return true;
         __result = false; return false;
     }
 }

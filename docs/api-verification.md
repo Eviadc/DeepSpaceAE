@@ -130,3 +130,9 @@ Windows 脚本直接引用安装目录，不上传或入库游戏 DLL。此前 R
 CurrentConverterHelper.GetHostMachine 通过 converter.parentInventory.GetParentItem 读取带 machinery_drawn_power 的宿主，GetHostUsage 读取其整数值；UpdateServiceCost 遍历原版物品并汇总宿主用量。Supply 在非夜间阶段会直接扣现金，因此 AE 继续只在原版服务账单阶段结算，不对转换器调用 DrawPowerSource。多槽宿主存在未选转换器时必须按已选来源重建 AE 部分账单，避免三个槽重复计算宿主峰值。
 
 接收器复用已有 GameSlotInventory、MachineryIntake 与借用槽包装，不新增 Harmony 目标。0.9 的 114 项模型/贴图测试、真实引用构建和 38 项补丁元数据审计通过；未执行游戏、原生扣费或保存往返。
+
+## 0.9.1 写入和身份审查（2026-11-01，100-Rev6）
+
+同一本地引用的只读方法体显示：GameItem.GetUniqueID 在 uniqueId == 0 时向 PlayerStore 分配身份；直接读字段不保证已分配。SlotMarker.TryAcceptOnce 只裁剪数量/MaxNumRemove，堆叠时直接 StackItemUnchecked，否则移除/拆分来源后 UncheckedAccept，不重新验证目标准入。因此增加 NativeTransfer，在写入前调用实际目标 TryInventorySlot 或 GetStackSlot，并检查实时来源、拥有权、锁及循环包含；自动化写入后核对目标入库和增量。
+
+GameInventory.CheckAcceptParentShapeStateModifier 处理新物品加入父链，CheckChangeParentShapeStateModifier 用于在库变化；硬盘新接收改用前者。GameSlotInventory 的现有物品自校验与新物品准入分开，避免为防堆叠而拒绝同一个已在槽实例。未新增 Harmony 目标，仍是 38 项，只读核验不等于这些原生回调已经实机运行。

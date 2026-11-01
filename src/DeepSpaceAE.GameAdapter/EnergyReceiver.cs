@@ -19,13 +19,17 @@ internal static class EnergyReceiver
     internal static GameSlotInventory[] Slots(GameItem host)=>IsReceiver(host)?data.GetValue(host,_=>throw new InvalidOperationException("Missing receiver graph.")).Slots:
         new[]{(GameSlotInventory)PartStorage.Inventory(host)};
     internal static IEnumerable<GameItem> Sources()=>Hosts().SelectMany(h=>Slots(h)).Select(s=>s.childItem).Where(i=>i!=null);
+    internal static bool ContainsSource(GameItem source)=>source.parentInventory is GameSlotInventory slot
+        && ReferenceEquals(slot.childItem,source) && slot.GetParentItem() is GameItem host
+        && (IsReceiver(host) || host.identifier=="deepspaceae.core") && Slots(host).Contains(slot)
+        && GeneralHelper.IsItemEffectivelyOwned(source);
     internal static void Create(GameItem host)
     {
         var slots=new GameSlotInventory[3]; var grid=new GridPixelElement(3,1,true).SetSpacing(4,4);
         for(int i=0;i<3;i++)
         {
             var slot=new GameSlotInventory(); slot.SetMachineryStyle(); slot.SetBackgroundFadeSprite("Items/items_tool","battery100");
-            slot.mayInventoryAddItemFunc=(source,_)=>slot.childItem==null && ReferenceEquals(host.parentInventory,GameSession.MainInventory())
+            slot.mayInventoryAddItemFunc=(source,_)=>(slot.childItem==null || ReferenceEquals(slot.childItem,source)) && ReferenceEquals(host.parentInventory,GameSession.MainInventory())
                 && GeneralHelper.IsItemEffectivelyOwned(host) && PartStorage.IsPowerItem(source) && PartStorage.CanRemoveSource(source);
             slot.maxSlotRemoveItemFunc=(source,_,_)=>PartStorage.CanRemoveSource(source)?int.MaxValue:0;
             void Changed(GameItem _,GameInventory __,SlotMarker ___)
@@ -36,4 +40,19 @@ internal static class EnergyReceiver
         data.Add(host,new Data{Slots=slots}); RegisterHost(host);
         var window=new PixelWindow(true,UiText.Get("ui_receiver_slots")); window.Attach(grid); host.SetContentWindow(window);
     }
+}
+
+// Per-operation candidate index, never retained between native events or used
+// instead of checking the actual slot before a debit. One host traversal per board.
+internal sealed class PowerSnapshot
+{
+    internal readonly Dictionary<long,GameItem> Sources;
+    private readonly Dictionary<int,GameItem[]> reservations;
+    internal PowerSnapshot()
+    {
+        Sources=EnergyReceiver.Sources().Where(GeneralHelper.IsItemEffectivelyOwned).ToDictionary(i=>(long)i.GetUniqueID());
+        reservations=Sources.Values.GroupBy(i=>PartStorage.Int(i,"supply_core"))
+            .ToDictionary(g=>g.Key,g=>g.ToArray());
+    }
+    internal IEnumerable<GameItem> ForCore(GameItem core)=>reservations.TryGetValue(core.GetUniqueID(),out var items)?items:Array.Empty<GameItem>();
 }

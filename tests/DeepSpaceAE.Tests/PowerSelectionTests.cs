@@ -59,6 +59,16 @@ public sealed class PowerSelectionTests
         Assert.Equal(int.MaxValue,Assert.Single(PowerSelection.Select(int.MaxValue,new[]{new PowerCandidate(1,int.MaxValue),new PowerCandidate(2,int.MaxValue)})!).Amount);
     }
     [Fact]
+    public void LargePoolCanReleaseEveryPreferredSmallBatteryForTheMinimumCombination()
+    {
+        const int count=2048;
+        var sources=Enumerable.Range(1,count).Select(i=>new PowerCandidate(i,1,true))
+            .Concat(Enumerable.Range(count+1,count).Select(i=>new PowerCandidate(i,3)));
+        var selected=PowerSelection.Select(3*count,sources)!;
+        Assert.Equal(count,selected.Count); Assert.All(selected,s=>Assert.True(s.Id>count));
+        Assert.Equal(3*count,selected.Sum(s=>s.Amount));
+    }
+    [Fact]
     public void ReceiverIsAZeroCostChannelLeafAndDoesNotJoinTwoNetworks()
     {
         var nodes=new[]{new NetworkNode("core",NetworkPart.Core),new NetworkNode("wire",NetworkPart.Pipeline),

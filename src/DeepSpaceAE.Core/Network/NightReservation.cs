@@ -12,6 +12,14 @@ public sealed class NightReservation
     public NightReservation(int day = -1, int required = 0, long battery = 0, NightPhase phase = NightPhase.Empty)
     { Day = day; Required = required; Battery = battery; Phase = phase; }
     public bool CanRemove(int day) => Phase == NightPhase.Empty || Phase == NightPhase.Shortfall || (Phase == NightPhase.Settled && day > Day);
+    // Only a real pending reservation (or an observed unpaid grid bill) may enter
+    // settlement. A settled plan is not renewed merely because the day changed.
+    public bool CanSettle(bool knownGridUnpaid = false) => Phase == NightPhase.Reserved
+        || Phase == NightPhase.DebitStarted && knownGridUnpaid;
+    // An unpaid bill is already fixed. Offline topology growth must neither enlarge
+    // that debt nor prevent its payment from producing a matching receipt.
+    public int SettlementBudget(int day,int currentCost) => Phase == NightPhase.Reserved && Day==day
+        ?Math.Max(Required,currentCost):Required;
     public bool ObservePeak(int day,int required)
     {
         if(required<=0 || Phase==NightPhase.DebitStarted || Phase==NightPhase.Fault) return false;

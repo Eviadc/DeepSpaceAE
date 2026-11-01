@@ -81,7 +81,7 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
         var tile = new ItemTile(this, id, item, IsLiquid?6*cell:shape.globalWidth * cell, IsLiquid?3*cell:shape.globalHeight * cell);
         tile.handler.SetParent(inner);
         tile.rectTransform.anchorMin = tile.rectTransform.anchorMax = tile.rectTransform.pivot = new Vector2(0, 1);
-        MachineryStyle.Place(tile.handler, x * cell, y * cell, shape.globalWidth * cell, shape.globalHeight * cell);
+        MachineryStyle.Place(tile.handler, x * cell, y * cell, tile.widthPixels, tile.heightPixels);
         // Independent native UI nodes resolve to the one real item. The source renderer is untouched.
         tiles.Add(tile.handler);
         itemTiles.Add(id, tile);

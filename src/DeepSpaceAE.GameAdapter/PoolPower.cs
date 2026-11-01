@@ -50,22 +50,22 @@ internal static partial class PartStorage
         foreach(var line in Text(core,"pool_plan").Split('\n').Where(s=>s.Length>0))
         {
             var fields=line.Split(':');
-            if(fields.Length!=2 || !long.TryParse(fields[0],out long id) || !int.TryParse(fields[1],out int amount) || amount<=0)
+            if(fields.Length!=2 || !long.TryParse(fields[0],out long id) || id==0 || !int.TryParse(fields[1],out int amount) || amount<=0)
                 throw new InvalidOperationException("Invalid saved power plan; no automatic recovery.");
             result.Add(new PowerShare(id,amount));
         }
         if(result.Select(p=>p.Id).Distinct().Count()!=result.Count) throw new InvalidOperationException("Duplicate source in saved power plan.");
         return result;
     }
-    private static Dictionary<long,GameItem> Physical()=>EnergyReceiver.Sources().Where(GeneralHelper.IsItemEffectivelyOwned).ToDictionary(i=>(long)Key(i));
     private static GameItem[] Current(GameItem core)=>new[]{core}.Concat(connected.GetOrCreateValue(core).Receivers)
         .Where(GeneralHelper.IsItemEffectivelyOwned).SelectMany(EnergyReceiver.Slots).Select(s=>s.childItem).Where(i=>i!=null).ToArray();
     private static int SourceCapacity(GameItem source,int peak,GameItem core)
     {
         if(!IsPowerItem(source)) return 0;
-        if(!CanRemoveSource(source) && Int(source,"supply_core")!=Key(core)) return 0;
+        if(!CanRemoveSource(source) && (Int(source,"supply_core")!=Key(core)
+            || Int(source,"supply_phase")!=(int)NightPhase.Reserved)) return 0;
         int low=0,high=peak;
-        while(low<high) { int middle=low+(high-low+1)/2; if(CanSupply(source,middle)) low=middle; else high=middle-1; }
+        while(low<high) { int middle=low+(int)(((long)high-low+1)/2); if(CanSupply(source,middle)) low=middle; else high=middle-1; }
         return low;
     }
     internal static void PoolLinks(GameItem core,IEnumerable<GameItem> receivers)
@@ -75,6 +75,8 @@ internal static partial class PartStorage
         if(UsesPool(core) || connected.GetOrCreateValue(core).Receivers.Length==0) return;
         var lease=Lease(core); var source=Battery(core);
         Number(core,"pool_active",1);
+        if(lease.Phase==NightPhase.Shortfall)
+            String(core,"pool_rejected",lease.Battery.ToString());
         if(source!=null && lease.Required>0 && lease.Phase!=NightPhase.Empty && lease.Phase!=NightPhase.Shortfall)
         {
             Token(source,core,lease.Required,lease.Phase,lease.Day);
@@ -88,73 +90,100 @@ internal static partial class PartStorage
         foreach(var slot in EnergyReceiver.Slots(host))
         { if(slot.childItem==null || CanRemoveSource(slot.childItem)) slot.UnlockInv(); else slot.LockInv(); }
     }
-    private static void RestorePoolLocks()
-    { foreach(var host in EnergyReceiver.Hosts()) if(EnergyReceiver.IsReceiver(host) || UsesPool(host)) PoolLocks(host); }
-    private static void ReleaseExcept(GameItem core,ISet<long> keep)
+    private static IEnumerable<GameItem> ReservedSources(GameItem core,PowerSnapshot power)=>power.ForCore(core).Concat(Current(core))
+        .Where(i=>Int(i,"supply_core")==Key(core)).Distinct();
+    private static void RestorePoolLocks(GameItem core,PowerSnapshot power)
     {
-        foreach(var source in EnergyReceiver.Sources().Where(i=>Int(i,"supply_core")==Key(core)))
+        var hosts=new HashSet<GameItem>(new[]{core}.Concat(connected.GetOrCreateValue(core).Receivers));
+        foreach(var source in power.ForCore(core))
+            if(source.parentInventory?.GetParentItem() is GameItem host && (EnergyReceiver.IsReceiver(host) || UsesPool(host))) hosts.Add(host);
+        foreach(var host in hosts) PoolLocks(host);
+    }
+    private static void ReleaseExcept(GameItem core,ISet<long> keep,PowerSnapshot power)
+    {
+        foreach(var source in ReservedSources(core,power))
             if(!keep.Contains(Key(source)) && Int(source,"supply_phase")== (int)NightPhase.Reserved) ClearToken(source);
     }
-    internal static bool PoolPowered(GameItem core,int cost)
+    internal static bool PoolPowered(GameItem core,int cost,PowerSnapshot? snapshot=null)
     {
+        var power=snapshot ?? new PowerSnapshot();
         var lease=Lease(core); var sources=Current(core); var plan=Plan(core);
+        var byId=sources.ToDictionary(s=>(long)Key(s));
         if(ModEntry.ActiveSession?.NightAutomation==true)
-            return lease.Day==Day && lease.Phase==NightPhase.Settled && cost<=lease.Required && plan.Count>0
-                && plan.All(p=>sources.Any(s=>Key(s)==p.Id && IsPowerItem(s) && Int(s,"supply_core")==Key(core)
+            return !GridUnpaid(core) && lease.Day==Day && lease.Phase==NightPhase.Settled && cost>0 && cost<=lease.Required
+                && plan.Count>0 && plan.Sum(p=>(long)p.Amount)==lease.Required
+                && plan.All(p=>byId.TryGetValue(p.Id,out var s) && IsPowerItem(s) && Int(s,"supply_core")==Key(core)
                     && Int(s,"supply_share")>=p.Amount && Int(s,"supply_phase")== (int)NightPhase.Settled
-                    && Int(s,"supply_day",-1)==Day && (!IsGrid(s) && !HypertechBatteryHelper.IsHypertechBattery(s) || CanSupply(s,p.Amount))));
-        if(GridUnpaid(core) || lease.Phase==NightPhase.Fault || lease.Phase==NightPhase.DebitStarted) { RestorePoolLocks(); return false; }
+                    && Int(s,"supply_day",-1)==Day && (!IsGrid(s) && !HypertechBatteryHelper.IsHypertechBattery(s) || CanSupply(s,p.Amount)));
+        if(GridUnpaid(core) || lease.Phase==NightPhase.Fault || lease.Phase==NightPhase.DebitStarted) { RestorePoolLocks(core,power); return false; }
         if(lease.Day==Day && lease.Phase==NightPhase.Settled) return false;
         if(lease.Day<Day)
         {
-            foreach(var source in EnergyReceiver.Sources().Where(s=>Int(s,"supply_core")==Key(core)))
+            foreach(var source in ReservedSources(core,power))
                 if(Int(source,"supply_phase")!=(int)NightPhase.DebitStarted && Int(source,"supply_phase")!=(int)NightPhase.Fault) ClearToken(source);
             plan.Clear(); String(core,"pool_plan",""); String(core,"pool_rejected","");
         }
         int peak=Math.Max(Math.Max(2,cost),lease.Day==Day?lease.Required:0);
         var rejected=new HashSet<string>(Text(core,"pool_rejected").Split(','));
         if(lease.Day==Day && lease.Phase==NightPhase.Shortfall && !sources.Any(s=>!rejected.Contains(Key(s).ToString())))
-        { Global(core,Day,peak,NightPhase.Shortfall); RestorePoolLocks(); return false; }
-        var selected=PowerSelection.Select(peak,sources.Select(s=>new PowerCandidate(Key(s),SourceCapacity(s,peak,core),plan.Any(p=>p.Id==Key(s)))));
+        { Global(core,Day,peak,NightPhase.Shortfall); RestorePoolLocks(core,power); return false; }
+        var plannedIds=new HashSet<long>(plan.Select(p=>p.Id));
+        var selected=PowerSelection.Select(peak,sources.Select(s=>new PowerCandidate(Key(s),SourceCapacity(s,peak,core),plannedIds.Contains(Key(s)))));
         if(selected==null)
         {
             // A disconnected receiver still owes its reserved share. It cannot
             // power this network, but its battery is not freed by unplugging it.
-            var physical=Physical();
-            if(plan.Count>0 && plan.Sum(p=>(long)p.Amount)>=peak && plan.All(p=>physical.TryGetValue(p.Id,out var source) && CanSupply(source,p.Amount)))
-            { Global(core,Day,peak,NightPhase.Reserved); RestorePoolLocks(); return false; }
-            ReleaseExcept(core,new HashSet<long>()); String(core,"pool_plan","");
+            var physical=power.Sources;
+            if(plan.Count>0 && plan.Sum(p=>(long)p.Amount)>=peak && plan.All(p=>physical.TryGetValue(p.Id,out var source)
+                && EnergyReceiver.ContainsSource(source) && Int(source,"supply_core")==Key(core)
+                && Int(source,"supply_share")==p.Amount && Int(source,"supply_day",-1)==lease.Day
+                && Int(source,"supply_phase")== (int)NightPhase.Reserved && CanSupply(source,p.Amount)))
+            { Global(core,Day,peak,NightPhase.Reserved); RestorePoolLocks(core,power); return false; }
+            ReleaseExcept(core,new HashSet<long>(),power); String(core,"pool_plan","");
             String(core,"pool_rejected",string.Join(",",sources.Select(s=>Key(s).ToString())));
-            Global(core,Day,peak,NightPhase.Shortfall); RestorePoolLocks(); return false;
+            Global(core,Day,peak,NightPhase.Shortfall); RestorePoolLocks(core,power); return false;
         }
-        ReleaseExcept(core,new HashSet<long>(selected.Select(p=>p.Id)));
-        foreach(var share in selected) Token(sources.Single(s=>Key(s)==share.Id),core,share.Amount,NightPhase.Reserved,Day);
+        var selectedIds=new HashSet<long>(selected.Select(p=>p.Id));
+        ReleaseExcept(core,selectedIds,power);
+        foreach(var share in selected) Token(byId[share.Id],core,share.Amount,NightPhase.Reserved,Day);
         string next=string.Join("\n",selected.Select(p=>p.Id+":"+p.Amount));
         bool changed=Text(core,"pool_plan")!=next || lease.Required!=peak || lease.Phase!=NightPhase.Reserved || lease.Day!=Day;
         if(changed) { String(core,"pool_plan",next); Global(core,Day,peak,NightPhase.Reserved); ModEntry.ActiveSession?.Visuals.Invalidate(); }
         foreach(var group in sources.Where(IsGrid).GroupBy(source=>source.parentInventory?.GetParentItem()))
         {
-            if(group.Key!=null) Usage(group.Key,group.Any(source=>selected.Any(p=>p.Id==Key(source)))?peak:0);
+            if(group.Key!=null) Usage(group.Key,group.Any(source=>selectedIds.Contains(Key(source)))?peak:0);
         }
-        RestorePoolLocks(); return true;
+        RestorePoolLocks(core,power); return true;
     }
-    internal static GameItem? PoolGrid(GameItem core)
+    internal static GameItem? PoolGrid(GameItem core,PowerSnapshot? snapshot=null)
     {
-        var physical=Physical();
+        var physical=(snapshot ?? new PowerSnapshot()).Sources;
         return Plan(core).Select(p=>physical.TryGetValue(p.Id,out var source)?source:null).FirstOrDefault(s=>s!=null && IsGrid(s));
     }
-    internal static void PoolSettle(GameItem core,int cost,ModLog log)
+    internal static void PoolSettle(GameItem core,int cost,ModLog log,PowerSnapshot? snapshot=null)
     {
         if(!GeneralHelper.IsItemEffectivelyOwned(core)) return;
         var lease=Lease(core);
-        if(lease.Phase==NightPhase.Fault || lease.Phase==NightPhase.Settled && lease.Day>=Day) return;
-        if(lease.Phase==NightPhase.DebitStarted && !GridUnpaid(core)) return;
-        var plan=Plan(core); var sources=Physical();
-        if(plan.Count==0 || lease.Phase==NightPhase.Shortfall || plan.Sum(p=>(long)p.Amount)<Math.Max(2,Math.Max(cost,lease.Required))) return;
+        if(!lease.CanSettle(GridUnpaid(core))) return;
+        var plan=Plan(core); var power=snapshot ?? new PowerSnapshot(); var sources=power.Sources;
+        if(plan.Count==0 || plan.Sum(p=>(long)p.Amount)!=lease.SettlementBudget(Day,cost)) return;
         if(plan.Any(p=>!sources.TryGetValue(p.Id,out var source) || Int(source,"supply_core")!=Key(core)
-            || Int(source,"supply_share")!=p.Amount || !IsGrid(source) && !CanSupply(source,p.Amount)))
-        { ReleaseExcept(core,new HashSet<long>()); String(core,"pool_plan",""); Global(core,Day,lease.Required,NightPhase.Shortfall); RestorePoolLocks(); return; }
-        Global(core,Day,lease.Required,NightPhase.DebitStarted); RestorePoolLocks();
+            || Int(source,"supply_share")!=p.Amount || Int(source,"supply_day",-1)!=lease.Day
+            || Int(source,"supply_phase")!=(int)lease.Phase || !EnergyReceiver.ContainsSource(source) || !IsGrid(source) && !CanSupply(source,p.Amount)))
+        {
+            if(lease.Phase==NightPhase.DebitStarted)
+            {
+                Global(core,lease.Day,lease.Required,NightPhase.Fault);
+                log.Error("Unpaid grid reservation no longer matches its source; no replay or release.");
+            }
+            else
+            {
+                ReleaseExcept(core,new HashSet<long>(),power); String(core,"pool_plan","");
+                Global(core,Day,lease.Required,NightPhase.Shortfall);
+            }
+            RestorePoolLocks(core,power); return;
+        }
+        Global(core,Day,lease.Required,NightPhase.DebitStarted); RestorePoolLocks(core,power);
         foreach(var share in plan)
         {
             var source=sources[share.Id]; Token(source,core,share.Amount,NightPhase.DebitStarted,Day);
@@ -167,19 +196,21 @@ internal static partial class PartStorage
             }
             try
             {
+                if(!EnergyReceiver.ContainsSource(source) || !CanSupply(source,share.Amount))
+                    throw new InvalidOperationException("Pooled power source changed before native debit.");
                 int before=PowerHelper.GetAvailableEnergyFromItem(source,false); bool infinite=HypertechBatteryHelper.IsHypertechBattery(source);
                 bool success=PowerHelper.DrawPowerSource(source,share.Amount);
                 int after=PowerHelper.GetAvailableEnergyFromItem(source,false);
                 if(!success || (infinite?before!=after:before-after!=share.Amount)) throw new InvalidOperationException("Pooled native battery debit unknown.");
                 Token(source,core,share.Amount,NightPhase.Settled,Day);
             }
-            catch { Token(source,core,share.Amount,NightPhase.Fault,Day); Global(core,Day,lease.Required,NightPhase.Fault); RestorePoolLocks(); throw; }
+            catch { Token(source,core,share.Amount,NightPhase.Fault,Day); Global(core,Day,lease.Required,NightPhase.Fault); RestorePoolLocks(core,power); throw; }
         }
-        Global(core,Day,lease.Required,NightPhase.Settled); RestorePoolLocks();
+        Global(core,Day,lease.Required,NightPhase.Settled); RestorePoolLocks(core,power);
     }
     internal static void PoolGridPaid(GameItem core)
     {
         var source=PoolGrid(core); if(source!=null) Token(source,core,Lease(core).Required,NightPhase.Settled,Day);
-        RestorePoolLocks();
+        RestorePoolLocks(core,new PowerSnapshot());
     }
 }

@@ -64,7 +64,8 @@ internal static partial class PartStorage
             slot.SetBackgroundFadeSprite("Items/items_tool", "battery100");
             slot.onSlotAddItemFunc += (_, _, _) => AudioManager.Instance.Play3("battery_insert");
             slot.onSlotRemoveItemFunc += (_, _, _) => AudioManager.Instance.Play3("battery_removed");
-            slot.mayInventoryAddItemFunc = (battery, _) => slot.childItem==null && CanInstall(item, battery);
+            slot.mayInventoryAddItemFunc = (battery, _) => ReferenceEquals(slot.childItem,battery)
+                || slot.childItem==null && CanInstall(item, battery);
             slot.onSlotRemoveItemEndFunc += (_, _, _) => { ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item,true); };
             slot.maxSlotRemoveItemFunc = (_, _, _) => CanRemovePower(item) ? int.MaxValue : 0;
             slot.onSlotAddItemEndFunc += (battery, _, _) => {
@@ -72,7 +73,7 @@ internal static partial class PartStorage
                 int cost = ModEntry.ActiveSession.CoreCost(item);
                 if(UsesPool(item)) { RestoreLocks(item); ModEntry.ActiveSession.Visuals.Invalidate(); return; }
                 var lease = Lease(item);
-                if (!lease.Reserve(Day, cost, battery.uniqueId, n => CanSupply(battery, n)))
+                if (!lease.Reserve(Day, cost, battery.GetUniqueID(), n => CanSupply(battery, n)))
                     throw new InvalidOperationException("Battery reservation failed after native insertion.");
                 Save(item, lease); Number(item, "power_policy_revision", 3); slot.LockInv();
                 ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item,true);

@@ -16,6 +16,7 @@ files = {
     "DeepSpaceAE/功能规格.md": root / "docs/feature-spec.md",
     "DeepSpaceAE/功能用例.md": root / "docs/functional-cases.md",
     "DeepSpaceAE/版本维护.md": root / "docs/version-maintenance.md",
+    "DeepSpaceAE/代码审查.md": root / "docs/code-review-0.9.1.md",
     "DeepSpaceAE/加载诊断.md": root / "docs/load-troubleshooting.md",
     "DeepSpaceAE/extract-load-log.py": root / "scripts/extract-load-log.py",
 }
@@ -54,7 +55,7 @@ for name, path in files.items():
         dimensions = (256,384) if stem=="steve-portrait" else (48,48) if stem == "core" or stem.startswith("core-") else (32,32) if stem in ("drive","drive-off","energy-receiver","energy-receiver-off") else (16,32) if stem in ("disk-small","disk-large") else (16,16)
         assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", data[16:24]) == dimensions
 version = ET.parse(files["DeepSpaceAE/manifest.xml"]).getroot().findtext("ModVersion")
-assert version == "0.9.0-alpha"
+assert version == "0.9.1-alpha"
 audit_path = root / "artifacts/validation/game-patch-audit.json"
 if not audit_path.is_file():
     raise SystemExit("Missing game patch metadata audit; run scripts/build-game.ps1 (Windows) or scripts/build-game.sh first.")

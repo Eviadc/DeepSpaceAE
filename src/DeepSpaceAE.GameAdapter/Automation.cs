@@ -29,7 +29,7 @@ internal sealed partial class GameSession
             var views=new Dictionary<string,View>(StringComparer.Ordinal);
             var buses=board.Layout.Parts.Where(IoBus.IsIo).Where(b=>only==null?
                 PartStorage.Int(b,"io_enabled",1)!=0 && HopperHelper.WindowOf(IoBus.Order(b))==window:ReferenceEquals(b,only))
-                .OrderBy(IoBus.Order).ThenByDescending(b=>PartStorage.Policy(b).Priority).ThenBy(b=>b.uniqueId).ToArray();
+                .OrderBy(IoBus.Order).ThenByDescending(b=>PartStorage.Policy(b).Priority).ThenBy(b=>b.GetUniqueID()).ToArray();
             foreach(var bus in buses)
             {
                 if(operations>=64 || generation!=automationGeneration || writeFault) break;
@@ -66,6 +66,8 @@ internal sealed partial class GameSession
                             || slot.numTransfer<=0 || (slot.targetItem==null && slot.itemGridShape==null)) continue;
                         int amount=Math.Min(item.unitCount,Math.Min(slot.numTransfer,item.MaxNumRemove()));
                         if(amount<=0) continue;
+                        slot=NativeTransfer.Revalidate(item,source,slot,amount);
+                        if(slot==null || generation!=automationGeneration) continue;
                         attempts++; operations++;
                         units+=AutomationMove(item,source,slot,amount);
                         moved.Add(item); if(slot.item!=null) moved.Add(slot.item); if(slot.targetItem!=null) moved.Add(slot.targetItem);
@@ -97,11 +99,12 @@ internal sealed partial class GameSession
     }
     private List<GameInventory> NetworkDestinations(View view,GameItem item,GameItem machine)
     {
-        var policies=view.Policies.ToDictionary(p=>Id(p.Key),p=>DiskStorage.IsDrive(p.Key)?p.Value:PartStorage.Policy(p.Key),StringComparer.Ordinal);
+        var devices=view.Policies.Keys.ToDictionary(Id,StringComparer.Ordinal);
+        var policies=devices.ToDictionary(p=>p.Key,p=>DiskStorage.IsDrive(p.Value)?view.Policies[p.Value]:PartStorage.Policy(p.Value),StringComparer.Ordinal);
         var result=new List<GameInventory>(); var seen=new HashSet<GameInventory>();
         foreach(var id in StorageRouting.InsertionOrder(policies,item.identifier,PartStorage.Tags(item)))
         {
-            var device=view.Policies.Keys.Single(p=>Id(p)==id); var owner=view.Owners[device];
+            var device=devices[id]; var owner=view.Owners[device];
             if(ReferenceEquals(owner,machine) || !GeneralHelper.IsItemEffectivelyOwned(owner)) continue;
             foreach(var inv in view.Inventories[owner]) if(seen.Add(inv)) result.Add(inv);
         }
@@ -110,14 +113,18 @@ internal sealed partial class GameSession
     private int AutomationMove(GameItem item,GameInventory source,SlotMarker slot,int amount)
     {
         int before=item.unitCount;
+        int destinationBefore=slot.targetItem?.unitCount ?? 0;
         if(!ReferenceEquals(item.parentInventory,source) || !source.childItems.Contains(item) || item.MaxNumRemove()<amount)
             throw new InvalidOperationException("Automation source changed before native transfer.");
         try
         {
             int accepted=slot.TryAcceptOnce(amount);
             bool destroyed=item is GameItemElement e && e.IsDestroyed();
+            var received=slot.targetItem ?? slot.item;
             if(accepted!=amount || !AutomationRules.SourceRemainder(before,accepted,item.unitCount,
-                ReferenceEquals(item.parentInventory,source) && source.childItems.Contains(item),ReferenceEquals(item.parentInventory,slot.inventory),destroyed))
+                ReferenceEquals(item.parentInventory,source) && source.childItems.Contains(item),ReferenceEquals(item.parentInventory,slot.inventory),destroyed)
+                || received==null || !AutomationRules.DestinationReceipt(accepted,destinationBefore,received.unitCount,
+                    ReferenceEquals(received.parentInventory,slot.inventory) && slot.inventory.childItems.Contains(received)))
                 throw new InvalidOperationException("Native hopper transfer outcome unknown. No retry or compensation.");
             return accepted;
         }

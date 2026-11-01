@@ -89,6 +89,16 @@ public sealed class StorageFeatureTests
         Assert.Empty(search.Find("battery", "missing"));
     }
     [Fact]
+    public void IndependentLiquidSourcesSortByTheirOwnVolumeRatherThanCombinedCompositionVolume()
+    {
+        var a=new CatalogRecord(Guid.NewGuid(),"liquid:water","Water A",Array.Empty<string>(),70_000);
+        var b=new CatalogRecord(Guid.NewGuid(),"liquid:water","Water B",Array.Empty<string>(),70_000);
+        var c=new CatalogRecord(Guid.NewGuid(),"liquid:ethanol","Ethanol",Array.Empty<string>(),100_000);
+        var search=new CatalogSearch(new[]{a,b,c},aggregateQuantity:false);
+        Assert.Equal(new[]{c,a,b},search.Find("",sort:CatalogSort.Quantity));
+        Assert.Equal(3,search.Find("",sort:CatalogSort.Quantity).Count);
+    }
+    [Fact]
     public void ReservationRequiresWholeNightAndKeepsPeakCost()
     {
         var lease=new NightReservation();
@@ -147,6 +157,42 @@ public sealed class StorageFeatureTests
         Assert.Equal(5,lease.Day); Assert.False(lease.CanRemove(5));
         Assert.False(lease.Reserve(5,2,42,_=>true));
         Assert.True(lease.Reserve(6,2,42,_=>true)); Assert.Equal(2,lease.Required);
+    }
+    [Fact]
+    public void AnInactiveSettledCoreDoesNotAcquireAnotherBillOnLaterNights()
+    {
+        var lease=new NightReservation();
+        Assert.False(lease.CanSettle());
+        Assert.True(lease.Reserve(3,25,42,_=>true)); Assert.True(lease.CanSettle());
+        Assert.True(lease.BeginDebit(3,42)); Assert.False(lease.CanSettle());
+        Assert.True(lease.CanSettle(knownGridUnpaid:true));
+        lease.Complete(true);
+        // A core left in another container never receives a new Reserve call.
+        var restored=new NightReservation(lease.Day,lease.Required,lease.Battery,lease.Phase);
+        for(int day=4;day<=7;day++) { Assert.True(restored.CanRemove(day)); Assert.False(restored.CanSettle(true)); }
+        Assert.True(restored.Reserve(8,4,42,_=>true)); Assert.True(restored.CanSettle());
+        Assert.Equal(4,restored.Required);
+    }
+    [Fact]
+    public void ShortfallAndUnknownDebitsNeverBecomeFreshSettlementRequests()
+    {
+        var lease=new NightReservation(); lease.Reserve(3,25,42,_=>true);
+        lease.Reserve(3,30,42,_=>false); Assert.False(lease.CanSettle(true));
+        lease.Reserve(4,2,43,_=>true); Assert.True(lease.BeginDebit(4,43));
+        Assert.False(lease.CanSettle());
+        lease.Complete(false); Assert.False(lease.CanSettle(true));
+    }
+    [Fact]
+    public void GrowingAnUnpaidOfflineNetworkDoesNotPreventTheOriginalBillFromSettling()
+    {
+        var lease=new NightReservation(); lease.Reserve(3,9,42,_=>true);
+        Assert.Equal(15,lease.SettlementBudget(3,15));
+        Assert.True(lease.BeginDebit(3,42));
+        // On day 4 the network is offline for debt, but the user adds devices.
+        Assert.True(lease.CanSettle(true)); Assert.Equal(9,lease.SettlementBudget(4,15));
+        Assert.Equal(9,lease.SettlementBudget(3,15));
+        lease.Complete(true,4); Assert.False(lease.CanSettle(true));
+        Assert.True(lease.Reserve(5,15,42,_=>true)); Assert.Equal(15,lease.Required);
     }
     [Fact]
     public void UnknownDebitCannotReplayOrUnlockEvenOnFollowingDay()

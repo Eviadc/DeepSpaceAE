@@ -30,11 +30,18 @@ public static class PowerSelection
         while(count<all.Length && total<required) total+=all[count++].Capacity;
         if(total<required) return null;
         var preferred=all.Where(c=>c.Preferred).ToArray(); var spare=all.Where(c=>!c.Preferred).ToArray();
+        long[] Prefix(PowerCandidate[] group)
+        {
+            var sums=new long[group.Length+1];
+            for(int i=0;i<group.Length;i++) sums[i+1]=sums[i]+group[i].Capacity;
+            return sums;
+        }
+        var preferredSums=Prefix(preferred); var spareSums=Prefix(spare);
         for(int retain=Math.Min(count,preferred.Length);retain>=0;retain--)
         {
             if(count-retain>spare.Length) continue;
+            if(preferredSums[retain]+spareSums[count-retain]<required) continue;
             var selected=preferred.Take(retain).Concat(spare.Take(count-retain)).ToArray();
-            if(selected.Sum(c=>(long)c.Capacity)<required) continue;
             var shares=new List<PowerShare>(); int remaining=required;
             foreach(var source in selected) { int amount=Math.Min(remaining,source.Capacity); if(amount>0) shares.Add(new PowerShare(source.Id,amount)); remaining-=amount; }
             return shares.AsReadOnly();

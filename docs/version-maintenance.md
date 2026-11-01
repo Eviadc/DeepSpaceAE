@@ -72,3 +72,11 @@ Acquisition 使用 AddNetworkUpgrade 与 GenerateCustomerNormal 官方钩子，�
 核验 PowerHelper.CanDrawPowerSource 对整数 kJ 的单调性、DrawPowerSource 的实际普通/无限电池行为、GetAvailableEnergyFromItem 的计量，以及 CurrentConverterHelper/RunStats 账单和付款时序。不要用电池剩余能量否定已付夜间预算，也不要让未选转换器沿用宿主旧用量。断线只影响供电，不解除已有费用责任；未知扣费与欠费锁定必须跨加载保持。新源注册应事件触发，禁止恢复逐帧扫描。
 
 回归 ENERGY-01～14；适配时保留旧核心/线缆保存节点顺序，首次启用池仅迁移已存在的单槽预留，不重扣。接收器商品价值 350、有货概率 30%、数量 1，基础礼包仍 16 件；新增 PNG 为 energy-receiver 及其 off 版，32×32，白名单总量 90。
+
+## 0.9.1 审查后的边界
+
+NightReservation.CanSettle 是普通/共用/电网账单一致的入口约束；不得让 Settled 在核心未重新在线预留时跨日续费。源 Token 必须与计划的核心、份额、日期和阶段一致；未知源不可重新选入，已知欠费的源不一致时转 Fault 而非 Shortfall 解锁。
+
+NativeTransfer 统一紧邻写入的原生槽复核，覆盖终端/扳手和 IO；不要因 TryAcceptOnce 名字含 Try 就省略这一层，它会直接移除来源再调用 UncheckedAccept。自动化还须检查目标根库存及增量，拆分后 SlotMarker.item 可能变为新实例。供电候选 PowerSnapshot 只活在本次读图/结算内，不能缓存跨事件；它不是实际扣电授权。稳定拓扑身份必须从 GetUniqueID 获得。
+
+PowerSelection 用前缀和完成保留数量的可行性检查，排序后线性选择；不要恢复每个保留数重建数组/求和。供电恢复锁只访问当前核心和该核心原有预留宿主，批次索引一次遍历全部供电宿主；路由查 ID 使用字典而非每个候选 Single 枚举。更新时同时回归 REVIEW 和 ENERGY、IO 用例。
