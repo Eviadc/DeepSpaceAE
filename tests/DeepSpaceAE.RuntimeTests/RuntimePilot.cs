@@ -264,9 +264,12 @@ public sealed class RuntimePilot : MonoBehaviour
         Adapter.Call(Adapter.Session,"Open",terminal); var terminalWindow=Adapter.Field(Adapter.Session,"terminalWindow");
         Adapter.Call(Adapter.Session,"OpenPart",drawer);
         Check(Adapter.Field(Adapter.Session,"partWindow")!=null && ReferenceEquals(terminalWindow,Adapter.Field(Adapter.Session,"terminalWindow")),"Drawer panel closed or replaced the terminal.");
+        Check(((PixelWindow)terminalWindow!).handler.gameObject.activeInHierarchy && ((PixelWindow)Adapter.Field(Adapter.Session,"partWindow")!).handler.gameObject.activeInHierarchy,"Both native windows are not visible together.");
         Adapter.Move(extra,data);
+        Check(data.childItems.Count==17 && data.childItems.OfType<GameItemElement>().Count(i=>i.handler.gameObject.activeSelf)==1,"Full drawer did not render as one real pile representative.");
         Check(ReferenceEquals(extra.parentInventory,data) && card.MaxNumRemove()==0,"Over-capacity card removal was not blocked.");
-        Adapter.Move(extra,root); Check(card.MaxNumRemove()>0,"Card stayed locked at the lower capacity."); Adapter.Move(card,root);
+        Adapter.Move(extra,root); Check(extra is GameItemElement removed && removed.handler.gameObject.activeSelf,"Withdrawn item stayed hidden in its real destination.");
+        Check(card.MaxNumRemove()>0,"Card stayed locked at the lower capacity."); Adapter.Move(card,root);
         foreach(var item in data.childItems.ToArray()) Adapter.Move(item,Adapter.Data(large));
         Adapter.Move(different,data); Check(data.childItems.Count==1 && ReferenceEquals(data.childItems[0],different),"Empty drawer could not change its stored state.");
         var bus=Spawn("deepspaceae.item_storage_bus"); Add(bus);
