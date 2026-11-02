@@ -152,3 +152,10 @@ item_drawer_desc,2x2 single-kind drawer with 16 units. Each capacity card multip
 ui_drawer_count,Drawer stock: {0} / {1} units
 ui_all_tags,All tags
 ui_customer_demand,Current customer demand
+start_engineer_title,Network Engineer
+start_engineer_description,Begin with an AE storage kit and a fully charged native battery in addition to generalist supplies and their usual starting cost. Wilde's AE Engineer gift is already included. If inventory is full make space and open the shutter to receive the remainder.
+start_engineer_base,Generalist supplies; starting cost 50
+start_engineer_kit,AE controller x1; cables x8; storage buses x2; terminal x1
+start_engineer_disks,Drive x1; small disks x2; wrench x1
+start_engineer_power,One fully charged native battery
+start_engineer_pending,This gift is included in the Network Engineer start. Pending delivery: {0} items.

@@ -1,5 +1,7 @@
 # API 核验与剩余未知
 
+0.11开局静态核验：ModHelper.AddStartingScenario/RemoveStartingScenarios为公开注册接口；NewGameData.HandleInitialItem的MODDED onStart在OnNewGameStarted之前，需先记权益后发放。普通APPRENTICE分支扣50并生成存储区/生活物资，skipIntro时加两标牌。原生职业以NetworkUpgrade.state=2直接预解锁，不能调用Unlock重放奖励。PowerHelper.SetPowerSourceAt会更新有效状态与电池图，最大能量读POWER_SOURCE_ITEM_MAX_ENERGY。详见 [0.11说明](engineer-start.md)，真实运行另记。
+
 2026-11-02：0.10.1在独立新存档完成10/10运行时用例，包含抽屉/终端双窗口可见、17件代表显示、真实总线及终端标签/顾客规则；见 [0.10系列运行记录](runtime-pilot-results-0.10.md)。鼠标、旧存档迁移、保存重载及NPC实交易仍未验收。
 
 2026-11-01 的独立新存档已完成八项真实运行时用例及操作提示复跑，见 [精简运行时试验结果](runtime-pilot-results-20261101.md)。下文各版本的“未运行”是当时的静态核验边界；本轮仅补充报告中列出的八项，不覆盖鼠标、跨日和读取存档。

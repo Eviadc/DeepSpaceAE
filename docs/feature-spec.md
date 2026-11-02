@@ -1,4 +1,6 @@
-# DeepSpaceAE 功能规格 · 0.10.1-alpha
+# DeepSpaceAE 功能规格 · 0.11.0-alpha
+
+0.11新增原生“网络工程师”开局，普通物资/启动开销加16件基础AE套件和满电电池，王尔德礼包已领；发放与持久化合同见 [开局说明](engineer-start.md)。
 
 维护基线：100-Rev6 / Steam Build 26337366，Windows x64。本文描述当前代码的预期行为；不把编译、模型或静态审计当作游戏运行结论。具体操作和验收记录见 [功能用例](functional-cases.md)，版本升级入口见 [维护指南](version-maintenance.md)。自动合成尚未实现。
 

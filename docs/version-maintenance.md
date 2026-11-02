@@ -83,3 +83,6 @@ PowerSelection 用前缀和完成保留数量的可行性检查，排序后线�
 # 0.10 新增核验点
 
 升级时核验TagState各数值类型/启用状态、原生物品特征字段，以及StoreClientInstance.GetClientBlueprint / StoreClient.IsClientBuyingThisItem / IsClientBusinessDone。抽屉真实数据与五卡子图、新终端单卡子图必须做保存/重载验收。保持原生交换门禁覆盖DrawerInventory及新卡槽；本地主栏抽屉用独立原生面板，终端保持镜像，两窗口必须可同时存在。代表物品缓存仅在库存事件更新，逐物品回调不得重复复制整份childItems。取出后须恢复真实渲染可见。本地免电不能让网络终端绕过供电。素材总数91及分立MIT/CC许可见 [0.10说明](drawers-and-filters.md)。
+## 0.11开局维护
+
+核验StartingScenario/ModHelper公开注册、NewGameData.onStart与OnNewGameStarted顺序、原普通开局物资/50启动开销、原生最大电量字段。保留engineer_start_v1有序清单，不能修改已存档游标对应项；普通王尔德16件礼包独立保留。原生预解锁只设state=2，不调用Unlock重放回调。实际新开局/读档防重发和满库存续发分别验收。见 docs/engineer-start.md。

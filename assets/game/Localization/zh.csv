@@ -152,3 +152,10 @@ item_drawer_desc,2×2 单种物品抽屉，基础容量16件。每张容量卡�
 ui_drawer_count,抽屉存量：{0} / {1} 件
 ui_all_tags,全部标签
 ui_customer_demand,当前顾客需求
+start_engineer_title,网络工程师
+start_engineer_description,带着一套AE存储设备开始经营。保留普通开局的基础物资与启动开销，额外获得AE基础套件和满电电池；王尔德的AE工程师礼包已包含在开局中。若主库存放不下，整理空间后开启卷帘门继续领取。
+start_engineer_base,普通开局基础物资；启动开销50
+start_engineer_kit,AE核心×1、线缆×8、存储总线×2、终端×1
+start_engineer_disks,硬盘驱动器×1、小硬盘×2、扳手×1
+start_engineer_power,一块原版满电电池
+start_engineer_pending,网络工程师开局已包含此礼包。尚待放入主库存：{0}件。

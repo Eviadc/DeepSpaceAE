@@ -11,6 +11,7 @@ public sealed class Plugin : IMod
     public void Init(ModManifest manifest) { }
     public void OnEnable()
     {
+        ModHook.OnNewGameStarted += Started;
         ModHelper.AddStartingScenario(Id,Scenario,()=>"AE Runtime Pilot (test save)",()=>"Isolated one-shot runtime test. Not a normal playthrough.",
             Array.Empty<Func<string>>(),()=>RuntimePilot.FreshScenarioStarted=true,skipIntro:true);
         string configPath=Path.Combine(ModLoader.ModsPath,"DeepSpaceAE.RuntimeTests","run.json");
@@ -29,9 +30,12 @@ public sealed class Plugin : IMod
     }
     public void OnDisable()
     {
+        ModHook.OnNewGameStarted -= Started;
         ModHelper.RemoveStartingScenarios(Id);
         if(runner!=null) UnityEngine.Object.Destroy(runner.gameObject);
     }
+    private void Started(string scenario)
+    { if (runner != null && scenario == runner.ExpectedScenario) RuntimePilot.FreshScenarioStarted = true; }
 }
 
 [Serializable]
@@ -40,6 +44,7 @@ public sealed class PilotConfig
     public string runId="",outputDirectory="",productCommit="";
     public int[] existingSlots=Array.Empty<int>();
     public bool exitAfterRun=true;
+    public bool engineerStart;
 }
 [Serializable]
 public sealed class CaseResult
@@ -53,6 +58,7 @@ public sealed class PilotReport
     public string runId="",status="waiting_for_menu",productCommit="",startedUtc="",finishedUtc="",unityVersion="",error="";
     public int saveSlot=-1,day=-1;
     public bool freshScenarioConfirmed,mouseInputTested=false,saveReloadTested=false;
+    public string profile="";
     public string activeScene="",nativeScenario="";
     public bool hasGameRoot,hasPlayerStore,scenarioCallbackSeen,sessionLoading=true;
     public int nativeSaveSlot=-1;

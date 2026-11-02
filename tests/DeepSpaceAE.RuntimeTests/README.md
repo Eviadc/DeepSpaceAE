@@ -8,6 +8,8 @@
 
 ## 执行
 
+0.11开局专用模式：`scripts/runtime-pilot.ps1 -EngineerStart -Launch`。选择生产注册的真实网络工程师场景，执行5项START用例（开局注册、物资、防重、供电、保存）；该模式跳过序章，不运行会重复创建组件的十项夹具。只操作新独立槽。
+
 退出游戏后在仓库运行：
 
 ```powershell

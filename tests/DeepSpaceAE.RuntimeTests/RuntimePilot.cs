@@ -7,7 +7,7 @@ using UnityEngine.SceneManagement;
 
 namespace DeepSpaceAE.RuntimeTests;
 
-public sealed class RuntimePilot : MonoBehaviour
+public sealed partial class RuntimePilot : MonoBehaviour
 {
     internal static bool FreshScenarioStarted;
     private PilotConfig config=null!;
@@ -24,9 +24,11 @@ public sealed class RuntimePilot : MonoBehaviour
     private readonly List<GameItem> stored=new();
     private readonly List<GameItem> fixture=new();
     private int x,y,area;
+    internal string ExpectedScenario => config.engineerStart ? "deepspaceae.network_engineer" : Plugin.Scenario;
     internal void Configure(PilotConfig settings)
     {
         config=settings; report.runId=config.runId; report.productCommit=config.productCommit;
+        report.profile = config.engineerStart ? "network-engineer" : "components";
         priorBackground=Application.runInBackground; Application.runInBackground=true;
         report.startedUtc=DateTime.UtcNow.ToString("O"); report.unityVersion=Application.unityVersion;
         deadline=Time.realtimeSinceStartup+120; Write();
@@ -55,7 +57,8 @@ public sealed class RuntimePilot : MonoBehaviour
                     throw new InvalidOperationException("Production mod failed to load; no fixture writes allowed.");
                 if(EmporiumEntry.Instance!=null) throw new InvalidOperationException("Existing game scene is active; refusing to start a pilot.");
                 booted=true; report.status="creating_fresh_scenario"; Write();
-                var data=NewGameData.Instance; data.startType=NewGameData.StartType.MODDED; data.startScenarioId=Plugin.Scenario;
+                if (StartingScenario.Get(ExpectedScenario) == null) throw new InvalidOperationException("Requested native scenario is not registered.");
+                var data=NewGameData.Instance; data.startType=NewGameData.StartType.MODDED; data.startScenarioId=ExpectedScenario;
                 data.saveSlot=-1; data.saveFile=null!; data.skipIntro=true; data.disableTutorialHint=true;
                 data.startingPerks.Clear();
                 // Same native scene entry as StartNewGameClick, without depending
@@ -65,7 +68,7 @@ public sealed class RuntimePilot : MonoBehaviour
             if(root==null)
             {
                 if(EmporiumEntry.Instance?.invElement==null || PlayerStore.Instance==null || PlayerStore.Instance.saveSlotId<0 || !FreshScenarioStarted) return;
-                if(!ModHelper.IsStartingScenario(Plugin.Scenario) || config.existingSlots.Contains(PlayerStore.Instance.saveSlotId))
+                if(!ModHelper.IsStartingScenario(ExpectedScenario) || config.existingSlots.Contains(PlayerStore.Instance.saveSlotId))
                     throw new InvalidOperationException("Not a newly allocated pilot slot; no test writes permitted.");
                 if(Adapter.Session==null) return;
                 report.sessionLoading=(bool)Adapter.Property(Adapter.Session,"Loading")!;
@@ -90,10 +93,11 @@ public sealed class RuntimePilot : MonoBehaviour
                 Check(report.startupHintClosed,"Native startup hint did not close.");
                 hintChecked=true; Write(); return;
             }
-            var actions=new Action[]{Load,Slots,Network,Power,Capacity,Terminal,Disconnect,Drawer,Filters,Save};
+            var actions=config.engineerStart ? new Action[]{StartRegistry,StartSupplies,StartNoDuplicate,StartPower,Save}
+                : new Action[]{Load,Slots,Network,Power,Capacity,Terminal,Disconnect,Drawer,Filters,Save};
             if(step==actions.Length) { Finish(); return; }
             var watch=System.Diagnostics.Stopwatch.StartNew();
-            string id="PILOT-"+(step+1).ToString("00");
+            string id=(config.engineerStart ? "START-" : "PILOT-")+(step+1).ToString("00");
             try { actions[step](); report.cases.Add(new CaseResult{id=id,status="PASS",detail=details,elapsedMs=watch.Elapsed.TotalMilliseconds}); Debug.Log("[AE-PILOT] "+id+" PASS: "+details); }
             catch(Exception e)
             {
@@ -112,7 +116,7 @@ public sealed class RuntimePilot : MonoBehaviour
     private string details="";
     private void Guard()
     {
-        if(!FreshScenarioStarted || !ModHelper.IsStartingScenario(Plugin.Scenario) || PlayerStore.Instance.saveSlotId!=report.saveSlot
+        if(!FreshScenarioStarted || !ModHelper.IsStartingScenario(ExpectedScenario) || PlayerStore.Instance.saveSlotId!=report.saveSlot
             || config.existingSlots.Contains(report.saveSlot)) throw new InvalidOperationException("Pilot save identity changed.");
     }
     private void Check(bool condition,string message) { if(!condition) throw new InvalidOperationException(message); }

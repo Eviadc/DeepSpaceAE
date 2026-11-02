@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using DeepSpaceAE.Core.Network;
 using UnityEngine;
@@ -14,8 +15,14 @@ internal sealed class Acquisition
     internal Acquisition(ModLog log,GameSession session) { this.log=log; this.session=session; }
     private static int Get(string key,int fallback=0)=>ModHelper.GetModDataInt(ModEntry.ModId,key,fallback);
     private static void Put(string key,int value)=>ModHelper.SetModDataInt(ModEntry.ModId,key,value);
+    private bool EngineerGift => Get("engineer_start_v1") == 1;
+    private IReadOnlyList<string> GiftItems => EngineerGift ? EngineerStart.Items(Get("engineer_skip_intro_v1") != 0) : AcquisitionCatalog.Starter;
     internal void Enable()
     {
+        ModHelper.AddStartingScenario(ModEntry.ModId, EngineerStart.Scenario,
+            () => UiText.Get("start_engineer_title"), () => UiText.Get("start_engineer_description"),
+            new Func<string>[] { () => UiText.Get("start_engineer_base"), () => UiText.Get("start_engineer_kit"), () => UiText.Get("start_engineer_disks"), () => UiText.Get("start_engineer_power") },
+            BeginEngineerStart, tag: () => "AE", tagTone: StartingScenario.TagTone.Positive);
         // RegisterModUpgrade accesses the lazy PlayerStore singleton. OnEnable runs
         // before NewGameData exists, so defer until a real new/loaded world is ready.
         ModHook.OnNewGameStarted+=NewGameStarted;
@@ -32,11 +39,12 @@ internal sealed class Acquisition
         ModHelper.AddNetworkUpgrade(ModEntry.ModId,Upgrade,AcquisitionCatalog.EngineerCost,"Referral",
             ()=>UiText.Get("upgrade_engineer_name"),()=>UiText.Get("upgrade_engineer_desc"),StartGift,
             alreadyBought:()=>Get("gift_inflight")!=0?UiText.Get("upgrade_engineer_fault"):
-                UiText.Get("upgrade_engineer_done",Math.Max(0,AcquisitionCatalog.Starter.Count-Get("gift_cursor"))));
+                UiText.Get(EngineerGift ? "start_engineer_pending" : "upgrade_engineer_done",Math.Max(0,GiftItems.Count-Get("gift_cursor"))));
         registered=true;
     }
     internal void Disable()
     {
+        ModHelper.RemoveStartingScenarios(ModEntry.ModId);
         ModHook.OnNewGameStarted-=NewGameStarted;
         ModHook.OnGameLoadedInit-=RegisterUpgrade;
         ModHook.OnGenerateCustomerNormal-=Generate; ModHook.OnGameLoadedLate-=Loaded;
@@ -48,8 +56,27 @@ internal sealed class Acquisition
         if(sprites!=null && sprites.TryGetValue(Steve,out var current) && ReferenceEquals(current,portrait)) sprites.Remove(Steve);
         if(portrait!=null) UnityEngine.Object.Destroy(portrait); portrait=null;
     }
-    private void NewGameStarted(string _) { RegisterUpgrade(); EnsurePortrait(); Deliver(); }
-    internal void Loaded() { RegisterUpgrade(); EnsurePortrait(); Deliver(); }
+    private void BeginEngineerStart()
+    {
+        if (!PlayerStore.HasInstance || !ModHelper.IsStartingScenario(EngineerStart.Scenario))
+            throw new InvalidOperationException("Network engineer initialization requires its real new-game scenario.");
+        if (EngineerGift) return;
+        if (ModHelper.HasModData(ModEntry.ModId, "gift_cursor") || ModHelper.HasModData(ModEntry.ModId, "gift_inflight"))
+            throw new InvalidOperationException("Existing delivery journal cannot be replaced by a starting scenario.");
+        // No item writes here: this callback precedes OnNewGameStarted/session readiness.
+        Put("engineer_start_v1", 1); Put("engineer_skip_intro_v1", PlayerStore.Instance.skipIntro ? 1 : 0);
+        Put("gift_cursor", 0); Put("gift_inflight", 0);
+        PlayerStore.Instance.playerCash -= EngineerStart.GeneralistCost;
+    }
+    private void RestoreEngineerUnlock()
+    {
+        if (!EngineerGift) return;
+        var upgrade = ModHelper.GetNetworkUpgrade(Upgrade) ?? throw new InvalidOperationException("AE engineer upgrade is not registered.");
+        // Vanilla starting professions set state=2 directly; Unlock would invoke the gift callback.
+        upgrade.state = 2;
+    }
+    private void NewGameStarted(string _) { RegisterUpgrade(); RestoreEngineerUnlock(); EnsurePortrait(); Deliver(); }
+    internal void Loaded() { RegisterUpgrade(); RestoreEngineerUnlock(); EnsurePortrait(); Deliver(); }
     internal void EnsurePortrait()
     {
         var dictionary=SpriteDict.Instance?.spriteDictionary;
@@ -67,6 +94,23 @@ internal sealed class Acquisition
         if(!ModHelper.HasModData(ModEntry.ModId,"gift_cursor")) { Put("gift_cursor",0); Put("gift_inflight",0); }
         Deliver();
     }
+    private static SlotMarker? EmptyGiftSlot(GameGridInventory root, GameItem item)
+    {
+        bool Whole(SlotMarker? slot) => slot != null && ReferenceEquals(slot.item, item) && ReferenceEquals(slot.inventory, root)
+            && slot.targetItem == null && slot.itemGridShape != null && slot.numTransfer >= item.unitCount;
+        var preferred = root.TryFindOneValidInventorySlot(item);
+        if (Whole(preferred)) return preferred;
+        // Vanilla supplies may prefer a stack target. Keep a separately auditable
+        // instance and use native empty-slot preflight instead of merging it.
+        for (int orientation = 0; orientation < 4; orientation++) for (int flipped = 0; flipped < 2; flipped++)
+            for (int y = 0; y < root.inventoryShape.height; y++) for (int x = 0; x < root.inventoryShape.width; x++)
+            {
+                var shape = new GridShapeBuilder(item.modifiedShape).SetTransform(x, y, flipped != 0, orientation).Build();
+                var slot = root.TryInventorySlot(item, item.unitCount, Vector2.negativeInfinity, shape, item.modifiedState);
+                if (Whole(slot)) return slot;
+            }
+        return null;
+    }
     internal void Deliver()
     {
         if(delivering || session.Loading || !ModHelper.IsNetworkUpgradeUnlocked(Upgrade) || GameSession.MainInventory()==null) return;
@@ -76,18 +120,29 @@ internal sealed class Acquisition
         try
         {
             var root=GameSession.MainInventory()!;
-            var progress=new DeliveryProgress(AcquisitionCatalog.Starter.Count,Get("gift_cursor"),Get("gift_inflight"));
+            var items = GiftItems;
+            var progress=new DeliveryProgress(items.Count,Get("gift_cursor"),Get("gift_inflight"));
             while(progress.Next<progress.Total)
             {
                 int index=progress.Next;
-                var item=ItemSpawner.Spawn(AcquisitionCatalog.Starter[index]);
+                string id = items[index];
+                var item = id.StartsWith("deepspaceae.", StringComparison.Ordinal) ? ItemSpawner.Spawn(id) : DirectoryMaster.Item(id);
                 if(item==null) throw new InvalidOperationException("AE starter factory unavailable.");
-                SlotMarker slot;
+                int count;
+                SlotMarker? slot;
                 try
                 {
+                    if (EngineerGift && id == "storage_bay") ItemFeatureHelper.SetShabby(item);
+                    if (EngineerGift && id == EngineerStart.Battery)
+                    {
+                        int maximum = item.GetTagReadonly(PowerHelper.POWER_SOURCE_ITEM_MAX_ENERGY).GetInt();
+                        if (maximum <= 0) throw new InvalidOperationException("Native starting battery has no verified maximum energy.");
+                        PowerHelper.SetPowerSourceAt(item, maximum);
+                    }
+                    count = item.unitCount;
                     GeneralHelper.SetItemOwned(item,true);
-                    slot=root.TryFindOneValidInventorySlot(item);
-                    if(slot==null || slot.numTransfer<1 || slot.targetItem!=null || slot.itemGridShape==null || !ReferenceEquals(slot.inventory,root))
+                    slot=EmptyGiftSlot(root,item);
+                    if(count<=0 || slot==null || slot.numTransfer<count || slot.targetItem!=null || slot.itemGridShape==null || !ReferenceEquals(slot.inventory,root))
                     {
                         // This fresh, never-delivered candidate has no owner in the
                         // save graph. The entitlement remains queued; no real gift
@@ -101,8 +156,8 @@ internal sealed class Acquisition
                 Put("gift_inflight",progress.InFlight);
                 try
                 {
-                    int accepted=slot.TryAcceptOnce(1);
-                    if(accepted!=1 || !ReferenceEquals(item.parentInventory,root) || !root.childItems.Contains(item))
+                    int accepted=slot!.TryAcceptOnce(count);
+                    if(accepted!=count || !ReferenceEquals(item.parentInventory,root) || !root.childItems.Contains(item))
                         throw new InvalidOperationException("AE starter native placement result unknown.");
                     progress.Confirm(); Put("gift_cursor",progress.Next); Put("gift_inflight",0);
                 }
