@@ -1,5 +1,7 @@
 # API 核验与剩余未知
 
+2026-11-02：0.11网络工程师开局在独立14号新槽完成START五项实测，真实满电100kJ电池可供赠送核心，原生回调不重发；见 [开局运行记录](engineer-start-result.md)。测试跳过序章，未执行保存后重载或菜单鼠标输入。
+
 0.11开局静态核验：ModHelper.AddStartingScenario/RemoveStartingScenarios为公开注册接口；NewGameData.HandleInitialItem的MODDED onStart在OnNewGameStarted之前，需先记权益后发放。普通APPRENTICE分支扣50并生成存储区/生活物资，skipIntro时加两标牌。原生职业以NetworkUpgrade.state=2直接预解锁，不能调用Unlock重放奖励。PowerHelper.SetPowerSourceAt会更新有效状态与电池图，最大能量读POWER_SOURCE_ITEM_MAX_ENERGY。详见 [0.11说明](engineer-start.md)，真实运行另记。
 
 2026-11-02：0.10.1在独立新存档完成10/10运行时用例，包含抽屉/终端双窗口可见、17件代表显示、真实总线及终端标签/顾客规则；见 [0.10系列运行记录](runtime-pilot-results-0.10.md)。鼠标、旧存档迁移、保存重载及NPC实交易仍未验收。
