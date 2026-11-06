@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">AE 物品存储总线占位图标</title>
+  <rect x="3" y="3" width="58" height="58" rx="10" fill="#152b25" stroke="#76e3ac" stroke-width="2"/>
+  <path d="M5 28h14v8H5M19 15h34v34H19Z" fill="#245442" stroke="#76e3ac" stroke-width="3"/>
+  <path d="M25 22h22v20H25Z" fill="#a1efc6"/>
+  <path d="M29 28h14M29 36h14" stroke="#245442" stroke-width="3"/>
+  <circle cx="16" cy="32" r="4" fill="#effff7"/>
+</svg>

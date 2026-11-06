@@ -1,0 +1,211 @@
+item_core_name,AE Controller
+item_pipeline_name,AE Cable
+item_bus_name,AE Storage Bus
+item_terminal_name,AE Terminal
+item_capacity_name,AE Capacity Card
+item_tag_name,AE Category Card
+item_wrench_name,AE Wrench
+item_bus_desc,Install on a cable face to access adjacent storage. Double-click that face to configure it.
+item_part_desc,Place directly in the main inventory to join the network. Double-click to open.
+item_flavor,Applied energy in deep space.
+item_capacity_desc,Bus: +9 filter slots. Drawer: x4 capacity; max 5 cards. Drive: +2 bays; max 4 cards.
+item_tag_desc,Enables bus tag filters. One per bus. Terminal tag and current-customer filters are built in.
+item_wrench_desc,Use on the bus face to remove that bus. Use on a detached bus to remove its last upgrade card.
+error_enter_game,Load a game first.
+error_terminal_main,Terminal inactive: place it directly in the main inventory.
+error_terminal_network,"Terminal inactive: check the controller, cables and channels. Use one controller per network."
+error_network_power,Network unpowered: install a battery with enough energy for the night.
+error_operation,Operation incomplete. Keep the game log and check the network.
+error_part_main,Part inactive: place it directly in the main inventory.
+error_reserve,The battery cannot reserve enough energy for the night.
+error_locked,Operations are locked.
+error_not_owned,You do not own this item.
+error_position_changed,The item location changed.
+error_install_main,Install from the main inventory.
+error_native_remove,The item is locked or native rules prevent removal.
+error_no_slot,The target has no free space for the whole instance.
+error_source_changed,The item location or lock state changed. Refresh first.
+error_transfer_locked,Transfers are locked.
+error_gesture_expired,This drag is no longer valid.
+error_item_gone,The item left its source inventory.
+error_drag_source_changed,The source inventory changed during the drag.
+error_whole_instance,Drag the whole instance. Its count or source changed.
+error_locked_item,The item is locked or cannot be moved.
+error_item_inaccessible,This item is no longer accessible through this terminal.
+error_active_part,Disconnect the active part or container first.
+error_network_no_slot,No matching container has space for the whole instance.
+error_drop_here,The whole instance cannot be placed here.
+error_target_not_owned,You do not own the target container.
+error_source_disconnected,The source connection changed.
+error_power_lost,Network power was lost.
+error_bus_changed,The bus target or filter changed.
+error_move_unknown,Move result unconfirmed. Transfers are locked.
+error_read_failed,Network observation failed. No move was attempted.
+ui_status,Status
+ui_close,Close
+ui_search,Search items
+ui_terminal_search,Search / #tag
+ui_terminal_mode_help,Click to switch items or liquids. Pour with the native select-container then target interaction.
+ui_all_categories,All categories
+ui_native_order,Original order
+ui_name,Name
+ui_quantity,Quantity
+ui_network,Network
+ui_refresh,Refresh
+ui_terminal_title,AE Terminal
+ui_transfer_locked,Transfers locked
+ui_nightly,Per night
+ui_insert_battery,Drag in a battery
+ui_billing_unknown,Billing unconfirmed - locked
+ui_replaceable,Replaceable
+ui_battery_locked,Locked - replace next day
+ui_energy,Stored energy
+ui_hypertech_battery,Hypertech battery
+ui_reserved,Reserved tonight
+ui_channels,Channels
+ui_battery,Battery
+ui_controller,Network controller
+ui_controller_title,AE Network Controller
+ui_cable,Cable
+ui_online,Online
+ui_inactive,Inactive
+ui_access_both,Insert / extract
+ui_access_extract,Extract only
+ui_access_insert,Insert only
+ui_exclude,Exclude
+ui_include,Include
+ui_filter_extract,Filtered extraction
+ui_extract_all,Extract all
+ui_access_mode,Access mode
+ui_match_help,Include or exclude the items / tags in ghost slots. Empty filters allow everything.
+ui_extract_help,Apply filters to extraction
+ui_priority,Priority
+ui_upgrades,Upgrades
+ui_category_filter,Tag filter
+ui_item_filter,Item filter
+ui_bus_title,AE Storage Bus
+ui_set_filter,Drag an item here to set the filter
+ui_set_tag_filter,Drag an item here to choose a tag. Empty filters allow everything.
+ui_click_clear,\nClick to clear
+ui_choose_category,Choose a tag from this item
+ui_tag_filter_help,Match the presence of a tag; its numeric value is ignored.
+ui_confirm,Confirm
+ui_back,Back
+ui_battery_data,AE Controller - battery
+ui_upgrade_data,AE Bus - upgrades
+ui_item_count,{0} instances
+ui_terminal_stack_count,{0} items · {1} stacks
+ui_part_stat,\n{0} parts\n{1} kJ per part per night
+ui_filter_matching,Filter matching
+ui_match_fuzzy,Fuzzy (item type)
+ui_match_exact,Exact (item state)
+ui_match_fuzzy_help,Compare item type only; ignore quality and other state. A tag card switches to tag matching.
+ui_match_exact_help,Match the full captured state; ignore quantity and placement. A tag card switches to tag matching.
+ui_match_recapture,No captured state; drag a sample here again for exact matching.
+ui_match_unsupported,This item's extended state or container contents cannot be matched exactly. Use fuzzy matching.
+item_contact_name,ME Engineering contact slip
+item_contact_desc,The Fluix Researcher's supply line: 6322. Open this slip and call to arrange a visit with AE components tomorrow. The number is ME + 2 + 2 on a telephone keypad. After your first call you can use the phone book. Reusable.
+contact_title,ME Engineering
+contact_subtitle,Fluix Researcher · Next-day visits
+contact_dial,Call 6322
+phone_steve_confirmed,Hrrm↗. Hrmm↘. <nobr>(Seems he'll visit tomorrow.)</nobr>
+phone_steve_booked,Hrmm↘. Hrrm↗. <nobr>(Seems he'll visit tomorrow.)</nobr>
+phone_steve_today,Hrrm↗! Hrmm↘. <nobr>(Seems he'll visit today.)</nobr>
+ui_bus_settings,Settings
+ui_cable_bus_data,AE Cable - installed buses
+ui_install_bus_first,Install this storage bus on a cable first.
+ui_face_north,Top (local)
+ui_face_east,Right (local)
+ui_face_south,Bottom (local)
+ui_face_west,Left (local)
+ui_empty_face,No storage bus
+ui_bus_install_hint,Drop a bus onto the cable. Double-click the bus face to configure it.
+ui_remove_bus,Remove storage bus
+item_cable_desc,Drop up to four storage buses onto this cable. Each blocks its face. Rotate the whole cable to rotate all faces.
+item_drive_name,AE Disk Drive
+item_disk_small,AE Small Storage Disk
+item_disk_large,AE Large Storage Disk
+item_disk_desc,Stores {0} occupied cells. Insert into an AE disk drive and access through a terminal.
+ui_disk_data,AE Disk Data
+ui_drive_data,AE Drive Bays
+ui_drive_locked,Locked
+ui_drive_slots,Unlocked bays: {0}/10
+ui_drive_cards,Capacity cards: +2 bays each (max 4)
+ui_disk_empty,Empty disk bay
+ui_daily_peak,Daily peak
+ui_grid_power,Power grid (native nightly bill)
+ui_grid_unpaid,Unpaid: source locked / network offline
+ui_power_shortfall,Low power: replace battery / wait until tomorrow
+ui_items,Items
+ui_liquids,Liquids
+ui_liquid_empty,Empty liquid container
+ui_liquid_insert_only,Insert only
+ui_liquid_count,{0} liquid containers
+error_liquid_access,The storage bus does not allow this liquid action.
+error_liquid_use_native,Use the native select-container then click-target action to pour liquid.
+item_import_name,AE Import Bus
+item_export_name,AE Export Bus
+item_io_desc,Cable upgrade. Import takes machine output into the network; export feeds machine input. Uses native machine roles and hopper night windows.
+ui_io_import,Machine output -> network
+ui_io_export,Network -> machine input
+ui_io_enabled,Night automation
+ui_io_order,Hopper order (1-15)
+ui_io_run,Transfer now
+ui_io_offline,Network offline / no power
+ui_io_no_slots,No compatible machine input/output slot
+ui_io_moved,Transferred {0} units
+ui_io_idle,No eligible transfer / full or locked
+ui_io_error,Transfer stopped - check log
+upgrade_engineer_name,AE Engineer
+upgrade_engineer_desc,Wilde puts you in touch with a Fluix Researcher. Receive a controller + 8 cables + 2 storage buses + a terminal + a disk drive + 2 small disks + a wrench + an ME contact slip. Call 6322 to arrange a visit tomorrow. Bring your own battery. Make room in the main inventory; pending gifts resume when you open the shutter or next morning.
+upgrade_engineer_done,Fluix Researcher introduced. Gifts still pending: {0}.
+upgrade_engineer_fault,Starter delivery outcome unknown. Retain the log; it will not be sent again automatically.
+npc_steve_name,Fluix Researcher
+npc_steve_greeting,Hrrm↗? Hrmm hrmm↘.
+npc_steve_accepted_1,Hrrm↗! Hrmm hrmm↘.
+npc_steve_accepted_2,Hrmm hrmm↗. Hrrm↘!
+npc_steve_accepted_3,Hrrm↗. Hrrm↗!
+npc_steve_more_1,Hrrm↗? Hrmm hrmm↗?
+npc_steve_more_2,Hrmm hrmm↘. Hrrm↗?
+npc_steve_more_3,Hrrm↗? Hrrrmm↘.
+npc_steve_done_1,Hrmm hrmm↗! Hrrrmm↘.
+npc_steve_done_2,Hrrm↘. Hrmm hrmm↗!
+npc_steve_done_3,Hrrm↗! Hrmm hrmm. Hrrm↘.
+item_receiver_name,AE Energy Receiver
+ui_receiver_slots,AE Receiver Batteries
+ui_empty_power_slot,Empty battery slot
+ui_receiver_hint,Shares power with the controller. Only necessary sources are locked.
+ui_pool_summary,Power plan: {0} selected / {1} connected sources
+ui_source_reserved,Reserved: {0} kJ
+ui_core_slot_empty,Controller slot empty - receivers can supply power.
+item_drawer_name,Storage Drawer
+item_drawer_desc,2x2 single-kind drawer with 16 units. Each capacity card multiplies the limit by four; five cards maximum. Preserves real item state. Empty it to change kind. Connect through a storage bus.
+ui_drawer_count,Drawer stock: {0} / {1} units
+ui_all_tags,All tags
+ui_customer_demand,Current customer demand
+start_engineer_title,Network Engineer
+start_engineer_description,Begin with an AE storage kit + a fully charged native battery + an ME contact slip in addition to generalist supplies and their usual starting cost. Call 6322 to arrange the Fluix Researcher's visit tomorrow. Wilde's AE Engineer gift is already included. If inventory is full make space and open the shutter to receive the remainder.
+start_engineer_base,Storage bay x1 and generalist supplies; starting cost 50
+start_engineer_kit,AE controller x1; cables x8; storage buses x2; terminal x1
+start_engineer_disks,Drive x1; small disks x2; wrench x1
+start_engineer_power,One fully charged native battery
+start_engineer_pending,This gift is included in the Network Engineer start. Pending delivery: {0} items. Other mods may automatically pack delivered items into containers in your main inventory.
+setting_energy_name,AE network energy use (testing option)
+setting_energy_desc,Off by default: AE networks need no batteries and incur no energy use or grid charges. Enable to restore daily peak budgeting and pooled minimum-battery selection with required-source locks and native grid billing. Applies immediately. Existing energy receivers remain usable but are no longer sold or dropped. This option is for testing the power system.
+ui_power_disabled,Free power: no battery needed; batteries can be removed freely
+start_engineer_routing,Tag upgrade x1; import buses x2; export buses x2
+start_engineer_contact,ME contact slip x1 (6322; next-day visits)
+item_interface_name,ME Item Interface
+item_fluid_interface_name,ME Fluid Interface
+ui_interface_online,Connected to network
+ui_interface_offline,Interface is not connected to an available network
+ui_interface_input,Input to network
+ui_interface_output,Output from network
+ui_interface_strict,Match exact component proportions
+ui_interface_no_output,Choose output liquid
+ui_interface_unavailable, (no stock in this network)
+ui_interface_empty_first,Empty the other liquid from the buffer first
+ui_interface_input_hint,Input: liquids poured in are sent to the network. Strict mode accepts empty containers or identical component proportions; otherwise native mixing rules apply.
+ui_interface_output_hint,Output: refill the selected composition from the network. Select this interface then a target to pour; native dropper and container actions remain available.
+ui_item_interface_hint,Drag items onto this interface to store them in the network. Storage bus filters and native container capacity apply. The interface does not buffer items.
+ui_interface_last,Last deposit: {0} units

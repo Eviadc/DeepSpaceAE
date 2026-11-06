@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Manifest>
+  <ID>deepspaceae</ID>
+  <Name>DeepSpaceAE</Name>
+  <Author>Eviadc</Author>
+  <ModVersion>0.14.0-alpha</ModVersion>
+  <Description>AE风格存储网络：滚动搜索终端、标签与顾客筛选、存储及输入输出总线、硬盘、抽屉、物品与流体接口。含网络工程师开局和电话预约商人。默认免电；耗电为测试选项。适配100-Rev6（0.46D）。</Description>
+  <!-- The Mods menu matches Unity Application.version, not the main-menu revision. -->
+  <GameVersions><Version>0.46D</Version></GameVersions>
+  <Prerequisites />
+  <Assemblies>
+    <Assembly>DeepSpaceAE.Core.dll</Assembly>
+    <Assembly>DeepSpaceAE.GameAdapter.dll</Assembly>
+  </Assemblies>
+  <Capabilities><Capability>reflection-external</Capability></Capabilities>
+</Manifest>

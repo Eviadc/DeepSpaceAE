@@ -1,0 +1,211 @@
+item_core_name,AE 核心
+item_pipeline_name,AE 管线
+item_bus_name,AE 物品存储总线
+item_terminal_name,AE 存储终端
+item_capacity_name,AE 容量升级
+item_tag_name,AE 标签升级
+item_wrench_name,AE 扳手
+item_bus_desc,安装在线缆侧面以访问相邻容器；双击对应部位配置，总线所在面不连接外部线缆。
+item_part_desc,放置于主物品栏接入网络。双击打开。
+item_flavor,深空中的应用能源。
+item_capacity_desc,总线：每张+9筛选格；抽屉：每张容量×4，最多5张；驱动器：每张+2盘位，最多4张。
+item_tag_desc,为总线启用标签筛选，每条总线限一张。终端自带标签和当前顾客需求筛选。
+item_wrench_desc,对线缆上对应总线部位使用可卸下该总线；对独立总线使用可拆出最后一张升级卡。
+error_enter_game,请先进入游戏。
+error_terminal_main,终端未激活：请直接放入主物品栏。
+error_terminal_network,终端未激活：检查核心、线缆和频道。每个网络只能有一个核心。
+error_network_power,网络未供电：在核心中安装足够供整晚使用的电池。
+error_operation,操作未完成，请保留游戏日志并检查网络状态。
+error_part_main,组件未激活：请直接放入主物品栏。
+error_reserve,电池无法预留整晚用电。
+error_locked,操作已锁定。
+error_not_owned,物品不属于你。
+error_position_changed,物品位置已变更。
+error_install_main,请从主物品栏安装。
+error_native_remove,物品被锁定或原版规则禁止移动。
+error_no_slot,目标没有可接收整个物品的空位。
+error_source_changed,物品位置或锁定状态已变更，请刷新。
+error_transfer_locked,取放已锁定。
+error_gesture_expired,此拖放已失效。
+error_item_gone,物品已离开来源库存。
+error_drag_source_changed,拖拽期间来源库存已变更。
+error_whole_instance,请拖放整个物品实例；数量或来源已变更。
+error_locked_item,物品被锁定或无法移动。
+error_item_inaccessible,该物品已不可通过此终端访问。
+error_active_part,请先拆下正在接入的组件或容器。
+error_network_no_slot,没有符合筛选且有完整空位的容器。
+error_drop_here,此处无法放下整个物品。
+error_target_not_owned,目标容器不属于你。
+error_source_disconnected,来源连接已变更。
+error_power_lost,网络供电已中断。
+error_bus_changed,总线目标或筛选已变更。
+error_move_unknown,移动结果未确认，取放已锁定。
+error_read_failed,网络读取失败，此次未执行移动。
+ui_status,状态
+ui_close,关闭
+ui_search,搜索物品
+ui_terminal_search,搜索 / #标签
+ui_terminal_mode_help,点击切换物品或液体。倒液沿用原版选中容器后点击目标的操作。
+ui_all_categories,全部类别
+ui_native_order,原始顺序
+ui_name,名称
+ui_quantity,数量
+ui_network,网络
+ui_refresh,刷新
+ui_terminal_title,AE 存储终端
+ui_transfer_locked,取放已锁定
+ui_nightly,每晚
+ui_insert_battery,拖入电池
+ui_billing_unknown,结算未确认 · 已锁定
+ui_replaceable,可更换
+ui_battery_locked,已锁定 · 次日更换
+ui_energy,储能
+ui_hypertech_battery,超科技电池
+ui_reserved,本夜预留
+ui_channels,频道
+ui_battery,电池
+ui_controller,网络控制器
+ui_controller_title,AE 网络控制器
+ui_cable,线缆
+ui_online,在线
+ui_inactive,未激活
+ui_access_both,存入 / 取出
+ui_access_extract,仅取出
+ui_access_insert,仅存入
+ui_exclude,排除
+ui_include,包含
+ui_filter_extract,筛选取出
+ui_extract_all,全部取出
+ui_access_mode,访问模式
+ui_match_help,包含或排除幽灵格中的物品 / 标签；空筛选允许全部。
+ui_extract_help,取出时是否也应用筛选
+ui_priority,优先级
+ui_upgrades,升级
+ui_category_filter,标签筛选
+ui_item_filter,物品筛选
+ui_bus_title,AE 存储总线
+ui_set_filter,拖入物品以设置筛选
+ui_set_tag_filter,拖入物品选择一个标签；空筛选允许全部。
+ui_click_clear,\n单击清除
+ui_choose_category,选择此物品的标签
+ui_tag_filter_help,按标签是否存在筛选，不比较其数值。
+ui_confirm,确定
+ui_back,返回
+ui_battery_data,AE 核心 · 电池
+ui_upgrade_data,AE 总线 · 升级
+ui_item_count,{0} 件
+ui_terminal_stack_count,{0} 件 · {1} 组
+ui_part_stat,\n{0} 个\n每晚 {1} kJ / 个
+ui_filter_matching,筛选规则
+ui_match_fuzzy,模糊匹配（种类）
+ui_match_exact,精确匹配（状态）
+ui_match_fuzzy_help,仅比较物品种类，忽略品质等状态；标签卡启用时按标签筛选。
+ui_match_exact_help,匹配设置筛选时的完整状态，忽略数量和位置；标签卡启用时按标签筛选。
+ui_match_recapture,尚未记录状态，请重新拖入样品以启用精确匹配。
+ui_match_unsupported,此物品的扩展状态或容器内容不支持精确匹配，请使用模糊匹配。
+item_contact_name,ME 工程供货电话条
+item_contact_desc,福鲁伊克斯研究员的供货专线：6322。打开电话条并拨号，预约次日携带 AE 组件来访。号码取自电话键盘 ME＋2＋2。首次通话后可通过通讯录再次联系；电话条可重复使用。
+contact_title,ME 工程供货
+contact_subtitle,福鲁伊克斯研究员 · 预约次日到访
+contact_dial,拨打 6322
+phone_steve_confirmed,哼↗，哼哼↘。<nobr>（似乎明天会来店里）</nobr>
+phone_steve_booked,哼↘，哼↗。<nobr>（似乎明天会来店里）</nobr>
+phone_steve_today,哼↗！哼↘。<nobr>（似乎今天会来店里）</nobr>
+ui_bus_settings,设置
+ui_cable_bus_data,AE 线缆 - 已安装总线
+ui_install_bus_first,请先将存储总线安装在线缆上。
+ui_face_north,上侧（本地方向）
+ui_face_east,右侧（本地方向）
+ui_face_south,下侧（本地方向）
+ui_face_west,左侧（本地方向）
+ui_empty_face,未安装总线
+ui_bus_install_hint,将总线拖到线缆上安装；双击对应侧面的总线配置。
+ui_remove_bus,卸下存储总线
+item_cable_desc,最多安装四个存储总线，每个总线阻断所在面的线缆连接；拿起整根线缆可旋转所有面。
+item_drive_name,AE 硬盘驱动器
+item_disk_small,AE 小型存储硬盘
+item_disk_large,AE 大型存储硬盘
+item_disk_desc,存储 {0} 格实际物品占格。装入 AE 硬盘驱动器后通过终端取放。
+ui_disk_data,AE 硬盘数据
+ui_drive_data,AE 硬盘槽
+ui_drive_locked,未解锁
+ui_drive_slots,可用盘位：{0}/10
+ui_drive_cards,容量升级：每张+2盘位（最多4张）
+ui_disk_empty,空硬盘槽
+ui_daily_peak,当日耗电峰值
+ui_grid_power,电网供电（原版夜间账单）
+ui_grid_unpaid,电费未缴：锁定并断电
+ui_power_shortfall,电量不足：更换电池或等待次日
+ui_items,物品
+ui_liquids,液体
+ui_liquid_empty,空液体容器
+ui_liquid_insert_only,仅存入
+ui_liquid_count,{0} 个液体容器
+error_liquid_access,存储总线当前规则不允许此方向的液体操作。
+error_liquid_use_native,液体使用原版交互：选中容器后点击目标倒液。
+item_import_name,AE 输入总线
+item_export_name,AE 输出总线
+item_io_desc,线缆升级。输入总线将机器出料收回网络；输出总线将网络物品送入机器进料槽。采用原版槽位与料斗夜间阶段。
+ui_io_import,机器出料 → 网络
+ui_io_export,网络 → 机器进料
+ui_io_enabled,夜间自动传输
+ui_io_order,料斗顺序（1-15）
+ui_io_run,立即传输
+ui_io_offline,网络离线或供电不足
+ui_io_no_slots,未找到兼容的机器进料/出料槽
+ui_io_moved,已传输 {0} 件
+ui_io_idle,没有可传物品或目标满/锁定
+ui_io_error,传输已停止，请检查日志
+upgrade_engineer_name,AE工程师
+upgrade_engineer_desc,王尔德为你引荐福鲁伊克斯研究员，赠送核心×1、线缆×8、存储总线×2、终端×1、硬盘驱动器×1、小硬盘×2、扳手×1及ME供货电话条×1。拨打6322预约次日来访。电池需自备。请腾出主物品栏；未送达部分在开卷帘门或次日继续发放。
+upgrade_engineer_done,已介绍福鲁伊克斯研究员。赠品尚待送达：{0}件。
+upgrade_engineer_fault,基础组件发放结果不明，请保留日志；不会自动重复发放。
+npc_steve_name,福鲁伊克斯研究员
+npc_steve_greeting,哼↗？哼哼↘。
+npc_steve_accepted_1,哼↗！哼哼↘。
+npc_steve_accepted_2,哼哼↗，哼↘！
+npc_steve_accepted_3,哼↗，哼↗！
+npc_steve_more_1,哼↗？哼哼↗？
+npc_steve_more_2,哼哼↘，哼↗？
+npc_steve_more_3,哼↗？哼——↘。
+npc_steve_done_1,哼哼↗！哼——↘。
+npc_steve_done_2,哼↘，哼哼↗！
+npc_steve_done_3,哼↗！哼哼，哼↘。
+item_receiver_name,AE 能源接收器
+ui_receiver_slots,AE 接收器 · 电池槽
+ui_empty_power_slot,空电池槽
+ui_receiver_hint,与控制器共用供电，仅锁定必要电池。
+ui_pool_summary,整网供电：已选 {0} / 已接 {1} 个电源
+ui_source_reserved,已预留 {0} kJ
+ui_core_slot_empty,控制器电池槽为空，可由接收器供电。
+item_drawer_name,抽屉
+item_drawer_desc,2×2 单种物品抽屉，基础容量16件。每张容量卡使上限×4，最多五张。保留真实物品状态；放空后可改存其他物品。用存储总线接入AE网络。
+ui_drawer_count,抽屉存量：{0} / {1} 件
+ui_all_tags,全部标签
+ui_customer_demand,当前顾客需求
+start_engineer_title,网络工程师
+start_engineer_description,带着一套AE存储设备开始经营。保留普通开局的基础物资与启动开销，额外获得AE基础套件、满电电池及ME供货电话条。拨打6322预约福鲁伊克斯研究员次日来访；王尔德的AE工程师礼包已包含在开局中。若主库存放不下，整理空间后开启卷帘门继续领取。
+start_engineer_base,储藏区×1及普通开局基础物资；启动开销50
+start_engineer_kit,AE核心×1、线缆×8、存储总线×2、终端×1
+start_engineer_disks,硬盘驱动器×1、小硬盘×2、扳手×1
+start_engineer_power,一块原版满电电池
+start_engineer_pending,网络工程师开局已包含此礼包。尚待发放：{0}件。其他模组可能将已发物品自动收入主栏的容器中。
+setting_energy_name,AE 网络耗电（测试选项）
+setting_energy_desc,默认关闭：AE 网络无需电池且不扣电或收取电费。开启后恢复当日峰值耗电、共用电池最少组合、必要电池锁定及原生电网结算逻辑。应用后立即生效；已有能源接收器仍可使用，但不再出售或掉落。此选项用于测试供电机制。
+ui_power_disabled,免电模式 · 无需电池，电池可自由取出
+start_engineer_routing,标签升级×1、输入总线×2、输出总线×2
+start_engineer_contact,ME供货电话条×1（6322，预约次日来访）
+item_interface_name,ME物品接口
+item_fluid_interface_name,ME流体接口
+ui_interface_online,网络已连接
+ui_interface_offline,接口未连接到可用网络
+ui_interface_input,输入到网络
+ui_interface_output,从网络输出
+ui_interface_strict,严格匹配成分配比
+ui_interface_no_output,选择输出液体
+ui_interface_unavailable,（当前网络无库存）
+ui_interface_empty_first,请先排空缓冲中的其他液体
+ui_interface_input_hint,输入模式：倒入的液体自动存入网络。严格匹配时只接收空容器或相同成分配比；关闭后沿用原版混液规则。
+ui_interface_output_hint,输出模式：从网络补充所选配方。左键选择接口再点目标倒出；也可使用原版滴管和容器操作。
+ui_item_interface_hint,将物品拖到接口即可存入网络。遵循存储总线筛选及原生容器容量，接口不暂存物品。
+ui_interface_last,最近存入：{0}件

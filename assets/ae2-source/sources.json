@@ -1,0 +1,246 @@
+{
+  "commit": "629d953f987f37a768fbf96551c97d3dfd07b7ee",
+  "license": "CC-BY-NC-SA-3.0",
+  "files": [
+    {
+      "file": "controller.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/block/controller.png",
+      "sha256": "e0125f564707b410a4270c249363b6ce486f320f5ba70bec86f61666d0d57030"
+    },
+    {
+      "file": "controller_powered.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/block/controller_powered.png",
+      "sha256": "25d9057b5dc58f7fcf56594d0fe75f2da6b08a29cbc7b7d67f007d4123f30668"
+    },
+    {
+      "file": "controller_lights.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/block/controller_lights.png",
+      "sha256": "2e91d008222e153ff0b4ff5321cd996d27a553e28023a5d7bcb2913b37613d2c"
+    },
+    {
+      "file": "controller_conflict.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/block/controller_conflict.png",
+      "sha256": "91884bde9e7515b9599f10587be02de086e4d76beb4127e731279a4b8c8ebf07"
+    },
+    {
+      "file": "storage_bus.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/storage_bus.png",
+      "sha256": "d7ad1393786e8e89bb9b01e906e1097236846fbdfccb3ecb5e23c9d4621d19a9"
+    },
+    {
+      "file": "storage_bus_back.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/storage_bus_back.png",
+      "sha256": "e07b0e4988e5f6736765ae41909cc18631ccd8ffde363088021419cfa3538d19"
+    },
+    {
+      "file": "storage_bus_sides.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/storage_bus_sides.png",
+      "sha256": "0f99ff4c3a05eaec74982735aba3ca733b7b15f5e00f843da5b61e2a66edbf3f"
+    },
+    {
+      "file": "terminal_bright.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/terminal_bright.png",
+      "sha256": "276735bdd17c4f6a583078fcde0d299db1ee31c49fdc365f736ee12853c277e2"
+    },
+    {
+      "file": "terminal_dark.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/terminal_dark.png",
+      "sha256": "8adf9c82f8a9135c07df03fb0fa9a0e43772236524262e3c20b588435533a9ab"
+    },
+    {
+      "file": "terminal_medium.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/terminal_medium.png",
+      "sha256": "6e279bd8b08dcfe40d2c79d7e33d1ad90666d723bc4180adbf297865699af11c"
+    },
+    {
+      "file": "card_capacity.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/item/card_capacity.png",
+      "sha256": "db0c78e5f0a9ea482174a2da1154dbd14d8fe1e6d3f331614d1f7dffaed29663"
+    },
+    {
+      "file": "card_fuzzy.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/item/card_fuzzy.png",
+      "sha256": "acb9d6aaff4b15368e405af12f008c656f7b9ab4275b8b0ae6d4e5b703764d21"
+    },
+    {
+      "file": "certus_quartz_wrench.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/item/certus_quartz_wrench.png",
+      "sha256": "9dd7acaa336e882a7fded55de6a68325666cc134b95d70a8ec120639f68ef2ab"
+    },
+    {
+      "file": "transparent.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/cable/core/glass/transparent.png",
+      "sha256": "42f01d60366d4a9424a9cabffa558f6fbe70db4c3b9217c3c7475b5db703ad0c"
+    },
+    {
+      "file": "storage_bus_base.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/part/storage_bus_base.json",
+      "sha256": "40fcee65c1d5c7a9188dfdb88b9ded4fdecc3707b0974930f3ef0d365a2fb121"
+    },
+    {
+      "file": "storage_bus_off.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/part/storage_bus_off.json",
+      "sha256": "4eaee6750f8e332e914afe4818ea418b819bbcbb2effa2c9b30ebdbdf645d55a"
+    },
+    {
+      "file": "storage_bus_on.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/part/storage_bus_on.json",
+      "sha256": "9bfd696e21be3e374cc85dfac117a2ba6e483d771381be4800df35520537ba20"
+    },
+    {
+      "file": "terminal_on.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/part/terminal_on.json",
+      "sha256": "f2f305d23d44f314d9cc54d82bb64f2897fea911a43779e7e16a796df49e07a0"
+    },
+    {
+      "file": "terminal_off.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/part/terminal_off.json",
+      "sha256": "0c271aa4145d912092dd3c223cc421e118dde27b8b63bb4dcff57002c260a6cd"
+    },
+    {
+      "file": "monitor_base.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/part/monitor_base.json",
+      "sha256": "d4d6605950f3fac8dde5c72942e381054189d31f4dcca59119ae8b6ef1e1898e"
+    },
+    {
+      "file": "monitor_front.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/monitor_front.png",
+      "sha256": "0c304dd14ab433eab35115eedaf411278ab9c79786252f461ac525ea337852a6"
+    },
+    {
+      "file": "monitor_back.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/monitor_back.png",
+      "sha256": "0fbd8a8743d7c56fcbc5ecf3957e3c6b7b50d67b43169129eccfefb5605e0af5"
+    },
+    {
+      "file": "monitor_sides.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/monitor_sides.png",
+      "sha256": "7f801e1df17b380a42ae7501c89ceeb2fbcf5338e68cb5c32e986cd915dcac7e"
+    },
+    {
+      "file": "glass_cable_center.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/part/cable/glass/center.json",
+      "sha256": "ef4cd2cbef55def50874b669294f58c9f5c7a8b9780cefe14ae20de136886314"
+    },
+    {
+      "file": "glass_cable_connection.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/part/cable/glass/connection.json",
+      "sha256": "e5929f8d8b692bbfeea55339bdbf4965f37c95e042a5006682855f91e4b89f7b"
+    },
+    {
+      "file": "glass_cable_straight.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/part/cable/glass/straight.json",
+      "sha256": "c4bb7f1ae4f59a6906c7d1d4fee399fc33f05943f910024f0bb87237af854537"
+    },
+    {
+      "file": "glass_cable_connection.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/cable/glass/transparent.png",
+      "sha256": "42f01d60366d4a9424a9cabffa558f6fbe70db4c3b9217c3c7475b5db703ad0c"
+    },
+    {
+      "file": "controller_lights.png.mcmeta",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/block/controller_lights.png.mcmeta",
+      "sha256": "4305c24530716e5424b661590eaf7e32c3847737a337d4716e4e4647f8b90f28"
+    },
+    {
+      "file": "drive_front.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/block/drive/drive_front.png",
+      "sha256": "439713dcf94600d52c9ec9f3e93f7d5403cab8cb559edb571946466d2b335cca"
+    },
+    {
+      "file": "drive_inside.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/block/drive/drive_inside.png",
+      "sha256": "e0ebe5ef26deee042b6e463d518fac714efff8aa9e5c5f88eb800d2a831816a3"
+    },
+    {
+      "file": "drive_cells.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/block/drive/drive_cells.png",
+      "sha256": "e6a303686678c1138ef86d4b1d00a373438235fd05f5df84a5985f19e95781a2"
+    },
+    {
+      "file": "energy_acceptor.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/block/energy_acceptor.png",
+      "sha256": "c29d2235510ae04589765646630a3cbe79857962a8681380a914253da6213409"
+    },
+    {
+      "file": "item_storage_cell_1k.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/item/item_storage_cell_1k.png",
+      "sha256": "165d4485d94157a6698b2f34114591d8c22ed95e8ff2c0ccac54ace7c06d7fcb"
+    },
+    {
+      "file": "item_storage_cell_4k.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/item/item_storage_cell_4k.png",
+      "sha256": "364791354674704bd96db480ca43c310cee3a9684e018ee3823c02d9ef365354"
+    },
+    {
+      "file": "import_bus.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/import_bus.png",
+      "sha256": "9c721d17045136ce6e442527dd1a10167ec1dd1eed51a5045bf624e128fe9b9d"
+    },
+    {
+      "file": "import_bus_sides.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/import_bus_sides.png",
+      "sha256": "97b344a5b684bdae9f124e3ba457ccaf049b5ed58fd40738e673e736b2c149af"
+    },
+    {
+      "file": "export_bus.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/export_bus.png",
+      "sha256": "f85e98d5286efc47d1772c8d6234b2515f4b5803696d0edd7abe845f9a4b09bb"
+    },
+    {
+      "file": "export_bus_sides.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/export_bus_sides.png",
+      "sha256": "42258704787b218b51520efee04a7703719f5eb531f989bcaf58f93e6d8a0a42"
+    },
+    {
+      "file": "import_bus_base.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/part/import_bus_base.json",
+      "sha256": "192b7a8ccb23f14620d0c1610a8d4d59b508255f1d14f7464a9ff1e38d5650d7"
+    },
+    {
+      "file": "export_bus_base.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/part/export_bus_base.json",
+      "sha256": "0613756bde14cbccf29a8e3f7779fe75c02cbd4f31233a3317cb719a570d2116"
+    },
+    {
+      "file": "item_cell_housing.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/item/item_cell_housing.png",
+      "sha256": "4d0d399fe3057c02107c4036688448ff8d3a1a39bf8a7f85e85834abde0d15b3"
+    },
+    {
+      "file": "storage_cell_led.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/item/storage_cell_led.png",
+      "sha256": "07fa84707e2b141a1c7c0c0ce00ec4dc10ec0cf373e5dfd7e3540be249482935"
+    },
+    {
+      "file": "storage_bus_item.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/item/storage_bus.json",
+      "sha256": "206a00ee2c00d22f8b3584989b572089d5e7fd500598651da3f2a156dc6bc907"
+    },
+    {
+      "file": "part_item_base.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/item/part_base.json",
+      "sha256": "9d4339a2d865b5e754d7d8abccd5b87ca6bc9e929a9280df406dce65699ce74e"
+    },
+    {
+      "file": "interface_block.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/generated/resources/assets/ae2/models/block/interface.json",
+      "sha256": "9145cf22f21c103f95a4fe377864edff5201c05c8831333dfe0518452e18261f"
+    },
+    {
+      "file": "interface.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/block/interface.png",
+      "sha256": "2840c05d823a47e52743176b97a313ba89d3085df2de33212e5f4cb28575a042"
+    },
+    {
+      "file": "import_bus_item.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/item/import_bus.json",
+      "sha256": "640a328d19df7e1172a68819e409b48d26f4d0ca9206e3fbfadd8dc7cbb38aa4"
+    },
+    {
+      "file": "export_bus_item.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/item/export_bus.json",
+      "sha256": "b9573e2fa944450a2aa4b1ad8a5c0edba31c85e721ba33bafa795ae596aa74e8"
+    }
+  ]
+}

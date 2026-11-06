@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">AE 六槽硬盘驱动器占位图标</title>
+  <rect x="3" y="3" width="58" height="58" rx="6" fill="#263238" stroke="#aabac4" stroke-width="2"/>
+  <path d="M12 12h10v17H12zM27 12h10v17H27zM42 12h10v17H42zM12 35h10v17H12zM27 35h10v17H27zM42 35h10v17H42z" fill="#5c7a65" stroke="#b4d8bd" stroke-width="2"/>
+</svg>

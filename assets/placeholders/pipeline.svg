@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">AE 管线占位图标</title>
+  <rect x="3" y="3" width="58" height="58" rx="10" fill="#292017" stroke="#f8b65b" stroke-width="2"/>
+  <path d="M4 25h21V4h14v21h21v14H39v21H25V39H4Z" fill="#70491e" stroke="#f8b65b" stroke-width="2"/>
+  <path d="M5 32h54M32 5v54" stroke="#ffe1ad" stroke-width="3"/>
+  <circle cx="32" cy="32" r="8" fill="#f8b65b" stroke="#292017" stroke-width="3"/>
+</svg>
