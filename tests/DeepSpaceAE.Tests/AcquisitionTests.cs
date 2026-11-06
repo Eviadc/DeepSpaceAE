@@ -22,7 +22,9 @@ public sealed class AcquisitionTests
         var basic=AcquisitionCatalog.RollStock(p=>p==100,(min,_)=>min);
         Assert.Equal(6,basic.Count(id=>id=="deepspaceae.pipeline"));
         Assert.Equal(6,basic.Count(id=>id=="deepspaceae.capacity_upgrade"));
-        Assert.Equal(12,basic.Count);
+        Assert.Equal(13,basic.Count);
+        Assert.Equal("deepspaceae.disk_large",basic[0]);
+        Assert.Single(basic,id=>id=="deepspaceae.disk_large");
         Assert.DoesNotContain("deepspaceae.pipeline",AcquisitionCatalog.CounterFill);
         var all=AcquisitionCatalog.RollStock(_=>true,(_,max)=>max);
         foreach(var offer in AcquisitionCatalog.Offers) Assert.Equal(offer.Maximum,all.Count(id=>id==offer.Id));

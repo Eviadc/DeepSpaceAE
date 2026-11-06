@@ -20,13 +20,14 @@ public static class AcquisitionCatalog
     // Keep the receiver's factory value for existing saves; it has no acquisition route.
     private static readonly ComponentOffer receiver = new("energy_receiver",350,30,1,1);
     public static IReadOnlyList<ComponentOffer> Offers { get; }=Array.AsReadOnly(new[]{
-        // Cards go on the counter first; the remaining stock is interleaved so
+        // The guaranteed large disk goes first, then cards; remaining stock is interleaved so
         // one large lot cannot crowd out all later types. Lots use native fit.
+        new ComponentOffer("disk_large",800,100,1,1),
         new ComponentOffer("capacity_upgrade",80,100,6,10),new ComponentOffer("tag_upgrade",100,25,2,3),
         new ComponentOffer("core",600,20,1,2),new ComponentOffer("disk_drive",500,30,1,2),
         new ComponentOffer("terminal",250,55,1,2),new ComponentOffer("item_interface",300,45,1,2),
         new ComponentOffer("fluid_interface",450,35,1,2),new ComponentOffer("drawer",160,70,2,4),
-        new ComponentOffer("disk_large",800,15,1,2),new ComponentOffer("disk_small",200,75,3,6),
+        new ComponentOffer("disk_small",200,75,3,6),
         new ComponentOffer("wrench",60,85,1,2),new ComponentOffer("item_storage_bus",120,80,4,8),
         new ComponentOffer("import_bus",150,65,3,6),new ComponentOffer("export_bus",150,60,3,6),
         new ComponentOffer("pipeline",20,100,6,10)});
@@ -48,7 +49,7 @@ public static class AcquisitionCatalog
         {
             int count=inclusiveRange(offer.Minimum,offer.Maximum);
             if(count<offer.Minimum || count>offer.Maximum) throw new InvalidOperationException("Stock RNG outside requested range.");
-            if(offer.Id=="deepspaceae.capacity_upgrade" || offer.Id=="deepspaceae.tag_upgrade")
+            if(offer.Id=="deepspaceae.disk_large" || offer.Id=="deepspaceae.capacity_upgrade" || offer.Id=="deepspaceae.tag_upgrade")
                 stock.AddRange(Enumerable.Repeat(offer.Id,count));
             else lots.Add((offer.Id,count));
         }
