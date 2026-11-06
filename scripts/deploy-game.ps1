@@ -10,7 +10,7 @@ $revision = (& git -C $RepoRoot rev-parse --short=7 HEAD).Trim()
 [xml]$manifest = Get-Content -LiteralPath "$RepoRoot/assets/game/manifest.xml" -Raw -Encoding UTF8
 # Archive names use the verified API/build target, while GameVersions uses the
 # game's separate Unity Application.version for the Mods menu's compatibility UI.
-$label = '100-Rev6'
+$label = '100-Rev12'
 $package = Join-Path $RepoRoot "artifacts/packages/DeepSpaceAE-$($manifest.Manifest.ModVersion)-$label-$revision.zip"
 $stage = Join-Path $RepoRoot ('artifacts/deploy/' + [guid]::NewGuid().ToString('N'))
 Expand-Archive -LiteralPath $package -DestinationPath $stage

@@ -65,8 +65,8 @@ audit = json.loads(audit_path.read_text())
 assert audit["success"] is True and audit["findings"]
 assert all(f["Result"] == "PASS" for f in audit["findings"])
 assert audit["adapterSha256"] == hashlib.sha256(files["DeepSpaceAE/DeepSpaceAE.GameAdapter.dll"].read_bytes()).hexdigest()
-assert audit["gameSha256"] == "6398d44aa1675e1f02b63bc668868f970e0f5d3ae5a50f2aced8d06ca084e3b5"
-output = root / "artifacts/packages" / f"DeepSpaceAE-{version}-100-Rev6-{revision[:7]}.zip"
+assert audit["gameSha256"] == "d9abc029f6b390619c31175df5735901aec6dc071c35c50ce5b3fdf92e3ede46"
+output = root / "artifacts/packages" / f"DeepSpaceAE-{version}-100-Rev12-{revision[:7]}.zip"
 if output.exists():
     with zipfile.ZipFile(output) as previous:
         expected = set(files) | {"DeepSpaceAE/build-info.json"}
@@ -82,10 +82,10 @@ output.parent.mkdir(parents=True, exist_ok=True)
 hashes = {name: hashlib.sha256(path.read_bytes()).hexdigest() for name, path in files.items()}
 info = {
     "sourceCommit": revision,
-    "gameLabel": "100-Rev6",
+    "gameLabel": "100-Rev12",
     "gameApplicationVersion": "0.46D",
-    "steamBuildId": "26337366",
-    "referenceAssemblySha256": "6398d44aa1675e1f02b63bc668868f970e0f5d3ae5a50f2aced8d06ca084e3b5",
+    "steamBuildId": "26496118",
+    "referenceAssemblySha256": "d9abc029f6b390619c31175df5735901aec6dc071c35c50ce5b3fdf92e3ede46",
     "configuration": "Release",
     "patchMetadataAudit": {"status": "PASS", "declarations": len(audit["findings"]), "execution": "NOT RUN"},
     "modVersion": version,

@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 $revision = (& git -C $repo rev-parse --short=7 HEAD).Trim()
 [xml]$manifest = Get-Content -LiteralPath (Join-Path $repo 'assets/game/manifest.xml') -Raw -Encoding UTF8
-$package = Join-Path $repo "artifacts/packages/DeepSpaceAE-$($manifest.Manifest.ModVersion)-100-Rev6-$revision.zip"
+$package = Join-Path $repo "artifacts/packages/DeepSpaceAE-$($manifest.Manifest.ModVersion)-100-Rev12-$revision.zip"
 if (!(Test-Path -LiteralPath $package)) { throw 'Build and package the current committed revision first.' }
 $stateDir = Join-Path $repo '.deepspaceae'
 New-Item -ItemType Directory -Force -Path $stateDir | Out-Null

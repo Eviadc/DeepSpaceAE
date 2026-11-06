@@ -2,7 +2,7 @@
 
 为《深空当铺 / Probably Stolen》加入 AE 风格的存储网络：把容器、硬盘和机器接入线缆，通过终端统一查找和取放物品。
 
-当前版本：**0.14.0-alpha**。目标游戏：**100-Rev6 / Application.version 0.46D / Steam Build 26337366，Windows x64**。
+当前版本：**0.14.0-alpha**。目标游戏：**100-Rev12 / Application.version 0.46D / Steam Build 26496118，Windows x64**。
 
 ## 功能
 

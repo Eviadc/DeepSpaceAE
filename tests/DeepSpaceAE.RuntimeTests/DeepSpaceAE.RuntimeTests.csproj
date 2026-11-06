@@ -16,6 +16,6 @@
     <GetFileHash Files="$(GameManagedDir)/Assembly-CSharp.dll" Algorithm="SHA256">
       <Output TaskParameter="Items" ItemName="VerifiedGame" />
     </GetFileHash>
-    <Error Condition="'%(VerifiedGame.FileHash)' != '6398D44AA1675E1F02B63BC668868F970E0F5D3AE5A50F2ACED8D06CA084E3B5'" Text="Reverify APIs for this game version before running." />
+    <Error Condition="'%(VerifiedGame.FileHash)' != 'D9ABC029F6B390619C31175DF5735901AEC6DC071C35C50CE5B3FDF92E3EDE46'" Text="Reverify APIs for this game version before running." />
   </Target>
 </Project>

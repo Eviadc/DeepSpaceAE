@@ -190,14 +190,6 @@ internal sealed partial class Acquisition
                     // placement API owns the candidate and reports the outcome.
                     PlayerStore.Instance.TryAddDirectSellingItemToTable(item);
                 }
-                int cells=(table.widthPixels/16)*(table.heightPixels/16);
-                for(int i=0;i<cells && table.HasFreeCell();i++)
-                {
-                    var id=AcquisitionCatalog.CounterFill[i%AcquisitionCatalog.CounterFill.Count];
-                    var item=ItemSpawner.Spawn(id);
-                    if(item==null) continue;
-                    PlayerStore.Instance.TryAddDirectSellingItemToTable(item);
-                }
             }
             client.OnIntroduced();
         });

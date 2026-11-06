@@ -1,7 +1,7 @@
 # 游戏API绑定
 
-目标：Windows x64，100-Rev6，Application.version `0.46D`，Steam Build `26337366`。
-Assembly-CSharp.dll SHA-256：`6398d44aa1675e1f02b63bc668868f970e0f5d3ae5a50f2aced8d06ca084e3b5`。
+目标：Windows x64，100-Rev12，Application.version `0.46D`，Steam Build `26496118`。
+Assembly-CSharp.dll SHA-256：`d9abc029f6b390619c31175df5735901aec6dc071c35c50ce5b3fdf92e3ede46`。
 构建对该程序集实施版本门禁；更换游戏版本需重新核验，不能仅修改哈希。
 
 | 功能 | 绑定与约束 |
@@ -25,3 +25,9 @@ Harmony目标必须是具体方法；不修补抽象GameItem.Destroy。打包前
 
 游戏指南与APIChanges可辅助定位，但开发中API不自动视为已发布接口。
 编译与PE审计不执行Unity、Harmony、物品副作用或保存读取；这些范围须按[功能用例](functional-cases.md)分别验收。
+
+## 100-Rev12 核验
+
+对本地合法安装的 Build 26496118 读取 PE 元数据及反编译核对；PlayerStore.VERSION 为 100-Rev12，PlayerSettings.bundleVersion 仍为 0.46D。SlotMarker、WaterHelper、PowerHelper、RNG 和 StoreClientListSupplier 与已有参考实现一致（忽略反编译工具提示）。PlayerStore 的原生摆货入口保持不变；HopperHelper 新增颜色、出口配置和溢出路由，但 RunWindow 入口保持；ModHelper 新增数据目录写入保护，本模组使用自身 ModData，不访问其他模组目录。
+
+完整游戏引用构建通过（零警告、零错误），最终46项补丁元数据审计全部通过。此次未启动游戏或运行模型测试，静态核验不代表实机验收。
