@@ -19,8 +19,8 @@ public sealed class NetworkTests
         Assert.Equal("charge=100", view.Index.ByInstance[NetworkPrototype.ChargedId].Item.StateTag);
         Assert.Equal("charge=0", view.Index.ByInstance[NetworkPrototype.EmptyId].Item.StateTag);
         Assert.False(view.Index.ByInstance.ContainsKey(NetworkPrototype.HiddenId));
-        Assert.Equal(3, view.Network.ChannelsUsed["core"]);
-        Assert.Equal(3, view.Network.ChannelsUsed["trunk"]);
+        Assert.Equal(3, view.Network.EndpointCounts["core"]);
+        Assert.Equal(3, view.Network.EndpointCounts["trunk"]);
     }
 
     [Fact]
@@ -51,32 +51,6 @@ public sealed class NetworkTests
         Assert.True(prototype.Player.Contains(NetworkPrototype.ChargedId));
     }
 
-    [Theory]
-    [InlineData(0, 32, DeviceStatus.ChannelExhausted, 0)]
-    [InlineData(1, 32, DeviceStatus.Online, 0)]
-    [InlineData(2, 32, DeviceStatus.Online, 2)]
-    [InlineData(8, 1, DeviceStatus.Online, 0)]
-    [InlineData(8, 2, DeviceStatus.Online, 2)]
-    public void ChannelsEnforceCoreAndSharedPipelineCapacity(int pipe, int core, DeviceStatus terminal, int items)
-    {
-        var view = new NetworkPrototype(new ChannelSettings(coreCapacity: core, pipelineCapacity: pipe)).Read();
-        Assert.Equal(terminal, view.Connection.Status);
-        Assert.Equal(items, view.Index.ByInstance.Count);
-        Assert.True(view.Network.ChannelsUsed["trunk"] <= pipe);
-        Assert.True(view.Network.ChannelsUsed["core"] <= core);
-        Assert.NotEqual(DeviceStatus.Online, view.Network.Devices["bus-b"].Status);
-    }
-
-    [Fact]
-    public void DisablingChannelsPreservesConnectivityButRemovesCapacityLimits()
-    {
-        var prototype = new NetworkPrototype(new ChannelSettings(coreCapacity: 0, pipelineCapacity: 0));
-        Assert.Equal(DeviceStatus.ChannelExhausted, prototype.Read().Connection.Status);
-        prototype.SetChannels(new ChannelSettings(false, 0, 0));
-        Assert.All(prototype.Read().Network.Devices.Values, device => Assert.Equal(DeviceStatus.Online, device.Status));
-        Assert.Equal(3, prototype.Read().Index.ByInstance.Count);
-    }
-
     [Fact]
     public void MultipleCoresInOneComponentFailClosed()
     {
@@ -86,13 +60,11 @@ public sealed class NetworkTests
         var view = new TerminalCatalog(topology, "terminal", original.Storage.Values.Select(c => c.Snapshot()));
         Assert.All(view.Network.Devices.Values, d => Assert.Equal(DeviceStatus.ConflictingCores, d.Status));
         Assert.Empty(view.Index.ByInstance);
-        Assert.All(view.Network.ChannelsUsed.Values, count => Assert.Equal(0, count));
+        Assert.All(view.Network.EndpointCounts.Values, count => Assert.Equal(0, count));
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void ConflictingTerminalCannotReadAnOnlineBusInAnotherNetwork(bool channels)
+    [Fact]
+    public void ConflictingTerminalCannotReadAnOnlineBusInAnotherNetwork()
     {
         var original = new NetworkPrototype();
         var topology = new NetworkTopology(original.Topology.Nodes.Values.Concat(new[] {
@@ -100,7 +72,7 @@ public sealed class NetworkTests
             new NetworkNode("separate-core", NetworkPart.Core),
             new NetworkNode("separate-bus", NetworkPart.ItemStorageBus, "unconnected") }),
             original.Topology.Links.Concat(new[] { new NetworkLink("conflicting-core", "trunk"),
-                new NetworkLink("separate-core", "separate-bus") }), new ChannelSettings(channels));
+                new NetworkLink("separate-core", "separate-bus") }));
         var view = new TerminalCatalog(topology, "terminal", original.Storage.Values.Select(c => c.Snapshot()));
         Assert.Equal(DeviceStatus.ConflictingCores, view.Connection.Status);
         Assert.Equal(DeviceStatus.Online, view.Network.Devices["separate-bus"].Status);
@@ -131,7 +103,7 @@ public sealed class NetworkTests
         var view = new TerminalCatalog(new NetworkTopology(nodes, original.Topology.Links), "terminal",
             original.Storage.Values.Select(c => c.Snapshot()));
         Assert.Equal(2, view.Index.ByInstance.Count);
-        Assert.Equal(3, view.Network.ChannelsUsed["core"]); // Both buses still reserve channels.
+        Assert.Equal(3, view.Network.EndpointCounts["core"]); // Both storage endpoints remain connected.
     }
 
     [Fact]
@@ -147,8 +119,8 @@ public sealed class NetworkTests
     [Fact]
     public void AllocationIsStableRegardlessOfNodeOrLinkInputOrder()
     {
-        var original = new NetworkPrototype(new ChannelSettings(pipelineCapacity: 2));
-        var reversed = new NetworkTopology(original.Topology.Nodes.Values.Reverse(), original.Topology.Links.Reverse(), original.Topology.Channels);
+        var original = new NetworkPrototype();
+        var reversed = new NetworkTopology(original.Topology.Nodes.Values.Reverse(), original.Topology.Links.Reverse());
         var first = new NetworkEvaluation(original.Topology);
         var second = new NetworkEvaluation(reversed);
         foreach (var pair in first.Devices)
@@ -157,23 +129,22 @@ public sealed class NetworkTests
             Assert.Equal(pair.Value.Route, second.Devices[pair.Key].Route);
         }
         Assert.Equal(DeviceStatus.Online, second.Devices["bus-a"].Status);
-        Assert.Equal(DeviceStatus.ChannelExhausted, second.Devices["bus-b"].Status);
+        Assert.Equal(DeviceStatus.Online, second.Devices["bus-b"].Status);
     }
 
     [Fact]
-    public void RouteCanUseAlternativePipelineWhenShortestPipelineIsFull()
+    public void DevicesShareTheShortestPipelineWithoutSaturation()
     {
         var topology = new NetworkTopology(new[] {
             new NetworkNode("core", NetworkPart.Core), new NetworkNode("a", NetworkPart.Pipeline),
             new NetworkNode("b", NetworkPart.Pipeline), new NetworkNode("q", NetworkPart.Pipeline),
             new NetworkNode("terminal", NetworkPart.Terminal), new NetworkNode("bus", NetworkPart.ItemStorageBus, "box") },
             new[] { new NetworkLink("core", "a"), new NetworkLink("core", "b"), new NetworkLink("a", "q"),
-                new NetworkLink("b", "q"), new NetworkLink("a", "terminal"), new NetworkLink("q", "bus") },
-            new ChannelSettings(pipelineCapacity: 1));
+                new NetworkLink("b", "q"), new NetworkLink("a", "terminal"), new NetworkLink("q", "bus") });
         var evaluated = new NetworkEvaluation(topology);
         Assert.Equal(new[] { "core", "a", "terminal" }, evaluated.Devices["terminal"].Route);
-        Assert.Equal(new[] { "core", "b", "q", "bus" }, evaluated.Devices["bus"].Route);
-        Assert.Equal(2, evaluated.ChannelsUsed["core"]);
+        Assert.Equal(new[] { "core", "a", "q", "bus" }, evaluated.Devices["bus"].Route);
+        Assert.Equal(2, evaluated.EndpointCounts["core"]);
     }
 
     [Fact]
@@ -182,7 +153,7 @@ public sealed class NetworkTests
         var nodes = new[] { new NetworkNode("core", NetworkPart.Core), new NetworkNode("terminal", NetworkPart.Terminal) };
         var topology = new NetworkTopology(nodes, new[] { new NetworkLink("core", "terminal"), new NetworkLink("terminal", "core") });
         Assert.Single(topology.Links);
-        Assert.Equal(1, new NetworkEvaluation(topology).ChannelsUsed["core"]);
+        Assert.Equal(1, new NetworkEvaluation(topology).EndpointCounts["core"]);
         Assert.Throws<ArgumentException>(() => new NetworkTopology(nodes, new[] { new NetworkLink("unknown", "terminal") }));
     }
 
@@ -227,28 +198,16 @@ public sealed class NetworkTests
     }
 
     [Fact]
-    public void ChannelExhaustionAfterReadingBlocksWritesToBus()
-    {
-        var prototype = new NetworkPrototype();
-        prototype.Withdraw(NetworkPrototype.ChargedId);
-        prototype.SetChannels(new ChannelSettings(pipelineCapacity: 1));
-        Assert.Equal("BusOffline", prototype.Deposit("bus-b", NetworkPrototype.ChargedId).AccessFailure);
-        Assert.Equal("NotVisible", prototype.Withdraw(NetworkPrototype.EmptyId).AccessFailure);
-        Assert.True(prototype.Player.Contains(NetworkPrototype.ChargedId));
-    }
-
-    [Fact]
     public void InteractiveConsoleCommandsUseTheCoreReadModelAndSimulatedContainers()
     {
         using var output = new StringWriter();
-        using var input = new StringReader("list battery\ntake 1111\ninventory\nput 1111 bus-b\ndisconnect trunk bus-a\nlist\nchannels on 1\nlist\nchannels off\nconnect trunk bus-a\nlist\nquit\n");
+        using var input = new StringReader("list battery\ntake 1111\ninventory\nput 1111 bus-b\ndisconnect trunk bus-a\nlist\nconnect trunk bus-a\nlist\nquit\n");
         Assert.Equal(0, PrototypeTerminal.Run(input, output));
         var transcript = output.ToString();
         Assert.Contains("charge=100", transcript);
         Assert.Contains("charge=0", transcript);
         Assert.Equal(2, transcript.Split('\n').Count(line => line.Trim() == "ae> Moved"));
         Assert.Contains("Player instances: 1", transcript);
-        Assert.Contains("visible=0", transcript);
         Assert.Contains("visible=3", transcript);
         Assert.DoesNotContain("@unconnected", transcript);
     }

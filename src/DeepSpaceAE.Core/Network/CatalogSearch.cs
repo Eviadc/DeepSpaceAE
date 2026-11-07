@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 namespace DeepSpaceAE.Core.Network;
-public enum CatalogSort { Native, Name, Quantity }
+public enum CatalogSort { Native, Name, Quantity, Modified }
 public sealed class CatalogRecord
 {
     public Guid Instance { get; }

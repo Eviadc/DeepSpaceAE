@@ -61,7 +61,7 @@ public sealed class CablePortTests
         var nodes=new[]{new NetworkNode("core",NetworkPart.Core),new NetworkNode("wire",NetworkPart.Pipeline)}
             .Concat(Enumerable.Range(0,4).Select(i=>new NetworkNode("bus"+i,NetworkPart.ItemStorageBus,"owner"+i)));
         var links=Enumerable.Range(0,4).Select(i=>new NetworkLink("wire","bus"+i));
-        var evaluation=new NetworkEvaluation(PhysicalNetworkProjection.Build(nodes,links,new ChannelSettings()));
+        var evaluation=new NetworkEvaluation(PhysicalNetworkProjection.Build(nodes,links));
         Assert.All(evaluation.Devices.Values,d=>Assert.Equal(DeviceStatus.NoCore,d.Status));
         Assert.Equal(2,evaluation.NightCosts["core"]);
     }

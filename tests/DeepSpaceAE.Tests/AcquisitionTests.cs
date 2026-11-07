@@ -22,7 +22,8 @@ public sealed class AcquisitionTests
         var basic=AcquisitionCatalog.RollStock(p=>p==100,(min,_)=>min);
         Assert.Equal(6,basic.Count(id=>id=="deepspaceae.pipeline"));
         Assert.Equal(6,basic.Count(id=>id=="deepspaceae.capacity_upgrade"));
-        Assert.Equal(15,basic.Count);
+        Assert.Equal(16,basic.Count);
+        Assert.Single(basic,id=>id=="deepspaceae.tag_upgrade");
         Assert.Equal("deepspaceae.disk_large",basic[0]);
         Assert.Single(basic,id=>id=="deepspaceae.disk_large");
         Assert.Equal(2,basic.Count(id=>id=="deepspaceae.disk_small"));

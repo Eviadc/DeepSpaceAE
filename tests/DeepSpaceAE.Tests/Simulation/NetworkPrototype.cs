@@ -19,7 +19,7 @@ internal sealed class NetworkPrototype
     public Dictionary<string, InMemoryContainer> Storage { get; } = new(StringComparer.Ordinal);
     public InMemoryContainer Player { get; } = new("player", 8);
 
-    public NetworkPrototype(ChannelSettings? channels = null)
+    public NetworkPrototype()
     {
         Topology = new NetworkTopology(new[] {
             new NetworkNode("core", NetworkPart.Core),
@@ -28,7 +28,7 @@ internal sealed class NetworkPrototype
             new NetworkNode("bus-a", NetworkPart.ItemStorageBus, "locker-a"),
             new NetworkNode("bus-b", NetworkPart.ItemStorageBus, "locker-b") }, new[] {
             new NetworkLink("core", "trunk"), new NetworkLink("trunk", "terminal"),
-            new NetworkLink("trunk", "bus-a"), new NetworkLink("trunk", "bus-b") }, channels);
+            new NetworkLink("trunk", "bus-a"), new NetworkLink("trunk", "bus-b") });
         Storage.Add("locker-a", new InMemoryContainer("locker-a", 4));
         Storage.Add("locker-b", new InMemoryContainer("locker-b", 4));
         Storage.Add("unconnected", new InMemoryContainer("unconnected", 4));
@@ -47,10 +47,9 @@ internal sealed class NetworkPrototype
         var link = new NetworkLink(a, b);
         var links = Topology.Links.Where(l => l.A != link.A || l.B != link.B).ToList();
         if (connected) links.Add(link);
-        Topology = new NetworkTopology(Topology.Nodes.Values, links, Topology.Channels);
+        Topology = new NetworkTopology(Topology.Nodes.Values, links);
     }
 
-    public void SetChannels(ChannelSettings settings) => Topology = new NetworkTopology(Topology.Nodes.Values, Topology.Links, settings);
 
     public TerminalMoveResult Withdraw(Guid instanceId)
     {

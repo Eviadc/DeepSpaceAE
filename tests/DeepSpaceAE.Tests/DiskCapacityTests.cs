@@ -31,22 +31,22 @@ public sealed class DiskCapacityTests
         Assert.False(CellCapacity.Fits(64,5,6,1));
     }
     [Fact]
-    public void DriveUsesOneChannelRegardlessOfItsSixBaysAndNeverBridgesNetworks()
+    public void DriveIsOneEndpointAndNeverBridgesNetworks()
     {
         var core=new NetworkNode("core",NetworkPart.Core); var wire=new NetworkNode("wire",NetworkPart.Pipeline);
         var drive=new NetworkNode("drive",NetworkPart.DiskDrive,"six-bay-drive");
         var nodes=new[]{core,wire,drive,new NetworkNode("terminal",NetworkPart.Terminal)};
         var edges=new[]{new NetworkLink("core","wire"),new NetworkLink("wire","drive"),new NetworkLink("wire","terminal")};
-        var topology=PhysicalNetworkProjection.Build(nodes,edges,new ChannelSettings());
+        var topology=PhysicalNetworkProjection.Build(nodes,edges);
         var evaluation=new NetworkEvaluation(topology);
         Assert.Equal(DeviceStatus.Online,evaluation.Devices["drive"].Status);
-        Assert.Equal(2,evaluation.ChannelsUsed["core"]); Assert.Equal(4,evaluation.NightCosts["core"]);
+        Assert.Equal(2,evaluation.EndpointCounts["core"]); Assert.Equal(4,evaluation.NightCosts["core"]);
         var item=new ItemInstance(Guid.NewGuid(),"stored-object","preserved-state");
         var catalog=new TerminalCatalog(topology,"terminal",new[]{new ContainerSnapshot("six-bay-drive",new[]{item})},evaluation);
         Assert.Equal(item.InstanceId,Assert.Single(catalog.Index.ByInstance).Key);
         var isolated=new NetworkNode("other",NetworkPart.Pipeline);
         var ambiguous=PhysicalNetworkProjection.Build(new[]{core,wire,drive,isolated},
-            new[]{edges[0],edges[1],new NetworkLink("drive","other")},new ChannelSettings());
+            new[]{edges[0],edges[1],new NetworkLink("drive","other")});
         Assert.NotEqual(DeviceStatus.Online,new NetworkEvaluation(ambiguous).Devices["drive"].Status);
         Assert.Throws<ArgumentException>(()=>new NetworkNode("bad",NetworkPart.DiskDrive));
     }

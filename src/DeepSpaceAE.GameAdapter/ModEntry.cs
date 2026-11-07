@@ -31,7 +31,7 @@ public sealed class ModEntry : IMod
         session = new GameSession(log);
         ActiveSession = session;
         acquisition=new Acquisition(log,session);
-        log.Log("DeepSpaceAE 0.14.0 / 100-Rev12 initialized.");
+        log.Log("DeepSpaceAE 0.15.0 / 100-Rev12 initialized.");
     }
 
     public void OnEnable()
@@ -65,6 +65,7 @@ public sealed class ModEntry : IMod
         foreach (var group in lootGroups) ModHelper.RemoveLootGroupEntry(ModId, group, "deepspaceae.scavenging");
         lootGroups.Clear();
         session.Close();
+        session.ResetActivity();
         session.Visuals.Detach();
         ActiveSession = null;
     }

@@ -15,7 +15,7 @@ internal sealed class TerminalStack
     internal long Count;
     private TerminalStack(CatalogRecord top) { Top=top; Count=top.Quantity; }
     internal static IReadOnlyList<TerminalStack> Pack(IReadOnlyList<CatalogRecord> rows,
-        IReadOnlyDictionary<Guid,string?> keys,CatalogSort sort)
+        IReadOnlyDictionary<Guid,string?> keys,CatalogSort sort,IReadOnlyDictionary<Guid,long> modified)
     {
         var stacks=new List<TerminalStack>(); var byKey=new Dictionary<string,TerminalStack>(StringComparer.Ordinal);
         foreach(var row in rows)
@@ -29,6 +29,8 @@ internal sealed class TerminalStack
         if(sort==CatalogSort.Name) ordered=ordered.OrderBy(s=>s.Top.Name,StringComparer.CurrentCultureIgnoreCase);
         if(sort==CatalogSort.Quantity) ordered=ordered.OrderByDescending(s=>s.Count)
             .ThenBy(s=>s.Top.ItemId,StringComparer.Ordinal);
+        if(sort==CatalogSort.Modified) ordered=ordered.OrderByDescending(s=>modified[s.Top.Instance])
+            .ThenBy(s=>s.Top.Name,StringComparer.CurrentCultureIgnoreCase).ThenBy(s=>s.Top.ItemId,StringComparer.Ordinal);
         return ordered.ToArray();
     }
 }
@@ -40,7 +42,7 @@ internal static class TerminalStackKey
     private static readonly FieldInfo gridItems=typeof(GameGridInventory).GetField("items",Fields)!;
     private static readonly FieldInfo scrollItems=typeof(GameGridScrollableInventory).GetField("items",Fields)!;
 
-    internal static string? Read(GameItem item,ISet<GameInventory>? dependencies=null,bool storageGrouping=false)
+    internal static string? Read(GameItem item,ISet<GameInventory>? dependencies=null,bool storageGrouping=false,bool includeContents=false)
     {
         // Unknown item/feature subclasses may carry additional state. Keep their
         // native entries independent rather than guessing that they are equal.
@@ -58,7 +60,7 @@ internal static class TerminalStackKey
                     =>((ICollection)scrollItems.GetValue(scroll)!).Count==0,
                 _=>false
             };
-            if(!empty) return null;
+            if(!empty && !includeContents) return null;
         }
         using var bytes=new MemoryStream(); using var writer=new BinaryWriter(bytes);
         foreach(var text in new[]{item.identifier,item.name,item.spriteAtlasPath,item.spritePath,item.customText,

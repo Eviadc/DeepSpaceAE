@@ -18,6 +18,7 @@ internal static class InterfaceStorage
     internal static bool IsInterface(GameItem item)=>IsItem(item) || IsFluid(item);
     internal static State Get(GameItem item)=>data.GetOrCreateValue(item);
     internal static int Mode(GameItem item)=>PartStorage.Int(item,"interface_mode");
+    internal static bool AutoPurchase(GameItem item)=>PartStorage.Int(item,"interface_auto_purchase")!=0;
     internal static bool Strict(GameItem item)=>PartStorage.Int(item,"interface_strict",1)!=0;
     internal static string Output(GameItem item)=>PartStorage.Text(item,"interface_output");
     internal static void Create(GameItem item)

@@ -69,14 +69,14 @@ public sealed class PowerSelectionTests
         Assert.Equal(3*count,selected.Sum(s=>s.Amount));
     }
     [Fact]
-    public void ReceiverIsAZeroCostChannelLeafAndDoesNotJoinTwoNetworks()
+    public void ReceiverIsAZeroCostLeafAndDoesNotJoinTwoNetworks()
     {
         var nodes=new[]{new NetworkNode("core",NetworkPart.Core),new NetworkNode("wire",NetworkPart.Pipeline),
             new NetworkNode("receiver",NetworkPart.EnergyReceiver),new NetworkNode("other",NetworkPart.Pipeline)};
-        var topology=PhysicalNetworkProjection.Build(nodes,new[]{new NetworkLink("core","wire"),new NetworkLink("wire","receiver")},new ChannelSettings());
+        var topology=PhysicalNetworkProjection.Build(nodes,new[]{new NetworkLink("core","wire"),new NetworkLink("wire","receiver")});
         var evaluation=new NetworkEvaluation(topology);
-        Assert.Equal(1,evaluation.ChannelsUsed["core"]); Assert.Equal(2,evaluation.NightCosts["core"]);
-        var ambiguous=PhysicalNetworkProjection.Build(nodes,topology.Links.Append(new NetworkLink("receiver","other")),new ChannelSettings());
+        Assert.Equal(1,evaluation.EndpointCounts["core"]); Assert.Equal(2,evaluation.NightCosts["core"]);
+        var ambiguous=PhysicalNetworkProjection.Build(nodes,topology.Links.Append(new NetworkLink("receiver","other")));
         Assert.NotEqual(DeviceStatus.Online,new NetworkEvaluation(ambiguous).Devices["receiver"].Status);
     }
 }

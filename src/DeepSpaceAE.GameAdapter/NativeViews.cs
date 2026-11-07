@@ -80,11 +80,19 @@ internal sealed partial class GameSession
     }
     private void Show(GameItem terminal, View view)
     {
+        RefreshActivityNetworks(view.Board); FlushActivity();
         bool create = terminalWindow == null || !ReferenceEquals(openTerminal, terminal);
         if (create) CloseTerminal(); else Unobserve();
         displayedView = view; openTerminal = terminal; packedRows = null; packing = null;
         foreach(var row in view.Search.Find(""))
-            view.StackKeys.Add(row.Instance,TerminalStackKey.Read(view.Live[row.Instance],view.StackDependencies,storageGrouping:true));
+        {
+            var item=view.Live[row.Instance];
+            var key=TerminalStackKey.Read(item,view.StackDependencies,storageGrouping:true);
+            view.StackKeys.Add(row.Instance,key);
+            view.Modified[row.Instance]=StackModified(view,item,key);
+        }
+        foreach(var pair in view.Liquids)
+            view.Modified[pair.Key]=ActivityFor(Id(view.Core)).Modified(LiquidActivityKey(view.Live[pair.Key],pair.Value));
         foreach (var inv in view.Inventories.Values.SelectMany(i => i).Concat(view.Attachments).Append(view.Root).Distinct())
         {
             foreach (var item in inv.childItems) observations.GetValue(item, i => new Observation(i));
@@ -102,7 +110,7 @@ internal sealed partial class GameSession
             var query = NativeWidgets.Input(UiText.Get("ui_terminal_search"), search, value => { if (search == value) return; search = value; terminalGrid?.SetScroll(0); RenderTerminal(); }, 128);
             query.fillWidth=true;
             tagField = NativeWidgets.Dropdown(new[] { UiText.Get("ui_all_categories") }, 0, i => { tag = i > 0 && i <= displayedTags.Length ? displayedTags[i - 1] : ""; terminalGrid?.SetScroll(0); RenderTerminal(); }, 136, 6);
-            var sortField = NativeWidgets.Dropdown(new[] { UiText.Get("ui_native_order"), UiText.Get("ui_name"), UiText.Get("ui_quantity") }, (int)sort, i => { sort = (CatalogSort)i; packedRows=null; terminalGrid?.SetScroll(0); RenderTerminal(); }, 70, 3);
+            var sortField = NativeWidgets.Dropdown(new[] { UiText.Get("ui_native_order"), UiText.Get("ui_name"), UiText.Get("ui_quantity"), UiText.Get("ui_modified") }, (int)sort, i => { sort = (CatalogSort)i; packedRows=null; terminalGrid?.SetScroll(0); RenderTerminal(); }, 70, 4);
             MachineryButton? modeButton=null;
             modeButton=new MachineryButton(UiText.Get(liquidMode?"ui_liquids":"ui_items"),()=>{
                 if(DrawerStorage.IsDrawer(terminal)) return;
@@ -133,10 +141,10 @@ internal sealed partial class GameSession
         if (!ReferenceEquals(rows, packedRows))
         {
             stackCounts.Clear();
-            if(liquidMode) displayRows=rows;
+            if(liquidMode) displayRows=sort==CatalogSort.Modified?rows.OrderByDescending(r=>displayedView.Modified[r.Instance]).ToArray():rows;
             else
             {
-                var stacks=TerminalStack.Pack(rows,displayedView.StackKeys,sort);
+                var stacks=TerminalStack.Pack(rows,displayedView.StackKeys,sort,displayedView.Modified);
                 displayRows=stacks.Select(s=>s.Top).ToArray();
                 foreach(var stack in stacks) stackCounts.Add(stack.Top.Instance,stack.Count);
             }
@@ -200,7 +208,6 @@ internal sealed partial class GameSession
             stats.AttachPos(icon, column, row);
             stats.AttachPos(NativeWidgets.Text("× " + counts[(int)kind]), column, row+1);
         }
-        int used = board.Evaluation.ChannelsUsed.TryGetValue(Id(core), out var u) ? u : 0;
         var power = MachineryStack.Horizontal(NativeWidgets.Icon(MachineryStyle.IconPower), MachineryText.Status(UiText.Get("ui_nightly"), cost + " kJ"));
         int remaining = battery == null ? 0 : PowerHelper.GetAvailableEnergyFromItem(battery, false);
         bool gridPower = battery != null && PartStorage.IsGrid(battery);
@@ -213,7 +220,7 @@ internal sealed partial class GameSession
         var overview = MachineryStack.Vertical(stats, power, bar,
             MachineryText.Status(UiText.Get("ui_energy"), gridPower ? UiText.Get("ui_grid_power") : infinite ? UiText.Get("ui_hypertech_battery") : remaining + " / " + maximum + " kJ"),
             MachineryText.Status(UiText.Get("ui_daily_peak"), (ModSettings.EnergyEnabled && lease.Day == PartStorage.Day ? lease.Required : 0) + " kJ"),
-            MachineryText.Status(UiText.Get("ui_channels"), used + " / 32"), NativeWidgets.Text(batteryState));
+            NativeWidgets.Text(batteryState));
         if(ModSettings.EnergyEnabled && PartStorage.UsesPool(core)) overview=MachineryStack.Vertical(overview,NativeWidgets.Text(PartStorage.PoolSummary(core)));
         partWindow = MachineHelper.CreateMachineryWindow(true,
             MachineHelper.IconPanel(MachineryStyle.IconPower, Borrow(core), "power"),

@@ -13,7 +13,7 @@ item_tag_desc,为总线启用标签筛选，每条总线限一张。终端自带
 item_wrench_desc,对线缆上对应总线部位使用可卸下该总线；对独立总线使用可拆出最后一张升级卡。
 error_enter_game,请先进入游戏。
 error_terminal_main,终端未激活：请直接放入主物品栏。
-error_terminal_network,终端未激活：检查核心、线缆和频道。每个网络只能有一个核心。
+error_terminal_network,终端未激活：检查核心与线缆。每个网络只能有一个核心。
 error_network_power,网络未供电：在核心中安装足够供整晚使用的电池。
 error_operation,操作未完成，请保留游戏日志并检查网络状态。
 error_part_main,组件未激活：请直接放入主物品栏。
@@ -62,7 +62,6 @@ ui_battery_locked,已锁定 · 次日更换
 ui_energy,储能
 ui_hypertech_battery,超科技电池
 ui_reserved,本夜预留
-ui_channels,频道
 ui_battery,电池
 ui_controller,网络控制器
 ui_controller_title,AE 网络控制器
@@ -209,3 +208,6 @@ ui_interface_input_hint,输入模式：倒入的液体自动存入网络。严�
 ui_interface_output_hint,输出模式：从网络补充所选配方。左键选择接口再点目标倒出；也可使用原版滴管和容器操作。
 ui_item_interface_hint,将物品拖到接口即可存入网络。遵循存储总线筛选及原生容器容量，接口不暂存物品。
 ui_interface_last,最近存入：{0}件
+ui_modified,修改时间
+ui_interface_auto_purchase,自动收纳购入物品
+ui_interface_purchase_hint,成交后存入本网络（含批发）。\n默认关闭；放不下时保留原版落点。

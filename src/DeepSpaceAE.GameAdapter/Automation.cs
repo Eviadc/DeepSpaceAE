@@ -15,7 +15,7 @@ internal sealed partial class GameSession
 {
     private int automationGeneration;
     internal bool NightAutomation { get; private set; }
-    internal void AutomationStructureChanged()=>automationGeneration++;
+    internal void AutomationStructureChanged() { automationGeneration++; QueueActivity(); }
     internal void RunAutomation(int window,GameItem? only=null)
     {
         if(Loading || writing || MainInventory()==null) return;

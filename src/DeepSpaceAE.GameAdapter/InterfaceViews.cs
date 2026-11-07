@@ -56,6 +56,9 @@ internal sealed partial class GameSession
         else
         {
             elements.Add(NativeWidgets.Text(UiText.Get("ui_item_interface_hint")));
+            elements.Add(NativeWidgets.Toggle(UiText.Get("ui_interface_auto_purchase"),InterfaceStorage.AutoPurchase(device),
+                v=>InterfaceSetting(device,"interface_auto_purchase",v?1:0),240));
+            elements.Add(NativeWidgets.Text(UiText.Get("ui_interface_purchase_hint")));
             elements.Add(NativeWidgets.Text(UiText.Get("ui_interface_last",PartStorage.Int(device,"interface_moved"))));
             string last=PartStorage.Text(device,"interface_status");
             if(last.Length>0) elements.Add(NativeWidgets.Text(last));

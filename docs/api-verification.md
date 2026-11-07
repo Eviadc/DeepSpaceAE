@@ -20,7 +20,7 @@ Assembly-CSharp.dll SHA-256：`d9abc029f6b390619c31175df5735901aec6dc071c35c50ce
 | 开局/获取 | StartingScenario、ModData、NetworkUpgrade及当前世界注册生命周期 |
 | 商人 | PaperBook/PhoneUI/通讯录及原生来访队列、供货和交易流程 |
 
-Harmony目标必须是具体方法；不修补抽象GameItem.Destroy。打包前对当前DLL运行46项只读PE目标审计。
+Harmony目标必须是具体方法；不修补抽象GameItem.Destroy。打包前对当前DLL运行49项只读PE目标审计。
 `reflection-external`声明用于已核验的界面绑定；不修改游戏信任设置。引用全部Private=false，不复制到发布目录。
 
 游戏指南与APIChanges可辅助定位，但开发中API不自动视为已发布接口。
@@ -30,4 +30,10 @@ Harmony目标必须是具体方法；不修补抽象GameItem.Destroy。打包前
 
 对本地合法安装的 Build 26496118 读取 PE 元数据及反编译核对；PlayerStore.VERSION 为 100-Rev12，PlayerSettings.bundleVersion 仍为 0.46D。SlotMarker、WaterHelper、PowerHelper、RNG 和 StoreClientListSupplier 与已有参考实现一致（忽略反编译工具提示）。PlayerStore 的原生摆货入口保持不变；HopperHelper 新增颜色、出口配置和溢出路由，但 RunWindow 入口保持；ModHelper 新增数据目录写入保护，本模组使用自身 ModData，不访问其他模组目录。
 
-完整游戏引用构建通过（零警告、零错误），最终46项补丁元数据审计全部通过。此次未启动游戏或运行模型测试，静态核验不代表实机验收。
+0.14适配时完整游戏引用构建通过（零警告、零错误），当时46项补丁元数据审计全部通过。此次未启动游戏或运行模型测试，静态核验不代表实机验收。
+
+## 0.15 成交与修改记录绑定
+
+新增PlayerStore.OnItemBought后缀记录真实购买实例；MoveDealItemToInventory前缀仅替换启用接口的购入商品落点。单件BuyItem先处理OnItemBought和扣款再调用移动；NegociationUIManager.OnWholesaleClick先扣整单金额，对每件调用OnItemBought，恢复货台后逐件调用移动。原版自动移至主库存选项关闭时，移动方法仍被调用，接口开关独立生效。
+
+新增PlayerStore.SaveGame前缀在原版存档序列化前刷新网络修改记录；只写当前世界的自有ModData。已有ValidateSelect/ValidateShapeState及库存增减事件支持关闭终端后的修改跟踪。0.15完整引用构建零警告、零错误，49项补丁元数据审计全部通过，无新增素材或权限；未运行模型或游戏测试。

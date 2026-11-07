@@ -6,57 +6,49 @@
       "id": "deepspaceae.core",
       "part": "Core",
       "name": "AE 核心",
-      "icon": "core.svg",
-      "channelCost": 0
+      "icon": "core.svg"
     },
     {
       "id": "deepspaceae.pipeline",
       "part": "Pipeline",
       "name": "AE 管线",
-      "icon": "pipeline.svg",
-      "channelCost": 0
+      "icon": "pipeline.svg"
     },
     {
       "id": "deepspaceae.item_storage_bus",
       "part": "ItemStorageBus",
       "name": "物品存储总线",
-      "icon": "item-storage-bus.svg",
-      "channelCost": 1
+      "icon": "item-storage-bus.svg"
     },
     {
       "id": "deepspaceae.terminal",
       "part": "Terminal",
       "name": "存储终端",
-      "icon": "terminal.svg",
-      "channelCost": 1
+      "icon": "terminal.svg"
     },
     {
       "id": "deepspaceae.disk_drive",
       "part": "DiskDrive",
       "name": "硬盘驱动器",
-      "icon": "drive.svg",
-      "channelCost": 1
+      "icon": "drive.svg"
     },
     {
       "id": "deepspaceae.import_bus",
       "part": "ImportBus",
       "name": "输入总线",
-      "icon": "import.svg",
-      "channelCost": 1
+      "icon": "import.svg"
     },
     {
       "id": "deepspaceae.export_bus",
       "part": "ExportBus",
       "name": "输出总线",
-      "icon": "export.svg",
-      "channelCost": 1
+      "icon": "export.svg"
     },
     {
       "id": "deepspaceae.energy_receiver",
       "part": "EnergyReceiver",
       "name": "能源接收器",
-      "icon": "energy-receiver.svg",
-      "channelCost": 1
+      "icon": "energy-receiver.svg"
     }
   ]
 }

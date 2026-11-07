@@ -66,7 +66,6 @@ public sealed class ExtractionFilter
         }
     }
     // Main-thread observation object, not shared across concurrent writers.
-    // One machine word suffices for the game's default 32-channel network.
     public bool Allows(string id, IReadOnlyCollection<string> itemTags)
     {
         if (all || ids.Contains(id)) return true;

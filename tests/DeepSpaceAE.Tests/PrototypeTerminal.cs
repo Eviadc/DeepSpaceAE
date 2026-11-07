@@ -61,14 +61,12 @@ internal static class PrototypeTerminal
         {
             case "help" when args.Length == 1:
                 output.WriteLine("status | list [filter] | inventory | take <instance-prefix> | put <instance-prefix> <bus-id>");
-                output.WriteLine("disconnect <a> <b> | connect <a> <b> | channels <on|off> [pipe-limit] [core-limit] | quit");
+                output.WriteLine("disconnect <a> <b> | connect <a> <b> | quit");
                 output.WriteLine("export <new-file.html>  (offline visual snapshot; existing files are preserved)");
                 break;
             case "status" when args.Length == 1:
                 var view = prototype.Read();
-                var settings = prototype.Topology.Channels;
-                output.WriteLine($"Channels: {(settings.Enabled ? "ON" : "OFF")} (pipe={settings.PipelineCapacity}, core={settings.CoreCapacity})");
-                foreach (var usage in view.Network.ChannelsUsed.OrderBy(p => p.Key, StringComparer.Ordinal))
+                foreach (var usage in view.Network.EndpointCounts.OrderBy(p => p.Key, StringComparer.Ordinal))
                     output.WriteLine($"  {usage.Key}: used={usage.Value}");
                 foreach (var device in view.Network.Devices.OrderBy(p => p.Key, StringComparer.Ordinal))
                     output.WriteLine($"  {device.Key}: {device.Value.Status} via {string.Join(" -> ", device.Value.Route)}");
@@ -98,14 +96,6 @@ internal static class PrototypeTerminal
             case "connect" when args.Length == 3:
                 prototype.Link(args[1], args[2], args[0].Equals("connect", StringComparison.OrdinalIgnoreCase));
                 output.WriteLine("Topology refreshed. Use list/status to inspect current access.");
-                break;
-            case "channels" when args.Length >= 2 && args.Length <= 4:
-                if (args[1] != "on" && args[1] != "off") throw new ArgumentException("channels on|off [pipe-limit] [core-limit]");
-                var previous = prototype.Topology.Channels;
-                var pipe = args.Length >= 3 ? ParseCapacity(args[2]) : previous.PipelineCapacity;
-                var core = args.Length >= 4 ? ParseCapacity(args[3]) : previous.CoreCapacity;
-                prototype.SetChannels(new ChannelSettings(args[1] == "on", core, pipe));
-                output.WriteLine("Channel allocation refreshed.");
                 break;
             case "export" when args.Length == 2:
                 PrototypeReport.Export(prototype, args[1]);
@@ -147,11 +137,11 @@ internal static class PrototypeTerminal
         Check(prototype.Storage["locker-b"].Contains(NetworkPrototype.ChargedId) && prototype.Player.Count == 0, "deposit");
         Command("disconnect trunk bus-a"); Command("list");
         Check(!prototype.Read().Index.ByInstance.ContainsKey(NetworkPrototype.EmptyId), "disconnected bus hidden");
-        Command("channels on 1"); Command("list");
-        Check(prototype.Read().Index.ByInstance.Count == 0, "channel-limited buses hidden");
-        Command("channels off"); Command("connect trunk bus-a"); Command("list");
+        Command("disconnect core trunk"); Command("list");
+        Check(prototype.Read().Index.ByInstance.Count == 0, "disconnected network hidden");
+        Command("connect core trunk"); Command("connect trunk bus-a"); Command("list");
         Check(prototype.Read().Index.ByInstance.Count == 3, "reconnected visibility");
-        output.WriteLine("SMOKE PASSED: read, withdraw, deposit, disconnect, channel limit, reconnect");
+        output.WriteLine("SMOKE PASSED: read, withdraw, deposit, disconnect, reconnect");
         return 0;
     }
 }

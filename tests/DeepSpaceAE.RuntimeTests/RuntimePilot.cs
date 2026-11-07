@@ -208,8 +208,8 @@ public sealed partial class RuntimePilot : MonoBehaviour
         var evaluation=Adapter.Evaluation(Adapter.Board()); string coreId=Adapter.Id(core);
         foreach(var item in new[]{drive,receiver,terminal})
             Check(Adapter.DeviceStatus(evaluation,Adapter.Id(item))=="Online" && Equals(Adapter.Property(Adapter.Indexed(evaluation,"Devices",Adapter.Id(item)),"CoreId"),coreId),"Physical leaf not connected: "+item.identifier);
-        Check((int)Adapter.Indexed(evaluation,"NightCosts",coreId)==4 && (int)Adapter.Indexed(evaluation,"ChannelsUsed",coreId)==3,"Cost/channel mismatch.");
-        details="Native occupied-cell topology: three leaves, 3 channels, 4 kJ cost; no fixture edges injected.";
+        Check((int)Adapter.Indexed(evaluation,"NightCosts",coreId)==4 && (int)Adapter.Indexed(evaluation,"EndpointCounts",coreId)==3,"Cost/endpoint mismatch.");
+        details="Native occupied-cell topology: three connected leaves, 4 kJ cost; no fixture edges injected.";
     }
     private void Power()
     {

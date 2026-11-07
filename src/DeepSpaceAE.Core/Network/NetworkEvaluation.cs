@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace DeepSpaceAE.Core.Network;
 
-public enum DeviceStatus { Online, NoCore, ConflictingCores, ChannelExhausted }
+public enum DeviceStatus { Online, NoCore, ConflictingCores, Unreachable }
 
 // Shared immutable path prefixes avoid quadratic route storage on long unlimited networks.
 internal sealed class RoutePath
@@ -36,12 +36,12 @@ public sealed class DeviceConnection
     { Status = status; CoreId = coreId; this.path = path; }
 }
 
-/// <summary>Shares one residual reachability tree until a pipeline saturates; failed devices do not repeat BFS.</summary>
+/// <summary>One shared reachability tree per network; devices have no capacity limit.</summary>
 public sealed class NetworkEvaluation
 {
     internal NetworkTopology Topology { get; }
     public IReadOnlyDictionary<string, DeviceConnection> Devices { get; }
-    public IReadOnlyDictionary<string, int> ChannelsUsed { get; }
+    public IReadOnlyDictionary<string, int> EndpointCounts { get; }
     public IReadOnlyDictionary<string, string> ComponentCore { get; }
     public IReadOnlyDictionary<string, int> NightCosts { get; }
     public int SearchPasses { get; private set; }
@@ -52,7 +52,7 @@ public sealed class NetworkEvaluation
         if (topology is null) throw new ArgumentNullException(nameof(topology));
         Topology = topology;
         var devices = new Dictionary<string, DeviceConnection>(StringComparer.Ordinal);
-        var used = topology.Nodes.Values.Where(n => !n.ConsumesChannel).ToDictionary(n => n.Id, _ => 0, StringComparer.Ordinal);
+        var used = topology.Nodes.Values.Where(n => !n.IsEndpoint).ToDictionary(n => n.Id, _ => 0, StringComparer.Ordinal);
         var membership = new Dictionary<string, string>(StringComparer.Ordinal);
         var costs = new Dictionary<string, int>(StringComparer.Ordinal);
         var visited = new HashSet<string>(StringComparer.Ordinal);
@@ -69,7 +69,7 @@ public sealed class NetworkEvaluation
                 foreach (var neighbor in topology.Neighbors(id)) if (visited.Add(neighbor)) queue.Enqueue(neighbor);
             }
             var cores = component.Where(n => n.Part == NetworkPart.Core).ToArray();
-            var endpoints = component.Where(n => n.ConsumesChannel)
+            var endpoints = component.Where(n => n.IsEndpoint)
                 .OrderBy(n => n.Part == NetworkPart.Terminal ? 0 : 1).ThenBy(n => n.Id, StringComparer.Ordinal);
             if (cores.Length != 1)
             {
@@ -83,39 +83,26 @@ public sealed class NetworkEvaluation
             var order = new List<RoutePath>();
             foreach (var node in endpoints)
             {
-                if (topology.Channels.Enabled && used[core] >= topology.Channels.CoreCapacity)
-                { devices.Add(node.Id, new DeviceConnection(DeviceStatus.ChannelExhausted, core)); continue; }
-                if (paths == null) paths = Reachable(topology, core, used, order);
+                if (paths == null) paths = Reachable(topology, core, order);
                 var neighbors = topology.Neighbors(node.Id); // Endpoints are single-connector leaves.
                 if (neighbors.Count == 0 || !paths.TryGetValue(neighbors[0], out var parent))
-                { devices.Add(node.Id, new DeviceConnection(DeviceStatus.ChannelExhausted, core)); continue; }
+                { devices.Add(node.Id, new DeviceConnection(DeviceStatus.Unreachable, core)); continue; }
                 devices.Add(node.Id, new DeviceConnection(DeviceStatus.Online, core, new RoutePath(node.Id, parent)));
-                if (!topology.Channels.Enabled)
-                {
-                    used[parent.Id]++; // Fold subtree demand once, instead of walking every route.
-                    continue;
-                }
-                for (var cursor = parent; cursor != null; cursor = cursor.Parent)
-                {
-                    used[cursor.Id]++;
-                    if (topology.Nodes[cursor.Id].Part == NetworkPart.Pipeline && used[cursor.Id] == topology.Channels.PipelineCapacity)
-                        paths = null; // Only successful saturation invalidates reachability.
-                }
+                used[parent.Id]++; // Fold endpoint counts once, without walking each route.
             }
-            if (!topology.Channels.Enabled)
-                for (int i = order.Count - 1; i >= 0; i--)
-                    if (order[i].Parent is RoutePath parent) used[parent.Id] += used[order[i].Id];
+            for (int i = order.Count - 1; i >= 0; i--)
+                if (order[i].Parent is RoutePath parent) used[parent.Id] += used[order[i].Id];
         }
         ComponentCore = new ReadOnlyDictionary<string, string>(membership);
         NightCosts = new ReadOnlyDictionary<string, int>(costs);
         Devices = new ReadOnlyDictionary<string, DeviceConnection>(devices);
-        ChannelsUsed = new ReadOnlyDictionary<string, int>(used);
+        EndpointCounts = new ReadOnlyDictionary<string, int>(used);
     }
 
     public static int NightCost(NetworkPart part) => part == NetworkPart.Core ? 2 : part == NetworkPart.Pipeline || part == NetworkPart.EnergyReceiver ? 0 : 1;
 
     private Dictionary<string, RoutePath> Reachable(NetworkTopology topology, string core,
-        Dictionary<string, int> used, List<RoutePath> order)
+        List<RoutePath> order)
     {
         SearchPasses++;
         order.Clear();
@@ -129,9 +116,7 @@ public sealed class NetworkEvaluation
             order.Add(paths[current]);
             foreach (var next in topology.Neighbors(current))
             {
-                if (topology.Nodes[next].ConsumesChannel || paths.ContainsKey(next)) continue;
-                if (topology.Channels.Enabled && topology.Nodes[next].Part == NetworkPart.Pipeline
-                    && used[next] >= topology.Channels.PipelineCapacity) continue;
+                if (topology.Nodes[next].IsEndpoint || paths.ContainsKey(next)) continue;
                 paths.Add(next, new RoutePath(next, paths[current]));
                 queue.Enqueue(next);
             }

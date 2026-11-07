@@ -54,7 +54,7 @@ internal sealed partial class GameSession
     internal CableVisuals Visuals { get; }
     internal GameSession(ModLog log) { this.log = log; Visuals = new CableVisuals(log, this); }
     internal static GameGridInventory? MainInventory() => EmporiumEntry.Instance?.invElement;
-    // Persistent native identity makes channel allocation and equal-priority routes
+    // Persistent native identity makes network ownership and equal-priority routes
     // deterministic across save/load. Directory GUIDs remain view-only session keys.
     internal string Id(GameItem item) => item.GetUniqueID().ToString("X8",CultureInfo.InvariantCulture);
     internal Guid GuidFor(GameItem item) => identities.GetValue(item, _ => new Token()).Id;
@@ -63,6 +63,8 @@ internal sealed partial class GameSession
     {
         PartStorage.ResetPowerSettlement();
         ResetInterfaces();
+        purchases=new();
+        ResetActivity();
         NightAutomation=false; automationGeneration++;
         NativeLiquidSelection.EndFor(openTerminal); NativeLiquidSelection.Clear(); liquidMode=false;
         Loading = true; Close(); NativeDrag.Gesture = null; NativeDrag.OriginItem = null; NativeDrag.OriginSource = null; Visuals.Detach(); identities = new(); observations = new(); writing = false;
@@ -99,7 +101,7 @@ internal sealed partial class GameSession
             terminalDirty = false; Open(current);
         });
     }
-    internal void DragEnded() { terminalGrid?.RefreshVisible(); ScheduleTerminalRefresh(); RefreshPartLater(); QueueInterfaces(); }
+    internal void DragEnded() { terminalGrid?.RefreshVisible(); ScheduleTerminalRefresh(); RefreshPartLater(); QueueInterfaces(); QueueActivity(); }
     internal void ItemChanged(GameItem item)
     {
         if (item.parentInventory != null && observed.Contains(item.parentInventory)
@@ -107,6 +109,7 @@ internal sealed partial class GameSession
     }
     internal void TerminalItemValidated(GameItem item)
     {
+        ActivityItemValidated(item);
         if(displayedView==null || item.parentInventory==null || !observed.Contains(item.parentInventory)) return;
         var id=GuidFor(item);
         if(!displayedView.StackKeys.TryGetValue(id,out var previous)) return;
@@ -152,7 +155,7 @@ internal sealed partial class GameSession
         foreach (var part in board.Layout.Parts) board.ById.Add(Id(part), part);
         var nodes = board.Layout.Parts.Select(i => new NetworkNode(Id(i), ModEntry.PartKinds[i.identifier],
             i.identifier == "deepspaceae.item_storage_bus" || DiskStorage.IsDrive(i) ? Id(i) : null));
-        board.Topology = PhysicalNetworkProjection.Build(nodes, board.Layout.Edges(Id), new ChannelSettings());
+        board.Topology = PhysicalNetworkProjection.Build(nodes, board.Layout.Edges(Id));
         board.Evaluation = new NetworkEvaluation(board.Topology);
         if(!ModSettings.EnergyEnabled)
         {
@@ -248,6 +251,7 @@ internal sealed partial class GameSession
         internal Dictionary<Guid, GameItem> Live = new();
         internal Dictionary<Guid, GameInventory> Sources = new();
         internal Dictionary<Guid,string?> StackKeys=new();
+        internal Dictionary<Guid,long> Modified=new();
         internal HashSet<GameInventory> StackDependencies=new();
         internal CatalogSearch Search = null!;
         internal CatalogSearch TagSearch = null!;
@@ -275,7 +279,7 @@ internal sealed partial class GameSession
         var view = ReadStorage(board,connection.CoreId);
         return view;
     }
-    private View ReadStorage(Board board,string coreId)
+    private View ReadStorage(Board board,string coreId,bool catalog=true)
     {
         var view = new View { Root = MainInventory()!, Board = board, Core = board.ById[coreId] };
         var ownerPolicies = new Dictionary<GameItem, List<StoragePolicy>>();
@@ -306,7 +310,7 @@ internal sealed partial class GameSession
             var policy=new StoragePolicy(0,StorageAccess.ReadWrite,false,false,false,0,Array.Empty<string>());
             view.Policies.Add(drive,policy); ownerPolicies.Add(drive,new List<StoragePolicy>{policy});
         }
-        return ReadCatalog(view, ownerPolicies);
+        return catalog?ReadCatalog(view, ownerPolicies):view;
     }
     private View ReadCatalog(View view, Dictionary<GameItem, List<StoragePolicy>> ownerPolicies)
     {

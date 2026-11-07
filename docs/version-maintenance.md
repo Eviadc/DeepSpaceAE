@@ -1,7 +1,7 @@
 # 游戏版本更新维护
 
 1. 记录游戏标签、Application.version、Steam Build及Assembly-CSharp哈希；核对实际程序集中的API，不直接采用开发中指南。
-2. 复查主库存、物品形状、拥有权、找槽/移动、机器UI树、WaterHelper、电源与睡眠/付款时序。
+2. 复查成交付款/归属/移动时序、批发路径、主库存、物品形状、拥有权、找槽/移动、机器UI树、WaterHelper、电源与睡眠/付款时序。
 3. 对照Harmony目标及参数/字段绑定完成只读PE审计；抽象方法、加载器或信任管理器不能作为补丁目标。
 4. 同步GameVersions、target-build.json、构建门禁及版本文档，编译当前提交。
 5. 按功能用例进行有范围的验收，将编译、模型与实际游戏结果分开记录。优先覆盖开局/礼包、冷启动加载、终端取放与多选、驱动器/抽屉容量、机器IO、液体、商人预约、保存读取；耗电选项另测。
@@ -11,8 +11,10 @@
 
 | 范围 | 入口 |
 | --- | --- |
-| 拓扑与目录 | GameSession、NetworkProjection、NetworkEvaluator |
+| 拓扑与目录 | GameSession、PhysicalNetworkProjection、NetworkEvaluation |
 | 终端/堆叠/框选 | VirtualInventory、ItemStackState、TerminalStacks、NativeDrag、TerminalSelection |
+| 修改时间排序 | StackActivity、NetworkActivity、PlayerStore.SaveGame补丁 |
+| 成交自动收纳 | PurchasedItems、PlayerStore.OnItemBought及MoveDealItemToInventory时序 |
 | 介质与抽屉 | DiskStorage、CellCapacity、DrawerStorage |
 | 液体和接口 | LiquidStorage、NativeLiquidInteraction、InterfaceStorage、NetworkInterfaces |
 | 机器IO | IoBus、Automation、HopperHelper.RunWindow补丁 |

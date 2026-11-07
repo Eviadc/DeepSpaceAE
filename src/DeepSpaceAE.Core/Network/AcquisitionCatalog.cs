@@ -20,7 +20,7 @@ public static class AcquisitionCatalog
     // Keep the receiver's factory value for existing saves; it has no acquisition route.
     private static readonly ComponentOffer receiver = new("energy_receiver",350,30,1,1);
     public static IReadOnlyList<ComponentOffer> Offers { get; }=Array.AsReadOnly(new[]{
-        // Guaranteed disks go first, then cards; remaining stock is interleaved so
+        // Guaranteed stock goes first, then cards; remaining stock is interleaved so
         // one large lot cannot crowd out all later types. Lots use native fit.
         new ComponentOffer("disk_large",800,15,1,2),
         new ComponentOffer("capacity_upgrade",80,100,6,10),new ComponentOffer("tag_upgrade",100,25,2,3),
@@ -33,7 +33,7 @@ public static class AcquisitionCatalog
         new ComponentOffer("pipeline",20,100,6,10)});
     // Always place these before optional stock; unused counter space stays empty.
     public static IReadOnlyList<string> GuaranteedStock { get; }=Array.AsReadOnly(new[]{
-        "deepspaceae.disk_large","deepspaceae.disk_small","deepspaceae.disk_small"});
+        "deepspaceae.disk_large","deepspaceae.disk_small","deepspaceae.disk_small","deepspaceae.tag_upgrade"});
     public static IReadOnlyList<string> Starter { get; }=Array.AsReadOnly(new[]{"deepspaceae.core"}
         .Concat(Enumerable.Repeat("deepspaceae.pipeline",8)).Concat(Enumerable.Repeat("deepspaceae.item_storage_bus",2))
         .Concat(new[]{"deepspaceae.terminal","deepspaceae.disk_drive","deepspaceae.disk_small","deepspaceae.disk_small","deepspaceae.wrench"}).ToArray());

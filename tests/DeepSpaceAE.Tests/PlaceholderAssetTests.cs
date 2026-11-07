@@ -31,7 +31,7 @@ public sealed class PlaceholderAssetTests
     }
 
     [Fact]
-    public void AllPartsHaveOriginalStandaloneIconsAndMatchingChannelCosts()
+    public void AllPartsHaveOriginalStandaloneIcons()
     {
         var root = Path.Combine(AppContext.BaseDirectory, "assets", "placeholders");
         using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "parts.json")));
@@ -43,7 +43,6 @@ public sealed class PlaceholderAssetTests
         {
             var kind = Enum.Parse<NetworkPart>(part.GetProperty("part").GetString()!);
             var node = new NetworkNode("asset-check", kind, kind == NetworkPart.ItemStorageBus || kind == NetworkPart.DiskDrive ? "box" : null);
-            Assert.Equal(node.ConsumesChannel ? 1 : 0, part.GetProperty("channelCost").GetInt32());
             var icon = part.GetProperty("icon").GetString()!;
             Assert.Equal(icon, Path.GetFileName(icon));
             var svg = XDocument.Load(Path.Combine(root, icon)).Root!;

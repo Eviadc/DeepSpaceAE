@@ -52,11 +52,10 @@ internal static class PerformanceProbe
                 var layout = new VirtualInventoryLayout(footprints);
                 if (layout.PageCount < 1 || layout.At(0,0,0) != items[0].InstanceId) throw new InvalidOperationException("Projection probe failed.");
             });
-            foreach (bool limited in new[] { true, false })
             {
                 NetworkEvaluation evaluation = null!;
-                var network = Measure(() => evaluation = new NetworkEvaluation(PhysicalNetworkProjection.Build(nodes, edges, new ChannelSettings(limited))));
-                results.Add(new { parts = count * 2 + 1, items = count, channels = limited, spatial, index, filtered, catalog, virtualPacking, network,
+                var network = Measure(() => evaluation = new NetworkEvaluation(PhysicalNetworkProjection.Build(nodes, edges)));
+                results.Add(new { parts = count * 2 + 1, items = count, spatial, index, filtered, catalog, virtualPacking, network,
                     searches = evaluation.SearchPasses, transportVisits = evaluation.VisitedTransportNodes,
                     online = evaluation.Devices.Values.Count(device => device.Status == DeviceStatus.Online) });
             }

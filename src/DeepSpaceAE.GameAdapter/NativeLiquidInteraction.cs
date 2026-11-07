@@ -79,6 +79,7 @@ internal sealed partial class GameSession
     internal bool IsLiquidEntry(GameItem item)=>terminalGrid?.IsLiquid==true && displayedView?.LiquidPolicies.ContainsKey(item)==true;
     internal void LiquidChanged(GameItem source,GameItem target)
     {
+        ActivityItemValidated(source); ActivityItemValidated(target);
         InterfaceItemChanged(source); InterfaceItemChanged(target); QueueInterfaces();
         if(openTerminal==null) return;
         if((source.parentInventory!=null && observed.Contains(source.parentInventory))

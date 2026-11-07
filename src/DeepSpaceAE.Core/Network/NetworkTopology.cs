@@ -13,7 +13,7 @@ public sealed class NetworkNode
     public string Id { get; }
     public NetworkPart Part { get; }
     public string? ContainerId { get; }
-    public bool ConsumesChannel => Part != NetworkPart.Core && Part != NetworkPart.Pipeline;
+    public bool IsEndpoint => Part != NetworkPart.Core && Part != NetworkPart.Pipeline;
 
     public NetworkNode(string id, NetworkPart part, string? containerId = null)
     {
@@ -44,31 +44,14 @@ public sealed class NetworkLink
     }
 }
 
-public sealed class ChannelSettings
-{
-    public bool Enabled { get; }
-    public int CoreCapacity { get; }
-    public int PipelineCapacity { get; }
-
-    public ChannelSettings(bool enabled = true, int coreCapacity = 32, int pipelineCapacity = 8)
-    {
-        if (coreCapacity < 0) throw new ArgumentOutOfRangeException(nameof(coreCapacity));
-        if (pipelineCapacity < 0) throw new ArgumentOutOfRangeException(nameof(pipelineCapacity));
-        Enabled = enabled;
-        CoreCapacity = coreCapacity;
-        PipelineCapacity = pipelineCapacity;
-    }
-}
-
 /// <summary>Immutable explicit connections; inventory placement belongs to the unverified adapter.</summary>
 public sealed class NetworkTopology
 {
     private readonly Dictionary<string, IReadOnlyList<string>> adjacent;
     public IReadOnlyDictionary<string, NetworkNode> Nodes { get; }
     public IReadOnlyList<NetworkLink> Links { get; }
-    public ChannelSettings Channels { get; }
 
-    public NetworkTopology(IEnumerable<NetworkNode> nodes, IEnumerable<NetworkLink> links, ChannelSettings? channels = null)
+    public NetworkTopology(IEnumerable<NetworkNode> nodes, IEnumerable<NetworkLink> links)
     {
         if (nodes is null) throw new ArgumentNullException(nameof(nodes));
         if (links is null) throw new ArgumentNullException(nameof(links));
@@ -89,13 +72,12 @@ public sealed class NetworkTopology
             distinctLinks.Add(link);
         }
         // An explicit prototype rule: terminal/bus has one connector and cannot act as a cable.
-        if (byId.Values.Any(n => n.ConsumesChannel && neighbors[n.Id].Count > 1))
+        if (byId.Values.Any(n => n.IsEndpoint && neighbors[n.Id].Count > 1))
             throw new ArgumentException("Terminal and storage bus nodes are leaves in this model.", nameof(links));
         adjacent = neighbors.ToDictionary(pair => pair.Key,
             pair => (IReadOnlyList<string>)Array.AsReadOnly(pair.Value.ToArray()), StringComparer.Ordinal);
         Nodes = new ReadOnlyDictionary<string, NetworkNode>(byId);
         Links = Array.AsReadOnly(distinctLinks.OrderBy(l => l.A, StringComparer.Ordinal).ThenBy(l => l.B, StringComparer.Ordinal).ToArray());
-        Channels = channels ?? new ChannelSettings();
     }
 
     public IReadOnlyList<string> Neighbors(string id) => adjacent[id];

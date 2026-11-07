@@ -19,13 +19,13 @@ public sealed class AutomationTests
         Assert.False(AutomationRules.PaidNightPower(5,5,true,42,43,12,2));
     }
     [Fact]
-    public void IoBusesAreChannelLeavesAndAreIncludedInDailyCost()
+    public void IoBusesAreLeavesAndAreIncludedInDailyCost()
     {
         var nodes=new[]{new NetworkNode("core",NetworkPart.Core),new NetworkNode("wire",NetworkPart.Pipeline),
             new NetworkNode("import",NetworkPart.ImportBus),new NetworkNode("export",NetworkPart.ExportBus)};
         var evaluation=new NetworkEvaluation(PhysicalNetworkProjection.Build(nodes,new[]{new NetworkLink("core","wire"),
-            new NetworkLink("wire","import"),new NetworkLink("wire","export")},new ChannelSettings()));
-        Assert.Equal(2,evaluation.ChannelsUsed["core"]); Assert.Equal(4,evaluation.NightCosts["core"]);
+            new NetworkLink("wire","import"),new NetworkLink("wire","export")}));
+        Assert.Equal(2,evaluation.EndpointCounts["core"]); Assert.Equal(4,evaluation.NightCosts["core"]);
         Assert.Equal(DeviceStatus.Online,evaluation.Devices["import"].Status);
         Assert.Equal(DeviceStatus.Online,evaluation.Devices["export"].Status);
     }

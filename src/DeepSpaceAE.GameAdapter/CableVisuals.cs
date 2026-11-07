@@ -87,6 +87,7 @@ internal sealed class CableVisuals
     { var s = item.modifiedShape; return (s.minX, s.minY, s.width, s.height, s.orientation, s.flipped, GeneralHelper.IsItemEffectivelyOwned(item)); }
     internal void ShapeChanged(GameItem item)
     {
+        session.ActivityItemValidated(item);
         session.ItemChanged(item);
         session.InterfaceItemChanged(item);
         if (item.parentInventory is DrawerInventory drawer) drawer.RefreshItemDisplay(item);
@@ -121,6 +122,7 @@ internal sealed class CableVisuals
             try
             {
                 var board = session.ReadBoard(); var layout = board.Layout; poses.Clear(); devicePorts.Clear();
+                session.RefreshActivityNetworks(board);
                 foreach (var item in layout.Items) poses.Add(item, Pose(item));
                 foreach (var item in layout.Items.Where(GameSession.IsPart))
                 {

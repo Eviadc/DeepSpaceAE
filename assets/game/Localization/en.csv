@@ -13,7 +13,7 @@ item_tag_desc,Enables bus tag filters. One per bus. Terminal tag and current-cus
 item_wrench_desc,Use on the bus face to remove that bus. Use on a detached bus to remove its last upgrade card.
 error_enter_game,Load a game first.
 error_terminal_main,Terminal inactive: place it directly in the main inventory.
-error_terminal_network,"Terminal inactive: check the controller, cables and channels. Use one controller per network."
+error_terminal_network,"Terminal inactive: check the controller and cables. Use one controller per network."
 error_network_power,Network unpowered: install a battery with enough energy for the night.
 error_operation,Operation incomplete. Keep the game log and check the network.
 error_part_main,Part inactive: place it directly in the main inventory.
@@ -62,7 +62,6 @@ ui_battery_locked,Locked - replace next day
 ui_energy,Stored energy
 ui_hypertech_battery,Hypertech battery
 ui_reserved,Reserved tonight
-ui_channels,Channels
 ui_battery,Battery
 ui_controller,Network controller
 ui_controller_title,AE Network Controller
@@ -209,3 +208,6 @@ ui_interface_input_hint,Input: liquids poured in are sent to the network. Strict
 ui_interface_output_hint,Output: refill the selected composition from the network. Select this interface then a target to pour; native dropper and container actions remain available.
 ui_item_interface_hint,Drag items onto this interface to store them in the network. Storage bus filters and native container capacity apply. The interface does not buffer items.
 ui_interface_last,Last deposit: {0} units
+ui_modified,Modified
+ui_interface_auto_purchase,Store purchases automatically
+ui_interface_purchase_hint,Store purchases including wholesale.\nOff by default. Excess items follow\nthe normal placement setting.
