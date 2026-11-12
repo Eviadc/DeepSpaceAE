@@ -28,10 +28,10 @@ public sealed partial class RuntimePilot : MonoBehaviour
     internal void Configure(PilotConfig settings)
     {
         config=settings; report.runId=config.runId; report.productCommit=config.productCommit;
-        report.profile = config.interfaceProfile ? "interfaces-0.14" : config.engineerStart ? "network-engineer" : "components";
+        report.profile = config.topologyProfile ? "workshop-topology" : config.interfaceProfile ? "interfaces" : config.engineerStart ? "network-engineer" : "components";
         priorBackground=Application.runInBackground; Application.runInBackground=true;
         report.startedUtc=DateTime.UtcNow.ToString("O"); report.unityVersion=Application.unityVersion;
-        if(config.interfaceProfile) ModHook.OnGameLoadedLate+=InterfaceLoaded;
+        if(config.interfaceProfile || config.topologyProfile) ModHook.OnGameLoadedLate+=InterfaceLoaded;
         deadline=Time.realtimeSinceStartup+(config.interfaceProfile?180:120); Write();
     }
     private void Update()
@@ -83,7 +83,7 @@ public sealed partial class RuntimePilot : MonoBehaviour
                 report.saveSlot=PlayerStore.Instance.saveSlotId; report.day=StoreStation.GetDayCounter();
                 report.freshScenarioConfirmed=true; report.status="running"; Write();
             }
-            if(config.interfaceProfile && interfaceReloadWaiting)
+            if((config.interfaceProfile || config.topologyProfile) && interfaceReloadWaiting)
             {
                 if(!interfaceReloadReady || EmporiumEntry.Instance?.invElement==null || (bool)Adapter.Property(Adapter.Session,"Loading")!) return;
                 root=EmporiumEntry.Instance.invElement; interfaceReloadWaiting=false;
@@ -104,13 +104,14 @@ public sealed partial class RuntimePilot : MonoBehaviour
                 Check(report.startupHintClosed,"Native startup hint did not close.");
                 hintChecked=true; next=Time.realtimeSinceStartup+5; Write(); return;
             }
-            var actions=config.interfaceProfile ? new Action[]{InterfaceStart,InterfaceNetwork,InterfaceItemInput,InterfaceTerminal,
-                InterfaceStrict,InterfaceMixed,InterfaceOutput,InterfaceNativePour,InterfaceSave,InterfaceReload}
+            var actions=config.topologyProfile ? new Action[]{TopologySetup,TopologyContacts,TopologyMountedBuses,TopologyDeviceChain,TopologySave,TopologyReload}
+                : config.interfaceProfile ? new Action[]{InterfaceStart,InterfaceNetwork,InterfaceItemInput,InterfaceTerminal,
+                InterfaceStrict,InterfaceMixed,InterfaceOutput,InterfaceNativePour,InterfaceSave,InterfaceReload,InterfaceLoot}
                 : config.engineerStart ? new Action[]{StartRegistry,StartSupplies,StartNoDuplicate,StartPower,Save}
                 : new Action[]{Load,Slots,Network,Power,Capacity,Terminal,Disconnect,Drawer,Filters,Save};
             if(step==actions.Length) { Finish(); return; }
             var watch=System.Diagnostics.Stopwatch.StartNew();
-            string id=(config.interfaceProfile?"IFACE-":config.engineerStart ? "START-" : "PILOT-")+(step+1).ToString("00");
+            string id=(config.topologyProfile?"TOPOLOGY-":config.interfaceProfile?"IFACE-":config.engineerStart ? "START-" : "PILOT-")+(step+1).ToString("00");
             try { actions[step](); report.cases.Add(new CaseResult{id=id,status="PASS",detail=details,elapsedMs=watch.Elapsed.TotalMilliseconds}); Debug.Log("[AE-PILOT] "+id+" PASS: "+details); }
             catch(Exception e)
             {
@@ -195,13 +196,13 @@ public sealed partial class RuntimePilot : MonoBehaviour
         At(Spawn("deepspaceae.pipeline"),x+3,y+2);
         drawerCable=Spawn("deepspaceae.pipeline"); At(drawerCable,x+3,y+3); At(drawer,x+3,y+4);
         var bays=Adapter.Slots("DiskStorage","Bays",drive); var power=Adapter.Slots("EnergyReceiver","Slots",receiver);
-        Check(bays.Length==6 && power.Length==3,"Actual bay count mismatch.");
+        Check(bays.Length==10 && power.Length==3,"Actual bay count mismatch.");
         var paper=Spawn("toilet_paper"); Add(paper);
         Check(bays.All(b=>b.TryFindOneValidInventorySlot(paper)?.numTransfer is not >0),"Drive accepted ordinary paper.");
         Check(power.All(b=>b.TryFindOneValidInventorySlot(paper)?.numTransfer is not >0),"Receiver accepted ordinary paper.");
         Add(small); Adapter.Move(small,bays[0]); Add(large); Adapter.Move(large,bays[1]);
         Check(ReferenceEquals(bays[0].childItem,small) && ReferenceEquals(bays[1].childItem,large),"Disk identity changed.");
-        details="Six real disk bays, three real power bays; ordinary item rejected; two real disks installed.";
+        details="Ten real disk bays, three real power bays; ordinary item rejected; two real disks installed.";
     }
     private void Network()
     {

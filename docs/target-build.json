@@ -1,8 +1,8 @@
 {
-  "gameLabel": "100-Rev6",
+  "gameLabel": "100-Rev13",
   "gameApplicationVersion": "0.46D",
-  "steamBuildId": "26337366",
+  "steamBuildId": "26525552",
   "platform": "Windows x64",
-  "assemblyCSharpSha256": "6398d44aa1675e1f02b63bc668868f970e0f5d3ae5a50f2aced8d06ca084e3b5",
+  "assemblyCSharpSha256": "725cb999d019dff1ff31bed353c7f9bb8d81a7605a15de1f80f5a3a6cf7b1d05",
   "referenceRedistributionAllowed": false
 }

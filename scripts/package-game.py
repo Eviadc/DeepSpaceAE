@@ -57,7 +57,7 @@ for name, path in files.items():
         dimensions = (288,211) if stem=="steve-portrait" else (19,19) if stem=="engineer-start" else (16,48) if stem=="wrench" else (48,48) if stem == "core" or stem.startswith("core-") else (32,32) if stem in ("drive","drive-off","energy-receiver","energy-receiver-off","drawer","terminal","terminal-off","item-interface","item-interface-off","fluid-interface","fluid-interface-off") else (32,16) if stem in ("disk-small","disk-large","disk-ghost","steve-contact") else (16,16)
         assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", data[16:24]) == dimensions
 version = ET.parse(files["DeepSpaceAE/manifest.xml"]).getroot().findtext("ModVersion")
-assert version == "0.15.0-alpha"
+assert version == "0.15.3-alpha"
 audit_path = root / "artifacts/validation/game-patch-audit.json"
 if not audit_path.is_file():
     raise SystemExit("Missing game patch metadata audit; run scripts/build-game.ps1 (Windows) or scripts/build-game.sh first.")
@@ -65,8 +65,8 @@ audit = json.loads(audit_path.read_text())
 assert audit["success"] is True and audit["findings"]
 assert all(f["Result"] == "PASS" for f in audit["findings"])
 assert audit["adapterSha256"] == hashlib.sha256(files["DeepSpaceAE/DeepSpaceAE.GameAdapter.dll"].read_bytes()).hexdigest()
-assert audit["gameSha256"] == "d9abc029f6b390619c31175df5735901aec6dc071c35c50ce5b3fdf92e3ede46"
-output = root / "artifacts/packages" / f"DeepSpaceAE-{version}-100-Rev12-{revision[:7]}.zip"
+assert audit["gameSha256"] == "725cb999d019dff1ff31bed353c7f9bb8d81a7605a15de1f80f5a3a6cf7b1d05"
+output = root / "artifacts/packages" / f"DeepSpaceAE-{version}-100-Rev13-{revision[:7]}.zip"
 if output.exists():
     with zipfile.ZipFile(output) as previous:
         expected = set(files) | {"DeepSpaceAE/build-info.json"}
@@ -82,10 +82,10 @@ output.parent.mkdir(parents=True, exist_ok=True)
 hashes = {name: hashlib.sha256(path.read_bytes()).hexdigest() for name, path in files.items()}
 info = {
     "sourceCommit": revision,
-    "gameLabel": "100-Rev12",
+    "gameLabel": "100-Rev13",
     "gameApplicationVersion": "0.46D",
-    "steamBuildId": "26496118",
-    "referenceAssemblySha256": "d9abc029f6b390619c31175df5735901aec6dc071c35c50ce5b3fdf92e3ede46",
+    "steamBuildId": "26525552",
+    "referenceAssemblySha256": "725cb999d019dff1ff31bed353c7f9bb8d81a7605a15de1f80f5a3a6cf7b1d05",
     "configuration": "Release",
     "patchMetadataAudit": {"status": "PASS", "declarations": len(audit["findings"]), "execution": "NOT RUN"},
     "modVersion": version,

@@ -24,7 +24,8 @@ public sealed class NetworkEvaluationParityTests
         for (int sample = 0; sample < 160; sample++)
         {
             int count = random.Next(8, 30), cores = random.Next(3);
-            var nodes = Enumerable.Range(0, count).Select(i => new NetworkNode($"p{i:D3}", i < cores ? NetworkPart.Core : NetworkPart.Pipeline)).ToList();
+            var nodes = Enumerable.Range(0, count).Select(i => new NetworkNode($"p{i:D3}", i < cores ? NetworkPart.Core :
+                i % 3 == 0 ? NetworkPart.ItemInterface : i % 3 == 1 ? NetworkPart.FluidInterface : NetworkPart.Pipeline)).ToList();
             var links = new List<NetworkLink>();
             for (int i = 0; i < count; i++)
                 for (int j = i + 1; j < count; j++)
@@ -35,6 +36,7 @@ public sealed class NetworkEvaluationParityTests
                 var node = new NetworkNode($"d{i:D3}", kind, kind == NetworkPart.ItemStorageBus ? "box" + i : null);
                 nodes.Add(node);
                 links.Add(new NetworkLink(node.Id, nodes[random.Next(count)].Id));
+                if (kind == NetworkPart.Terminal) links.Add(new NetworkLink(node.Id, nodes[random.Next(count)].Id));
             }
             {
                 var topology = new NetworkTopology(nodes, links);
@@ -58,12 +60,30 @@ public sealed class NetworkEvaluationParityTests
         var (nodes, links) = LongNetwork(count);
         var actual = new NetworkEvaluation(PhysicalNetworkProjection.Build(nodes, links));
         Assert.Equal(1, actual.SearchPasses);
-        Assert.Equal(count + 1, actual.VisitedTransportNodes);
+        Assert.Equal(count * 2 + 1, actual.VisitedTransportNodes);
         Assert.Equal(count, actual.EndpointCounts["core"]);
         Assert.Equal(count, actual.EndpointCounts["p00000"]);
         Assert.Equal(1, actual.EndpointCounts["p04999"]);
         Assert.Equal(count + 2, actual.Devices["d04999"].Route.Count);
         Assert.All(actual.Devices.Values, device => Assert.Equal(DeviceStatus.Online, device.Status));
+    }
+
+    [Fact]
+    public void FiveThousandRelayingDevicesUseOneSharedSearch()
+    {
+        const int count = 5000;
+        var nodes = Enumerable.Range(0, count).Select(i => new NetworkNode($"d{i:D5}", NetworkPart.ItemInterface))
+            .Prepend(new NetworkNode("core", NetworkPart.Core)).ToArray();
+        var edges = Enumerable.Range(0, count).Select(i => new NetworkLink(i == 0 ? "core" : $"d{i-1:D5}", $"d{i:D5}"));
+        var evaluation = new NetworkEvaluation(PhysicalNetworkProjection.Build(nodes, edges));
+        Assert.Equal(1, evaluation.SearchPasses);
+        Assert.Equal(count + 1, evaluation.VisitedTransportNodes);
+        Assert.Equal(count, evaluation.EndpointCounts["core"]);
+        Assert.Equal(count, evaluation.EndpointCounts["d00000"]);
+        Assert.Equal(1, evaluation.EndpointCounts["d04999"]);
+        Assert.Equal(count + 1, evaluation.Devices["d04999"].Route.Count);
+        Assert.Equal(count + 2, evaluation.NightCosts["core"]);
+        Assert.All(evaluation.Devices.Values, d => Assert.Equal(DeviceStatus.Online, d.Status));
     }
 
     internal static (List<NetworkNode>, List<NetworkLink>) LongNetwork(int count)
@@ -86,7 +106,7 @@ public sealed class NetworkEvaluationParityTests
     private static (Dictionary<string, (DeviceStatus Status, string? Core, string[] Route)> Devices, Dictionary<string, int> Used) Reference(NetworkTopology topology)
     {
         var devices = new Dictionary<string, (DeviceStatus, string?, string[])>();
-        var used = topology.Nodes.Values.Where(n => !n.IsEndpoint).ToDictionary(n => n.Id, _ => 0);
+        var used = topology.Nodes.Values.Where(n => n.CanRelay).ToDictionary(n => n.Id, _ => 0);
         var seen = new HashSet<string>();
         foreach (var start in topology.Nodes.Keys)
         {
@@ -101,7 +121,7 @@ public sealed class NetworkEvaluationParityTests
                 foreach (var neighbor in topology.Neighbors(current)) if (seen.Add(neighbor)) queue.Enqueue(neighbor);
             }
             var cores = component.Where(n => n.Part == NetworkPart.Core).ToArray();
-            foreach (var node in component.Where(n => n.IsEndpoint).OrderBy(n => n.Part == NetworkPart.Terminal ? 0 : 1).ThenBy(n => n.Id, StringComparer.Ordinal))
+            foreach (var node in component.Where(n => n.IsDevice).OrderBy(n => n.Part == NetworkPart.Terminal ? 0 : 1).ThenBy(n => n.Id, StringComparer.Ordinal))
             {
                 if (cores.Length != 1)
                 { devices.Add(node.Id, (cores.Length == 0 ? DeviceStatus.NoCore : DeviceStatus.ConflictingCores, null, Array.Empty<string>())); continue; }
@@ -113,7 +133,7 @@ public sealed class NetworkEvaluationParityTests
                 {
                     var current = queue.Dequeue();
                     if (current == node.Id) { found = true; queue.Clear(); break; }
-                    if (topology.Nodes[current].IsEndpoint) continue;
+                    if (!topology.Nodes[current].CanRelay) continue;
                     foreach (var next in topology.Neighbors(current))
                     {
                         if (previous.ContainsKey(next)) continue;

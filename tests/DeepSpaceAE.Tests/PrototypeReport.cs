@@ -38,7 +38,7 @@ th{color:#96abb8;font-size:12px;font-weight:500}code{font:12px ui-monospace,mono
         {
             var id = "icon-" + index++;
             var svg = icons[node.Part].Replace("id=\"title\"", $"id=\"{id}\"").Replace("aria-labelledby=\"title\"", $"aria-labelledby=\"{id}\"");
-            var status = node.IsEndpoint ? view.Network.Devices[node.Id].Status.ToString()
+            var status = node.IsDevice ? view.Network.Devices[node.Id].Status.ToString()
                 : $"连接设备 {view.Network.EndpointCounts[node.Id]}";
             output.Write($"<article class=\"node\" data-part=\"{node.Part}\">{svg}<div class=\"name\">{H(node.Id)}</div><div class=\"muted\">{node.Part}</div><div class=\"status\">{H(status)}</div>");
             if (node.ContainerId != null) output.Write($"<div class=\"muted\">→ {H(node.ContainerId)}</div>");

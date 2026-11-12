@@ -53,11 +53,11 @@ public sealed partial class RuntimePilot
     }
     private void InterfaceStart()
     {
-        var all=MainItems();
-        foreach(var pair in new[]{("core",1),("pipeline",8),("item_storage_bus",2),("terminal",1),("disk_drive",1),("disk_small",2),("wrench",1),("tag_upgrade",1),("import_bus",2),("export_bus",2)})
-            Check(all.Count(i=>i.identifier==Product+"."+pair.Item1)==pair.Item2,"Start quantity mismatch: "+pair.Item1);
-        Check(all.Count(i=>i.identifier.StartsWith(Product+".",StringComparison.Ordinal))==21,"Expected exactly 21 start components, without interfaces.");
-        Check(ModHelper.GetModDataInt(Product,"engineer_start_version",1)==2 && ModHelper.GetModDataInt(Product,"gift_cursor",-1)==32,"New v2 start did not finish.");
+        StartRegistry();
+        StartSupplies();
+        CheckScavengingLoot();
+        Check(ModHelper.GetModDataInt(Product,"engineer_start_v1",0)==1 && ModHelper.GetModDataInt(Product,"engineer_standard_bay",0)==1,
+            "Current engineer start markers are missing.");
         Check(ModHelper.IsNetworkUpgradeUnlocked(Upgrade),"Wilde gift was not marked claimed.");
         core=Spawn(Product+".core"); drive=Spawn(Product+".disk_drive"); terminal=Spawn(Product+".terminal");
         small=Spawn(Product+".disk_small"); large=Spawn(Product+".disk_large");
@@ -65,7 +65,7 @@ public sealed partial class RuntimePilot
         foreach(var item in new[]{terminal,drive,input,fluid}) Check(item.shape.width==2 && item.shape.height==2,"2x2 shape mismatch: "+item.identifier);
         foreach(var disk in new[]{small,large}) Check(disk.shape.width==2 && disk.shape.height==1,"Disk is not horizontal 2x1.");
         var bays=Adapter.Slots("DiskStorage","Bays",drive);
-        Check(bays.Length==6,"Drive needs six real bays.");
+        Check(bays.Length==10,"Drive needs ten real bays.");
         foreach(var bay in bays)
         {
             var node=(TreeNodeRender)typeof(GameSlotInventory).GetField("backgroundImage",NativeFlags)!.GetValue(bay)!;
@@ -74,7 +74,7 @@ public sealed partial class RuntimePilot
                 "AE disk ghost is not bound to the real native bay: sprite="+NodeSprite(node)?.name+"; size="+node.rectTransform.sizeDelta);
         }
         Check(fluid.GetTagReadonly(WaterHelper.LIQUID_CONTAINER_CAPACITY).GetInt()==20000000,"Fluid interface buffer is not 20 litres.");
-        details="Actual v2 start: tag card and two AE2-direction bus pairs; exact 21 AE items, no interfaces, 32/32 gifts. Native menu icon, 2x2 devices, horizontal disks, six AE ghost bays, 20L buffer.";
+        details="Current engineer start: 21 AE components plus contact slip, no interfaces, 33/33 gifts. Native menu icon, 2x2 devices, horizontal disks, ten AE ghost bays, 20L buffer.";
     }
     private void InterfaceNetwork()
     {
@@ -132,14 +132,21 @@ public sealed partial class RuntimePilot
         var inventory=(GameInventory)Adapter.Field(Adapter.Static("InterfaceStorage","Get",input)!,"Inventory")!;
         var slot=inventory.TryFindOneValidInventorySlot(cargo); Check(slot.numTransfer==1,"Large native item rejected by interface preview.");
         var handler=ItemMouseDragHandler.current;
+        var originalInventory=cargo.parentInventory;
         Adapter.SetField(handler,"currentItem",cargo); Adapter.SetField(handler,"lastMouseClickedPosition",((GameItemElement)cargo).handler.rectTransform.position);
         NativeCall(handler,"StartDrag"); Check(handler.IsDraggingItem,"Native drag handler did not start.");
         Adapter.SetField(handler,"lastInventory",null!); Adapter.SetField(handler,"lastItem",input); Adapter.SetField(handler,"lastSlot",slot);
-        NativeCall(handler,"EndDrag");
+        Check(handler.Cancel(),"Native drag cancellation was not handled.");
+        Check(!handler.IsDraggingItem && ReferenceEquals(cargo.parentInventory,originalInventory) && cargo.unitCount==1 && inventory.childItems.Count==0,
+            "Cancelled native drag moved or duplicated cargo.");
+        Adapter.SetField(handler,"currentItem",cargo); Adapter.SetField(handler,"lastMouseClickedPosition",((GameItemElement)cargo).handler.rectTransform.position);
+        NativeCall(handler,"StartDrag");
+        Adapter.SetField(handler,"lastInventory",null!); Adapter.SetField(handler,"lastItem",input); Adapter.SetField(handler,"lastSlot",slot);
+        NativeCall(handler,"EndDrag",false);
         Check(ReferenceEquals(cargo.parentInventory,Adapter.Data(small)) || ReferenceEquals(cargo.parentInventory,Adapter.Data(large)),"Native drag did not route to a real network disk.");
         Check(inventory.childItems.Count==0 && cargo.unitCount==1,"Interface owned or duplicated cargo.");
         report.nativeDragHandlerTested=true; cargoId=cargo.GetUniqueID();
-        details="Actual native StartDrag/EndDrag -> interface proxy -> native network slot: one real 3x3 controller stored in disk; interface remains empty. Hardware mouse was not driven.";
+        details="Native Cancel leaves the real 3x3 controller in its source; StartDrag/EndDrag(false) then stores it in a real network disk through the empty interface proxy. Hardware mouse was not driven.";
     }
     private void InterfaceTerminal()
     {
@@ -150,8 +157,17 @@ public sealed partial class RuntimePilot
         var visuals=Adapter.Property(Adapter.Session,"Visuals")!;
         foreach(var device in new[]{core,terminal,drive,input,fluid})
             Check(((List<ItemSpriteModifier>)Adapter.Call(visuals,"DevicePorts",device)!).Count>0,"Device has no actual cable contact overlay: "+device.identifier);
+        var deposited=Spawn("toilet_paper"); Add(deposited);
+        var handler=ItemMouseDragHandler.current;
+        Adapter.SetField(handler,"currentItem",deposited); Adapter.SetField(handler,"lastMouseClickedPosition",((GameItemElement)deposited).handler.rectTransform.position);
+        NativeCall(handler,"StartDrag");
+        Adapter.SetField(handler,"lastInventory",grid); Adapter.SetField(handler,"lastItem",null!);
+        Adapter.SetField(handler,"lastSlot",((GameInventory)grid).TryFindOneValidInventorySlot(deposited));
+        NativeCall(handler,"EndDrag",false);
+        Check(!handler.IsDraggingItem && (ReferenceEquals(deposited.parentInventory,Adapter.Data(small)) || ReferenceEquals(deposited.parentInventory,Adapter.Data(large))),
+            "Terminal drop did not finish in a real network disk.");
         StartCoroutine(Screenshot("01-terminal-compact"));
-        details="Live native terminal: 2x2 item, built-in tag filters without an upgrade inventory, compact viewport; devices retain real cable-port overlays. Screenshot requested.";
+        details="Live native terminal: built-in tag filters, compact viewport and cable-port overlays; native EndDrag(false) deposits a real item into disk and finishes cleanup. Screenshot requested.";
     }
     private void InterfaceStrict()
     {
@@ -162,7 +178,7 @@ public sealed partial class RuntimePilot
         Adapter.Call(Adapter.Session,"PumpInterfaces");
         Check(WaterHelper.GetTotalVolume(fluid)==0 && WaterHelper.GetTotalVolume(tankA)==700000 && WaterHelper.GetTotalVolume(tankB)==700000,"Strict input merged a different composition or failed to move.");
         Adapter.Call(Adapter.Session,"OpenPart",drive); StartCoroutine(Screenshot("02-horizontal-drive-bays"));
-        details="Native exact-component input: 200ml pure water joins 500ml identical water; 700ml different-composition container is unchanged. Six horizontal real drive bays shown.";
+        details="Native exact-component input: 200ml pure water joins 500ml identical water; 700ml different-composition container is unchanged. Ten horizontal real drive bays shown.";
     }
     private void InterfaceMixed()
     {
@@ -224,8 +240,28 @@ public sealed partial class RuntimePilot
         Check(WaterHelper.GetTotalVolume(fluid)==savedFluid && WaterHelper.GetTotalVolume(tankA)==savedA && WaterHelper.GetTotalVolume(tankB)==savedB,"Native liquid amounts changed across save/load.");
         Check((int)Adapter.Static("InterfaceStorage","Mode",fluid)! ==1 && ((string)Adapter.Static("InterfaceStorage","Output",fluid)!).Length>0,"Interface settings were not saved.");
         Check(all.Count(i=>i.GetUniqueID()==cargoId)==1,"Routed disk cargo was not saved.");
-        Check(ModHelper.GetModDataInt(Product,"gift_cursor",-1)==32,"Start gift cursor changed after reload.");
+        Check(ModHelper.GetModDataInt(Product,"gift_cursor",-1)==33,"Start gift cursor changed after reload.");
         report.saveReloadTested=true;
-        details="Actual native save/reload of the same fresh slot: IDs, disk cargo, horizontal disk/2x2 terminal, exact liquid volumes, output mode/filter and v2 gift cursor survive without duplication.";
+        details="Actual native save/reload of the same fresh slot: IDs, disk cargo, horizontal disk/2x2 terminal, exact liquid volumes, output mode/filter and current gift cursor survive without duplication.";
+    }
+    private void CheckScavengingLoot()
+    {
+        const string table=Product+".scavenging";
+        var entries=ModHelper.GetLootEntries(table);
+        Check(entries.Count==15 && entries.All(e=>e.weight>0 && e.id.StartsWith(Product+".",StringComparison.Ordinal))
+            && entries.All(e=>e.id!=Product+".energy_receiver"),"Native AE scavenging table has invalid candidates.");
+        foreach(var group in new[]{TableGroupMaster.dumpingGroundTG,TableGroupMaster.dumpingGroundFreshTG})
+        {
+            var registered=ModHelper.GetLootGroupEntries(group).Where(e=>e.id==table).ToArray();
+            Check(registered.Length==1 && registered[0].weight==20f && registered[0].sourceModId==Product,
+                "AE scavenging table is absent, duplicated or has the wrong weight in "+group);
+            var sample=LootRegistry.RollGroup(group,id=>id==table?1f:0f);
+            Check(entries.Any(e=>e.id==sample),"Native group roll cannot resolve AE loot in "+group);
+        }
+    }
+    private void InterfaceLoot()
+    {
+        CheckScavengingLoot();
+        details="Before and after real save/reload: both native scavenging groups contain one AE entry at weight 20, all 15 candidates exclude the energy receiver, and native filtered group rolls resolve AE items. Scavenging UI and random drop rates were not exercised.";
     }
 }

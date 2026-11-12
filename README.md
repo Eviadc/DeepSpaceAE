@@ -2,11 +2,12 @@
 
 为《深空当铺 / Probably Stolen》加入 AE 风格的存储网络：把容器、硬盘和机器接入无频道上限的线缆，通过终端统一查找和取放物品。
 
-当前版本：**0.15.0-alpha**。目标游戏：**100-Rev12 / Application.version 0.46D / Steam Build 26496118，Windows x64**。
+当前版本：**0.15.3-alpha**。目标游戏：**100-Rev13 / Application.version 0.46D / Steam Build 26525552，Windows x64**。
 
 ## 功能
 
 - 核心、四向线缆及存储总线；总线作为线缆升级，支持优先级、读写权限、物品和标签筛选。
+- 终端、驱动器和接口可转发网络，支持设备直接串联及环路；每个连通网络只允许一个核心。
 - 连续滚动终端，内置标签及当前顾客需求筛选；相同物品合并显示数量，每次操作堆叠顶端一件；支持按网络记录的物品堆修改时间排序。
 - 十盘位驱动器，初始开放两格，每张容量卡增加两格；64格和256格硬盘按物品实际占格计容。
 - 单种物品抽屉，基础16件，最多五张容量卡，每张容量乘四；保留每件物品的实际状态。
@@ -32,7 +33,15 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install-env.ps1
 ```
 
 也可通过环境变量 `DEEPSPACEAE_GAME_DIR`，或被忽略的 `.deepspaceae/local.json` 中的 `gameDir` 字段配置路径。
-仅构建时可传入 `-GameManagedDir '<Managed目录>'`。Linux使用 `GameManagedDir='<Managed目录>' bash scripts/build-game.sh`。
+仅构建时可传入 `-GameManagedDir '<Managed目录>'`。Linux 可直接使用本机 Steam Windows 版游戏的 Managed 程序集进行构建：
+
+```bash
+bash scripts/install-env.sh
+bash scripts/verify.sh
+GameManagedDir='<游戏目录>/Probably Stolen_Data/Managed' bash scripts/build-game.sh
+```
+
+引用必须匹配[目标版本](docs/target-build.json)中的程序集哈希。Linux 构建通过不等于已验证 Proton 中的游戏运行。
 先提交源码再构建打包，`scripts/package-game.py` 将源码提交写入包信息。产物位于被忽略的 `artifacts/packages/`。
 
 模型测试入口为 `scripts/verify.ps1` / `scripts/verify.sh`；独立运行时测试宿主不属于发布包。

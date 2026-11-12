@@ -52,7 +52,7 @@ public sealed class NetworkEvaluation
         if (topology is null) throw new ArgumentNullException(nameof(topology));
         Topology = topology;
         var devices = new Dictionary<string, DeviceConnection>(StringComparer.Ordinal);
-        var used = topology.Nodes.Values.Where(n => !n.IsEndpoint).ToDictionary(n => n.Id, _ => 0, StringComparer.Ordinal);
+        var used = topology.Nodes.Values.Where(n => n.CanRelay).ToDictionary(n => n.Id, _ => 0, StringComparer.Ordinal);
         var membership = new Dictionary<string, string>(StringComparer.Ordinal);
         var costs = new Dictionary<string, int>(StringComparer.Ordinal);
         var visited = new HashSet<string>(StringComparer.Ordinal);
@@ -69,7 +69,7 @@ public sealed class NetworkEvaluation
                 foreach (var neighbor in topology.Neighbors(id)) if (visited.Add(neighbor)) queue.Enqueue(neighbor);
             }
             var cores = component.Where(n => n.Part == NetworkPart.Core).ToArray();
-            var endpoints = component.Where(n => n.IsEndpoint)
+            var endpoints = component.Where(n => n.IsDevice)
                 .OrderBy(n => n.Part == NetworkPart.Terminal ? 0 : 1).ThenBy(n => n.Id, StringComparer.Ordinal);
             if (cores.Length != 1)
             {
@@ -84,11 +84,20 @@ public sealed class NetworkEvaluation
             foreach (var node in endpoints)
             {
                 if (paths == null) paths = Reachable(topology, core, order);
-                var neighbors = topology.Neighbors(node.Id); // Endpoints are single-connector leaves.
-                if (neighbors.Count == 0 || !paths.TryGetValue(neighbors[0], out var parent))
+                RoutePath? route = null;
+                if (node.CanRelay) paths.TryGetValue(node.Id, out route);
+                else
+                {
+                    var neighbors = topology.Neighbors(node.Id);
+                    if (neighbors.Count == 1 && paths.TryGetValue(neighbors[0], out var parent))
+                        route = new RoutePath(node.Id, parent);
+                }
+                if (route == null)
                 { devices.Add(node.Id, new DeviceConnection(DeviceStatus.Unreachable, core)); continue; }
-                devices.Add(node.Id, new DeviceConnection(DeviceStatus.Online, core, new RoutePath(node.Id, parent)));
-                used[parent.Id]++; // Fold endpoint counts once, without walking each route.
+                devices.Add(node.Id, new DeviceConnection(DeviceStatus.Online, core, route));
+                // Count a relaying device once for its own function, then fold its
+                // downstream demand through the same shared tree as cables.
+                used[node.CanRelay ? node.Id : route.Parent!.Id]++;
             }
             for (int i = order.Count - 1; i >= 0; i--)
                 if (order[i].Parent is RoutePath parent) used[parent.Id] += used[order[i].Id];
@@ -116,7 +125,7 @@ public sealed class NetworkEvaluation
             order.Add(paths[current]);
             foreach (var next in topology.Neighbors(current))
             {
-                if (topology.Nodes[next].IsEndpoint || paths.ContainsKey(next)) continue;
+                if (!topology.Nodes[next].CanRelay || paths.ContainsKey(next)) continue;
                 paths.Add(next, new RoutePath(next, paths[current]));
                 queue.Enqueue(next);
             }

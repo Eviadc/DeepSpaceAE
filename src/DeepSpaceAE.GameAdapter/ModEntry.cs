@@ -31,7 +31,7 @@ public sealed class ModEntry : IMod
         session = new GameSession(log);
         ActiveSession = session;
         acquisition=new Acquisition(log,session);
-        log.Log("DeepSpaceAE 0.15.0 / 100-Rev12 initialized.");
+        log.Log("DeepSpaceAE 0.15.3 / 100-Rev13 initialized.");
     }
 
     public void OnEnable()
@@ -180,10 +180,12 @@ public sealed class ModEntry : IMod
             (PartStorage.Capacity, 2f), (PartStorage.Tag, 1f), (PartStorage.Wrench, 3f),
             (DiskStorage.Drive, 1f), (DiskStorage.Small, 2f), (DiskStorage.Large, 0.5f), (DrawerStorage.Id, 2f),
             (InterfaceStorage.Item,1f),(InterfaceStorage.Fluid,1f));
-        foreach (var group in LootRegistry.GroupIds.ToArray())
-            if (group.StartsWith("POI_", StringComparison.Ordinal) && lootGroups.Add(group))
+        // Rev13 scavenging and expedition POIs roll these native item groups.
+        // POI_dumpingGround is a table of locations, not an item-loot group.
+        foreach (var group in new[] { TableGroupMaster.dumpingGroundTG, TableGroupMaster.dumpingGroundFreshTG })
+            if (LootRegistry.HasGroup(group) && lootGroups.Add(group))
                 ModHelper.AddLootGroupEntry(ModId, group, table, 20f);
-        if (lootGroups.Count == 0) log.Warning("No POI loot groups found; AE scavenging drops are unavailable.");
-        else log.Log("AE scavenging loot registered in " + lootGroups.Count + " POI groups.");
+        if (lootGroups.Count == 0) log.Warning("No native scavenging loot groups found; AE scavenging drops are unavailable.");
+        else log.Log("AE scavenging loot registered in " + lootGroups.Count + " native groups.");
     }
 }

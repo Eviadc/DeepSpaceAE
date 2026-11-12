@@ -157,13 +157,16 @@ public sealed class NetworkTests
         Assert.Throws<ArgumentException>(() => new NetworkTopology(nodes, new[] { new NetworkLink("unknown", "terminal") }));
     }
 
-    [Fact]
-    public void EndpointCannotSilentlyBecomeAPipelineBetweenNetworks()
+    [Theory]
+    [InlineData(NetworkPart.ItemStorageBus)]
+    [InlineData(NetworkPart.ImportBus)]
+    [InlineData(NetworkPart.ExportBus)]
+    public void MountedBusCannotHaveMultipleHostConnections(NetworkPart part)
     {
         var nodes = new[] { new NetworkNode("a", NetworkPart.Core), new NetworkNode("b", NetworkPart.Core),
-            new NetworkNode("terminal", NetworkPart.Terminal) };
+            new NetworkNode("bus", part, part == NetworkPart.ItemStorageBus ? "storage" : null) };
         Assert.Throws<ArgumentException>(() => new NetworkTopology(nodes,
-            new[] { new NetworkLink("a", "terminal"), new NetworkLink("b", "terminal") }));
+            new[] { new NetworkLink("a", "bus"), new NetworkLink("b", "bus") }));
     }
 
     [Fact]

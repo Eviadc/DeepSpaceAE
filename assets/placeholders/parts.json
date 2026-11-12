@@ -49,6 +49,18 @@
       "part": "EnergyReceiver",
       "name": "能源接收器",
       "icon": "energy-receiver.svg"
+    },
+    {
+      "id": "deepspaceae.item_interface",
+      "part": "ItemInterface",
+      "name": "物品接口",
+      "icon": "item-interface.svg"
+    },
+    {
+      "id": "deepspaceae.fluid_interface",
+      "part": "FluidInterface",
+      "name": "流体接口",
+      "icon": "fluid-interface.svg"
     }
   ]
 }

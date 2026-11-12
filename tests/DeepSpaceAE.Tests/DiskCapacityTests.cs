@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using DeepSpaceAE.Core;
 using DeepSpaceAE.Core.Network;
 using Xunit;
@@ -31,7 +32,7 @@ public sealed class DiskCapacityTests
         Assert.False(CellCapacity.Fits(64,5,6,1));
     }
     [Fact]
-    public void DriveIsOneEndpointAndNeverBridgesNetworks()
+    public void DriveKeepsItsStorageFunctionWhenRelayingAndDetectsJoinedControllers()
     {
         var core=new NetworkNode("core",NetworkPart.Core); var wire=new NetworkNode("wire",NetworkPart.Pipeline);
         var drive=new NetworkNode("drive",NetworkPart.DiskDrive,"six-bay-drive");
@@ -45,9 +46,13 @@ public sealed class DiskCapacityTests
         var catalog=new TerminalCatalog(topology,"terminal",new[]{new ContainerSnapshot("six-bay-drive",new[]{item})},evaluation);
         Assert.Equal(item.InstanceId,Assert.Single(catalog.Index.ByInstance).Key);
         var isolated=new NetworkNode("other",NetworkPart.Pipeline);
-        var ambiguous=PhysicalNetworkProjection.Build(new[]{core,wire,drive,isolated},
-            new[]{edges[0],edges[1],new NetworkLink("drive","other")});
-        Assert.NotEqual(DeviceStatus.Online,new NetworkEvaluation(ambiguous).Devices["drive"].Status);
+        var danglingEdges=new[]{edges[0],edges[1],new NetworkLink("drive","other")};
+        var dangling=new NetworkEvaluation(PhysicalNetworkProjection.Build(new[]{core,wire,drive,isolated},danglingEdges));
+        Assert.Equal(DeviceStatus.Online,dangling.Devices["drive"].Status);
+        Assert.Equal("core",dangling.ComponentCore["other"]);
+        var ambiguous=PhysicalNetworkProjection.Build(new[]{core,wire,drive,isolated,new NetworkNode("second",NetworkPart.Core)},
+            danglingEdges.Append(new NetworkLink("other","second")));
+        Assert.Equal(DeviceStatus.ConflictingCores,new NetworkEvaluation(ambiguous).Devices["drive"].Status);
         Assert.Throws<ArgumentException>(()=>new NetworkNode("bad",NetworkPart.DiskDrive));
     }
 }

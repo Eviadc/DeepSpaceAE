@@ -68,10 +68,10 @@ internal static class ProjectionStartPatch
 internal static class ProjectionDropPatch
 {
     [HarmonyPrefix]
-    private static void Prefix(bool ___isDragging, GameItemElement ___currentItem, int ___currentRemove,
+    private static void Prefix(ref bool cancelled, bool ___isDragging, GameItemElement ___currentItem, int ___currentRemove,
         ref GameInventory ___lastInventory, ref GameItem ___lastItem, ref SlotMarker ___lastSlot)
     {
-        if (!___isDragging || ___currentItem == null) return;
+        if (cancelled || !___isDragging || ___currentItem == null) return;
         ModEntry.ActiveSession?.TraceWrenchGesture(___currentItem, ___lastItem, "drop");
         if (___lastInventory is GhostFilterInventory filter)
         {
@@ -80,7 +80,7 @@ internal static class ProjectionDropPatch
                 var marker = filter.TryInventorySlot(___currentItem, ___currentRemove, ___currentItem.GetFakeRotatorCenteredPosition(), ___currentItem.tempShape, ___currentItem.modifiedState);
                 if (marker.numTransfer > 0) filter.ConfigureFilter?.Invoke(marker.index, ___currentItem);
             }
-            finally { ___lastInventory = null!; ___lastItem = null!; ___lastSlot = null!; NativeDrag.Gesture = null; }
+            finally { cancelled = true; ___lastInventory = null!; ___lastItem = null!; ___lastSlot = null!; NativeDrag.Gesture = null; }
             return;
         }
         var source = NativeDrag.Gesture;
@@ -91,6 +91,9 @@ internal static class ProjectionDropPatch
         {
             // Let the original handler do its preview/highlight/audio cleanup, with no
             // second native write after our single checked operation.
+            // Rev13 resolves a machinery-tab drop when both targets are null;
+            // its cancellation flag suppresses that fallback after AE handled the drop.
+            cancelled = true;
             ___lastInventory = null!; ___lastItem = null!; ___lastSlot = null!; NativeDrag.Gesture = null;
         }
     }

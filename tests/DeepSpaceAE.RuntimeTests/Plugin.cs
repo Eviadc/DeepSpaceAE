@@ -46,6 +46,7 @@ public sealed class PilotConfig
     public bool exitAfterRun=true;
     public bool engineerStart;
     public bool interfaceProfile;
+    public bool topologyProfile;
 }
 [Serializable]
 public sealed class CaseResult

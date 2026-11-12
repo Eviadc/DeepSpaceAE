@@ -13,7 +13,10 @@ public sealed class NetworkNode
     public string Id { get; }
     public NetworkPart Part { get; }
     public string? ContainerId { get; }
-    public bool IsEndpoint => Part != NetworkPart.Core && Part != NetworkPart.Pipeline;
+    public bool IsDevice => Part != NetworkPart.Core && Part != NetworkPart.Pipeline;
+    // Functional devices may also carry the network. Mounted cable buses have
+    // only their host connection; they do not relay through the target machine.
+    public bool CanRelay => Part != NetworkPart.ItemStorageBus && Part != NetworkPart.ImportBus && Part != NetworkPart.ExportBus;
 
     public NetworkNode(string id, NetworkPart part, string? containerId = null)
     {
@@ -71,9 +74,8 @@ public sealed class NetworkTopology
             neighbors[link.B].Add(link.A);
             distinctLinks.Add(link);
         }
-        // An explicit prototype rule: terminal/bus has one connector and cannot act as a cable.
-        if (byId.Values.Any(n => n.IsEndpoint && neighbors[n.Id].Count > 1))
-            throw new ArgumentException("Terminal and storage bus nodes are leaves in this model.", nameof(links));
+        if (byId.Values.Any(n => !n.CanRelay && neighbors[n.Id].Count > 1))
+            throw new ArgumentException("Mounted bus nodes must have at most one host connection.", nameof(links));
         adjacent = neighbors.ToDictionary(pair => pair.Key,
             pair => (IReadOnlyList<string>)Array.AsReadOnly(pair.Value.ToArray()), StringComparer.Ordinal);
         Nodes = new ReadOnlyDictionary<string, NetworkNode>(byId);

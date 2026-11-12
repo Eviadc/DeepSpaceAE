@@ -69,14 +69,20 @@ public sealed class PowerSelectionTests
         Assert.Equal(3*count,selected.Sum(s=>s.Amount));
     }
     [Fact]
-    public void ReceiverIsAZeroCostLeafAndDoesNotJoinTwoNetworks()
+    public void ReceiverRelaysWithoutAddingDailyCostAndDetectsJoinedControllers()
     {
         var nodes=new[]{new NetworkNode("core",NetworkPart.Core),new NetworkNode("wire",NetworkPart.Pipeline),
             new NetworkNode("receiver",NetworkPart.EnergyReceiver),new NetworkNode("other",NetworkPart.Pipeline)};
         var topology=PhysicalNetworkProjection.Build(nodes,new[]{new NetworkLink("core","wire"),new NetworkLink("wire","receiver")});
         var evaluation=new NetworkEvaluation(topology);
         Assert.Equal(1,evaluation.EndpointCounts["core"]); Assert.Equal(2,evaluation.NightCosts["core"]);
-        var ambiguous=PhysicalNetworkProjection.Build(nodes,topology.Links.Append(new NetworkLink("receiver","other")));
-        Assert.NotEqual(DeviceStatus.Online,new NetworkEvaluation(ambiguous).Devices["receiver"].Status);
+        var danglingLinks=topology.Links.Append(new NetworkLink("receiver","other")).ToArray();
+        var dangling=new NetworkEvaluation(PhysicalNetworkProjection.Build(nodes,danglingLinks));
+        Assert.Equal(DeviceStatus.Online,dangling.Devices["receiver"].Status);
+        Assert.Equal("core",dangling.ComponentCore["other"]);
+        Assert.Equal(2,dangling.NightCosts["core"]);
+        var ambiguous=PhysicalNetworkProjection.Build(nodes.Append(new NetworkNode("second",NetworkPart.Core)),
+            danglingLinks.Append(new NetworkLink("other","second")));
+        Assert.Equal(DeviceStatus.ConflictingCores,new NetworkEvaluation(ambiguous).Devices["receiver"].Status);
     }
 }
