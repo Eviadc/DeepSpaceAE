@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
 namespace DeepSpaceAE.GameAdapter;
 
 internal static class NativeWidgets
@@ -26,15 +28,12 @@ internal static class NativeWidgets
     internal static void StorageBackground(GameGridScrollableInventory inventory)
     {
         var node = inventory.handler.transform.GetChild(0).GetComponent<TreeNodeRender>();
-        var image = typeof(TreeNodeRender).GetProperty("image")!.GetValue(node)!;
-        typeof(RenderHandler).GetMethod("SetHighlightColor")!.Invoke(RenderHandler.current,
-            new object[] { image, RenderHandler.BackgroundColor.Tan, RenderHandler.BackgroundType.Grid });
+        RenderHandler.current.SetHighlightColor(node.image, RenderHandler.BackgroundColor.Tan, RenderHandler.BackgroundType.Grid);
     }
     internal static void FullCellHit(GameItem item)
     {
         if (item is not GameItemElement element) return;
-        var image = typeof(TreeNodeRender).GetProperty("image")!.GetValue(element.background)!;
-        image.GetType().GetProperty("alphaHitTestMinimumThreshold")!.SetValue(image, 0f);
+        element.background.image.alphaHitTestMinimumThreshold=0f;
     }
 
     private static readonly Dictionary<string, string> tagNames = new(StringComparer.Ordinal);
@@ -96,18 +95,19 @@ internal static class NativeWidgets
             // Native Reskin replaces every Image, including dropdown arrows and checkmarks.
             // Preserve those real prefab decorations while applying the native locale font
             // and machinery frame. Public Image properties only; no private game fields.
-            var decorations = new List<(Component Image, System.Reflection.PropertyInfo Property, object? Value)>();
-            foreach (var component in control.root.GetComponentsInChildren<Component>(true))
+            var decorations = new List<(Image Image, Sprite Sprite, Image.Type Type, Color Color, float Pixels)>();
+            foreach (var image in control.root.GetComponentsInChildren<Image>(true))
             {
-                if (component == null || component.gameObject == control.root || component.GetType().FullName != "UnityEngine.UI.Image") continue;
-                foreach (var name in new[] { "sprite", "type", "color", "pixelsPerUnitMultiplier" })
-                {
-                    var property = component.GetType().GetProperty(name);
-                    if (property?.CanRead == true && property.CanWrite) decorations.Add((component, property, property.GetValue(component)));
-                }
+                if (image.gameObject == control.root) continue;
+                decorations.Add((image, image.sprite, image.type, image.color, image.pixelsPerUnitMultiplier));
             }
             CustomUIMachineryStyle.Reskin(control.root);
-            foreach (var decoration in decorations) decoration.Property.SetValue(decoration.Image, decoration.Value);
+            foreach (var decoration in decorations)
+            {
+                var image=decoration.Image;
+                image.sprite=decoration.Sprite; image.type=decoration.Type;
+                image.color=decoration.Color; image.pixelsPerUnitMultiplier=decoration.Pixels;
+            }
             Validate();
         }
     }
@@ -129,12 +129,10 @@ internal static class NativeWidgets
         element.Finish(builder.Last);
         if(visibleOptions>0)
         {
-            // Keep the native scrolling popup, capped to a few rows. Reflection
-            // avoids distributing/referencing the game's TMPro/UI assemblies.
-            var dropdown=typeof(CustomUIElement).GetField("dropdown")!.GetValue(element.Control)!;
-            var type=dropdown.GetType();
-            var template=(RectTransform)type.GetProperty("template")!.GetValue(dropdown)!;
-            var item=(Component)type.GetProperty("itemText")!.GetValue(dropdown)!;
+            // Keep the native scrolling popup and only cap its viewport height.
+            var dropdown=element.Control.dropdown;
+            var template=dropdown.template;
+            var item=dropdown.itemText;
             float rowHeight=((RectTransform)item.transform.parent).rect.height;
             template.sizeDelta=new Vector2(template.sizeDelta.x,Math.Max(32,rowHeight)*visibleOptions+8);
         }
@@ -162,10 +160,8 @@ internal static class NativeWidgets
         {
             label.handler.SetParent(handler);
             textNode=label.handler.transform.GetChild(0).GetComponent<TreeNodeRender>();
-            var text=typeof(TreeNodeRender).GetProperty("text")!.GetValue(textNode)!;
-            var type=text.GetType(); var overflow=type.GetProperty("overflowMode")!;
-            overflow.SetValue(text,Enum.Parse(overflow.PropertyType,"Ellipsis"));
-            type.GetProperty("enableWordWrapping")!.SetValue(text,false);
+            textNode.text.overflowMode=TextOverflowModes.Ellipsis;
+            textNode.text.enableWordWrapping=false;
         }
         internal void SetText(string text)
         {

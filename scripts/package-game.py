@@ -64,7 +64,7 @@ for name, path in files.items():
         dimensions = (288,211) if stem=="steve-portrait" else (19,19) if stem=="engineer-start" else (16,48) if stem=="wrench" else (48,48) if stem == "core" or stem.startswith("core-") else (32,32) if stem in ("drawer-controller","drawer-controller-off","drive","drive-off","energy-receiver","energy-receiver-off","drawer","terminal","terminal-off","item-interface","item-interface-off","fluid-interface","fluid-interface-off","wireless-connector","wireless-connector-off") else (32,16) if stem in ("disk-small","disk-large","disk-ghost","steve-contact") else (16,16)
         assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", data[16:24]) == dimensions
 version = ET.parse(files["DeepSpaceAE/manifest.xml"]).getroot().findtext("ModVersion")
-assert version == "0.17.0-alpha"
+assert version == "0.17.1-alpha"
 audit_path = root / "artifacts/validation/game-patch-audit.json"
 if not audit_path.is_file():
     raise SystemExit("Missing game patch metadata audit; run scripts/build-game.ps1 (Windows) or scripts/build-game.sh first.")
@@ -73,6 +73,15 @@ assert audit["success"] is True and audit["findings"]
 assert all(f["Result"] == "PASS" for f in audit["findings"])
 assert audit["adapterSha256"] == hashlib.sha256(files["DeepSpaceAE/DeepSpaceAE.GameAdapter.dll"].read_bytes()).hexdigest()
 assert audit["gameSha256"] == "725cb999d019dff1ff31bed353c7f9bb8d81a7605a15de1f80f5a3a6cf7b1d05"
+scan_path = root / "artifacts/validation/game-mod-scan.json"
+if not scan_path.is_file():
+    raise SystemExit("Missing native mod scan; run scripts/build-game.ps1 or scripts/build-game.sh first.")
+scan = json.loads(scan_path.read_text())
+assert scan["success"] is True and scan["gameSha256"] == audit["gameSha256"]
+assert scan["manifestSha256"] == hashlib.sha256(files["DeepSpaceAE/manifest.xml"].read_bytes()).hexdigest()
+for name, path in files.items():
+    if name.endswith(".dll"):
+        assert scan["dllSha256"][path.name] == hashlib.sha256(path.read_bytes()).hexdigest()
 output = root / "artifacts/packages" / f"DeepSpaceAE-{version}-100-Rev13-{revision[:7]}.zip"
 if output.exists():
     with zipfile.ZipFile(output) as previous:
@@ -95,6 +104,9 @@ info = {
     "referenceAssemblySha256": "725cb999d019dff1ff31bed353c7f9bb8d81a7605a15de1f80f5a3a6cf7b1d05",
     "configuration": "Release",
     "patchMetadataAudit": {"status": "PASS", "declarations": len(audit["findings"]), "execution": "NOT RUN"},
+    "nativeModScan": {"status": "PASS", "methods": scan["scan"]["MethodsScanned"],
+                      "findings": len(scan["scan"]["Findings"]), "pending": len(scan["scan"]["Pending"]),
+                      "execution": scan["execution"]},
     "modVersion": version,
     "artworkLicense": "AE2 (including Fluix Researcher adaptation): CC-BY-NC-SA-3.0; AE2 Stuff and StorageDrawers: MIT; see THIRD-PARTY-NOTICES.md",
     "targetFramework": "netstandard2.1",

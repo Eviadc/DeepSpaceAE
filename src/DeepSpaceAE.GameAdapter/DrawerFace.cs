@@ -62,8 +62,7 @@ internal sealed class DrawerFace
         MachineryStyle.Place(node,(drawer.widthPixels-width)/2,(drawer.heightPixels-height)/2,width,height);
         // The native drawer body receives input; especially the drag preview
         // must never cover the inventory's drop target with a new raycast hit.
-        var image=typeof(TreeNodeRender).GetProperty("image")!.GetValue(node)!;
-        image.GetType().GetProperty("raycastTarget")!.SetValue(image,false);
+        node.image.raycastTarget=false;
     }
 }
 

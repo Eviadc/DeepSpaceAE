@@ -15,4 +15,5 @@ try {
     Invoke-Checked dotnet @('build', $project, '-c', 'Release', '--no-restore', '--maxcpucount:2', "-p:GameManagedDir=$GameManagedDir")
     Invoke-Checked dotnet @('restore', 'tests/DeepSpaceAE.Tests/DeepSpaceAE.Tests.csproj', '--locked-mode')
     Invoke-Checked dotnet @('run', '--project', 'tests/DeepSpaceAE.Tests/DeepSpaceAE.Tests.csproj', '-c', 'Release', '--no-restore', '--', '--audit-game', "$GameManagedDir/Assembly-CSharp.dll", "$RepoRoot/src/DeepSpaceAE.GameAdapter/bin/Release/netstandard2.1/DeepSpaceAE.GameAdapter.dll", $audit)
+    Invoke-Checked dotnet @('run', '--project', 'tests/DeepSpaceAE.Tests/DeepSpaceAE.Tests.csproj', '-c', 'Release', '--no-build', '--no-restore', '--', '--scan-mod', $GameManagedDir, "$RepoRoot/assets/game/manifest.xml", "$RepoRoot/src/DeepSpaceAE.GameAdapter/bin/Release/netstandard2.1", "$RepoRoot/artifacts/validation/game-mod-scan.json")
 } finally { Pop-Location }

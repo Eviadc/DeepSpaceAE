@@ -113,7 +113,7 @@ public sealed partial class RuntimePilot : MonoBehaviour
                 Check(report.startupHintClosed,"Native startup hint did not close.");
                 hintChecked=true; next=Time.realtimeSinceStartup+5; Write(); return;
             }
-            var actions=config.drawerProfile ? new Action[]{DrawerSetup,DrawerSmallLoad,DrawerLargeLoad,DrawerControllerRoutes,DrawerQuickActions,DrawerPinsDisconnect,DrawerPinsRestore,DrawerManualIo,DrawerManualPlanes,DrawerManualFluids,DrawerSave,DrawerReload}
+            var actions=config.drawerProfile ? new Action[]{DrawerSetup,DrawerSmallLoad,DrawerLargeLoad,DrawerCompatibilityModes,DrawerControllerRoutes,DrawerQuickActions,DrawerPinsDisconnect,DrawerPinsRestore,DrawerManualIo,DrawerManualPlanes,DrawerManualFluids,DrawerSave,DrawerReload}
                 :config.usabilityProfile ? new Action[]{UsabilitySetup,UsabilityWindowPosition,UsabilityZoom,UsabilityDrivePriority,UsabilityBusPriorities,
                 UsabilityDrawer,UsabilityUpgrade,UsabilityTrader,UsabilityMachineBays,UsabilityEmptyFilters,UsabilityMachineProduction,
                 UsabilityVoidOverflow,UsabilityReducedStock,UsabilityContainerBuses,UsabilitySave,UsabilityReload,UsabilityProductionReload}

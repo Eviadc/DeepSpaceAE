@@ -2,7 +2,7 @@
 
 为《深空当铺 / Probably Stolen》加入 AE 风格的存储网络：把容器、硬盘和机器接入无频道上限的线缆，通过终端统一查找和取放物品。
 
-当前版本：**0.17.0-alpha**。目标游戏：**100-Rev13 / Application.version 0.46D / Steam Build 26525552，Windows x64**。
+当前版本：**0.17.1-alpha**。目标游戏：**100-Rev13 / Application.version 0.46D / Steam Build 26525552，Windows x64**。
 
 ## 功能
 
@@ -25,6 +25,7 @@
 - 网络工程师开局、王尔德的AE工程师升级，以及拨打6322预约次日来访的福鲁伊克斯研究员。
 - 村民商人每次必定提供一至两对无线连接器，拾荒连接器权重提高四倍。
 - 开局与升级礼包各含两个无线连接器，不赠送电池；村民商人出售的连接器以双数供货，其他商品批量已缩小，给后列商品留出空间。
+- 原版模组设置提供库存读取和抽屉完整布局验证兼容开关，默认保留优化；界面使用公开 UI API，不再声明弃用反射能力。
 - 默认免电。模组设置可开启实验性耗电规则；自动合成尚未实现。
 
 安装与玩法见[玩家指南](docs/game-test.md)，详细规则见[功能规格](docs/feature-spec.md)。
@@ -38,7 +39,7 @@ NuGet使用锁定还原，游戏引用来自自行安装的对应版本，不随
 ```powershell
 # 安装固定版本SDK（如尚未安装）
 powershell -ExecutionPolicy Bypass -File .\scripts\install-env.ps1
-# 构建及只读补丁元数据审计
+# 构建、只读补丁审计及游戏原生能力扫描
 .\scripts\build-game.ps1 -GameDir '<游戏安装目录>'
 # 构建、打包并部署至该安装目录的Mods
 .\scripts\deploy-game.ps1 -GameDir '<游戏安装目录>'
@@ -58,7 +59,7 @@ GameManagedDir='<游戏目录>/Probably Stolen_Data/Managed' bash scripts/build-
 
 模型测试入口为 `scripts/verify.ps1` / `scripts/verify.sh`；独立运行时测试宿主不属于发布包。
 `scripts/runtime-pilot.ps1 -Usability -Launch` 在新建测试存档中检查终端位置与缩放、驱动器与总线优先级、抽屉锁定与溢出销毁、黑白名单、机器区组网、水培产出优先入网、礼包及村民成对供货，包含普通及多页储物区输入／输出，总共17步并验证保存重载。
-编译和PE审计只验证静态绑定，不代表游戏交互或保存读取已经验收。
+构建同时运行游戏自带 ModScanner，拒绝弃用能力和待生效发现；不修改扫描规则。编译、PE审计和能力扫描只验证静态绑定及扫描合同，不代表游戏交互或保存读取已经验收。
 
 ## 开发文档
 

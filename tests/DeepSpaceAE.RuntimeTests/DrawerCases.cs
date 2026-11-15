@@ -90,6 +90,57 @@ public sealed partial class RuntimePilot
         for(int i=0;i<drawerInstances.Count;i++) Check(drawerInstances[i].GetTagReadonly(PlayerStore.BOUGHT_PRICE_TAG).GetInt()==i,"Distinct stored state was overwritten.");
         details="4096 distinct real instances, exact count, one visible renderer and per-instance prices passed. 200 layouts invoked exactly 200 native item sprite callbacks. Additional 3584 insertions: "+inserted.ToString("F0")+" ms; 200 validations: "+elapsed.ToString("F2")+" ms (512-instance baseline "+drawerSmallValidation.ToString("F2")+" ms).";
     }
+    private void DrawerCompatibilityModes()
+    {
+        var config=ModHelper.GetConfig(Product);
+        var reads=config.Get("native_inventory_reads") as ConfigEntry<bool>;
+        var layout=config.Get("native_drawer_validation") as ConfigEntry<bool>;
+        Check(reads!=null && layout!=null,"Native compatibility settings are missing.");
+        bool previousReads=reads!.Value,previousLayout=layout!.Value;
+        var originals=drawerStock.childItems.ToArray();
+        var callbacks=originals.Select(item=>(Item:item,Original:item.getItemSpriteModifierForItemFunc)).ToArray();
+        var measurements=new List<string>();
+        try
+        {
+            reads.Set(true); layout.Set(true);
+            var probe=Spawn(Product+".drawer"); Add(probe);
+            var probeData=DrawerData(probe); probeData.Validate();
+            Check(Adapter.Field(probeData,"stock")==null && Adapter.Field(probeData,"nativeLayout")==null,
+                "Full compatibility mode still bound private optimization members during construction.");
+            probe.Destroy();
+            foreach(bool nativeReads in new[]{false,true}) foreach(bool nativeLayout in new[]{false,true})
+            {
+                reads.Set(nativeReads); layout.Set(nativeLayout);
+                var first=(List<GameItem>)Adapter.Property(drawerStock,"Stock")!;
+                var second=(List<GameItem>)Adapter.Property(drawerStock,"Stock")!;
+                Check(ReferenceEquals(first,second)!=nativeReads,"Inventory read path did not switch.");
+                Check(first.SequenceEqual(originals) && second.SequenceEqual(originals),"Compatibility read changed stock identity/order.");
+                long validations=0;
+                foreach(var pair in callbacks) pair.Item.getItemSpriteModifierForItemFunc=item=>{validations++; return pair.Original?.Invoke(item);};
+                double elapsed=DrawerValidateTime(3);
+                Check(validations==3L*(nativeLayout?originals.Length:1),"Layout compatibility path validated an unexpected number of items: "+validations);
+                foreach(var pair in callbacks) pair.Item.getItemSpriteModifierForItemFunc=pair.Original;
+                Check(drawerStock.childItems.OfType<GameItemElement>().Count(i=>i.handler.gameObject.activeSelf)==1,"Compatibility layout exposed hidden stock.");
+                var stock=originals[0]; int price=stock.GetTagReadonly(PlayerStore.BOUGHT_PRICE_TAG).GetInt();
+                Adapter.Move(stock,root); Adapter.Move(stock,drawerStock);
+                Check(DrawerUsed(drawer)==originals.Length && drawerStock.childItems.Count==originals.Length,"Compatibility transfer lost stock.");
+                Check(stock.GetTagReadonly(PlayerStore.BOUGHT_PRICE_TAG).GetInt()==price,"Compatibility transfer changed item state.");
+                // Native reinsertion appends the withdrawn instance; compare sets below.
+                originals=drawerStock.childItems.ToArray();
+                Check(Adapter.Static("TerminalStackKey","Read",small,null,false,false)!=null,"Empty native disk lost its terminal grouping key.");
+                var nested=Put(Adapter.Data(small),"toilet_paper");
+                Check(Adapter.Static("TerminalStackKey","Read",small,null,false,false)==null,"Nonempty native disk was incorrectly grouped as empty.");
+                Adapter.Move(nested,root); nested.Destroy();
+                measurements.Add($"reads={nativeReads},layout={nativeLayout}: {validations} callbacks/{elapsed:F2} ms");
+            }
+        }
+        finally
+        {
+            foreach(var pair in callbacks) pair.Item.getItemSpriteModifierForItemFunc=pair.Original;
+            reads.Set(previousReads); layout.Set(previousLayout);
+        }
+        details="All four live compatibility combinations preserved identities/count/state and native withdrawal/reinsertion; authoritative-list vs public snapshot reads and per-item native callbacks verified. "+string.Join("; ",measurements);
+    }
     private void DrawerControllerRoutes()
     {
         EditPriority(drawerController,2);

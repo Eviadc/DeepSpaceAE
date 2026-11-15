@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using HarmonyLib;
 using DeepSpaceAE.Core.Network;
 using UnityEngine;
 namespace DeepSpaceAE.GameAdapter;
@@ -103,26 +102,45 @@ internal static class DrawerStorage
 
 internal sealed class DrawerInventory : GameGridInventory
 {
-    // Native childItems returns a new list on every access. Keep a reference to
-    // the authoritative list, never a second ownership graph.
-    private static readonly AccessTools.FieldRef<GameGridInventory,List<GameItem>> nativeItems = AccessTools.FieldRefAccess<GameGridInventory,List<GameItem>>("items");
-    private static readonly AccessTools.FieldRef<GameGridInventory,int> nativeWidth = AccessTools.FieldRefAccess<GameGridInventory,int>("<widthPixels>k__BackingField");
-    private static readonly AccessTools.FieldRef<GameGridInventory,int> nativeHeight = AccessTools.FieldRefAccess<GameGridInventory,int>("<heightPixels>k__BackingField");
-    private static readonly Action<GameGridInventory> validateBackground = AccessTools.MethodDelegate<Action<GameGridInventory>>(AccessTools.Method(typeof(GameGridInventory),"ValidateBackground"));
-    private static readonly Action<GameGridInventory> validateCells = AccessTools.MethodDelegate<Action<GameGridInventory>>(AccessTools.Method(typeof(GameGridInventory),"ValidateCellBackdrops"));
-    private static readonly AccessTools.FieldRef<GameGridInventory,TreeNodeRender> nativeBackground = AccessTools.FieldRefAccess<GameGridInventory,TreeNodeRender>("background");
-    private static readonly AccessTools.FieldRef<GameGridInventory,TreeNodeRender> nativeBorder = AccessTools.FieldRefAccess<GameGridInventory,TreeNodeRender>("insideBorder");
-    private static readonly AccessTools.FieldRef<GameGridInventory,bool> nativeHideBorder = AccessTools.FieldRefAccess<GameGridInventory,bool>("hideBorder");
-    private static readonly System.Reflection.PropertyInfo imageProperty=typeof(TreeNodeRender).GetProperty("image")!;
-    private static readonly System.Reflection.PropertyInfo imageColor=imageProperty.PropertyType.GetProperty("color")!;
-    private static readonly System.Reflection.PropertyInfo imageEnabled=imageProperty.PropertyType.GetProperty("enabled")!;
+    // The native getter copies the entire stock. Cache its authoritative list,
+    // not a second inventory. All item movement still goes through native slots.
+    private List<GameItem>? stock;
+    private NativeLayout? nativeLayout;
+    private sealed class NativeLayout
+    {
+        // This fixed game field is scanner-visible. ModReflect.Get performs a
+        // caller stack walk on every read; keep that out of the layout hot path.
+        private static readonly System.Reflection.FieldInfo hideBorder=typeof(GameGridInventory)
+            .GetField("hideBorder",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!;
+        private readonly Action<int> setWidth,setHeight;
+        private readonly Action background,cells;
+        private readonly TreeNodeRender backgroundNode,borderNode;
+        internal NativeLayout(DrawerInventory inventory)
+        {
+            setWidth=ModReflect.Method<Action<int>>(inventory,"set_widthPixels");
+            setHeight=ModReflect.Method<Action<int>>(inventory,"set_heightPixels");
+            background=ModReflect.Method<Action>(inventory,"ValidateBackground");
+            cells=ModReflect.Method<Action>(inventory,"ValidateCellBackdrops");
+            backgroundNode=ModReflect.Get<TreeNodeRender>(inventory,"background");
+            borderNode=ModReflect.Get<TreeNodeRender>(inventory,"insideBorder");
+        }
+        internal void Validate(DrawerInventory inventory)
+        {
+            setWidth(inventory.inventoryShape.width*UISettings.current.gridSize);
+            setHeight(inventory.inventoryShape.height*UISettings.current.gridSize);
+            background(); cells(); inventory.First?.Validate();
+            var color=new Color(1,1,1,1-inventory.transparency);
+            borderNode.image.color=color; backgroundNode.image.color=color;
+            if((bool)hideBorder.GetValue(inventory)!) borderNode.image.enabled=false;
+        }
+    }
     private readonly Dictionary<GameItem,int> quantities = new();
     private readonly HashSet<GameItem> variants = new();
     private GameItem? typeRepresentative;
     private bool typeDirty;
     private long used;
-    internal List<GameItem> Stock => nativeItems(this);
-    internal GameItem? First => Stock.Count == 0 ? null : Stock[0];
+    internal List<GameItem> Stock => ModSettings.NativeInventoryReads ? childItems : stock ??= ModReflect.Get<List<GameItem>>(this,"items");
+    internal GameItem? First { get { var items=Stock; return items.Count == 0 ? null : items[0]; } }
     internal void StockChanged(GameItem item)
     {
         quantities.TryGetValue(item,out int previous);
@@ -148,15 +166,10 @@ internal sealed class DrawerInventory : GameGridInventory
     {
         // The native implementation validates every hidden real instance on
         // every insertion and window layout. Only one is rendered here.
-        if(Drawer==null) { base.Validate(); return; }
-        nativeWidth(this)=inventoryShape.width*UISettings.current.gridSize;
-        nativeHeight(this)=inventoryShape.height*UISettings.current.gridSize;
-        validateBackground(this); validateCells(this);
-        First?.Validate();
-        var color=new Color(1,1,1,1-transparency);
-        var border=imageProperty.GetValue(nativeBorder(this))!;
-        imageColor.SetValue(border,color); imageColor.SetValue(imageProperty.GetValue(nativeBackground(this)),color);
-        if(nativeHideBorder(this)) imageEnabled.SetValue(border,false);
+        if(Drawer==null || ModSettings.NativeDrawerValidation) { base.Validate(); return; }
+        // Lazy binding also lets the compatibility path avoid these private
+        // members entirely, including when constructing a new drawer.
+        (nativeLayout ??= new NativeLayout(this)).Validate(this);
     }
     internal void FaceVisibility(bool fake,bool enabled,Color tint)=>face?.SetVisibility(fake,enabled,tint);
     internal void QueueDisplay()

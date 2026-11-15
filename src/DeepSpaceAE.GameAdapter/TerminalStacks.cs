@@ -55,9 +55,9 @@ internal static class TerminalStackKey
             bool empty=inv switch {
                 GameSlotInventory slot=>slot.childItem==null,
                 GameGridInventory grid when grid.GetType()==typeof(GameGridInventory) || grid is DiskAreaInventory || grid is DrawerInventory
-                    =>((ICollection)gridItems.GetValue(grid)!).Count==0,
+                    =>ModSettings.NativeInventoryReads ? grid.childItems.Count==0 : ((ICollection)gridItems.GetValue(grid)!).Count==0,
                 GameGridScrollableInventory scroll when scroll.GetType()==typeof(GameGridScrollableInventory)
-                    =>((ICollection)scrollItems.GetValue(scroll)!).Count==0,
+                    =>ModSettings.NativeInventoryReads ? scroll.childItems.Count==0 : ((ICollection)scrollItems.GetValue(scroll)!).Count==0,
                 _=>false
             };
             if(!empty && !includeContents) return null;

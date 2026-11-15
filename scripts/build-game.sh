@@ -18,3 +18,9 @@ dotnet run --project tests/DeepSpaceAE.Tests/DeepSpaceAE.Tests.csproj --configur
     --audit-game "$GameManagedDir/Assembly-CSharp.dll" \
     "$repo_root/src/DeepSpaceAE.GameAdapter/bin/Release/netstandard2.1/DeepSpaceAE.GameAdapter.dll" \
     "$repo_root/artifacts/validation/game-patch-audit.json"
+
+# Reject retiring capabilities and pending future findings using the actual game scanner.
+dotnet run --project tests/DeepSpaceAE.Tests/DeepSpaceAE.Tests.csproj --configuration Release --no-build --no-restore -- \
+    --scan-mod "$GameManagedDir" "$repo_root/assets/game/manifest.xml" \
+    "$repo_root/src/DeepSpaceAE.GameAdapter/bin/Release/netstandard2.1" \
+    "$repo_root/artifacts/validation/game-mod-scan.json"

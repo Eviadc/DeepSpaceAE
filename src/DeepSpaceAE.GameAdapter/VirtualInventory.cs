@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Linq;
 using DeepSpaceAE.Core.Network;
 using UnityEngine;
@@ -172,26 +171,22 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
             if(count==selectionCells.Count)
             {
                 var node=TreeNodeRender.Instantiate().SetParent(inner); node.transform.SetSiblingIndex(1);
-                var image=imageProperty.GetValue(node)!; image.GetType().GetProperty("raycastTarget")!.SetValue(image,false);
-                imageEnabled ??= image.GetType().GetProperty("enabled")!; selectionCells.Add(node);
+                node.image.raycastTarget=false; selectionCells.Add(node);
             }
             var target=selectionCells[count++];
             target.rectTransform.anchorMin=target.rectTransform.anchorMax=target.rectTransform.pivot=new Vector2(0,1);
             MachineryStyle.Place(target,cell.X*cellSize,cell.Y*cellSize,cellSize,cellSize);
-            setHighlight.Invoke(RenderHandler.current,new object[]{imageProperty.GetValue(target)!,RenderHandler.BackgroundColor.Blue,RenderHandler.BackgroundType.Grid});
+            RenderHandler.current.SetHighlightColor(target.image,RenderHandler.BackgroundColor.Blue,RenderHandler.BackgroundType.Grid);
         }
-        for(int i=count;i<selectionCells.Count;i++) imageEnabled!.SetValue(imageProperty.GetValue(selectionCells[i]),false);
+        for(int i=count;i<selectionCells.Count;i++) selectionCells[i].image.enabled=false;
         return selectionCells.GetRange(0,count);
     }
     internal void ClearSelectionVisuals()
-    { foreach(var node in selectionCells) if(node!=null) imageEnabled!.SetValue(imageProperty.GetValue(node),false); }
+    { foreach(var node in selectionCells) if(node!=null) node.image.enabled=false; }
     // The terminal is a network destination, not a physically placed item slot.
     // Use viewport-local cells so scrolling deep into a large catalog never allocates
     // highlight nodes for every preceding row.
     private readonly List<TreeNodeRender> dropHighlights = new();
-    private static readonly PropertyInfo imageProperty = typeof(TreeNodeRender).GetProperty("image")!;
-    private static readonly MethodInfo setHighlight = typeof(RenderHandler).GetMethod("SetHighlightColor")!;
-    private static PropertyInfo? imageEnabled;
     public override List<TreeNodeRender> HighlightSlot(SlotMarker slot, RenderHandler.BackgroundColor color, bool doReplace)
         => HighlightDropArea(color);
     public override List<TreeNodeRender> HighlightWholeInventory(RenderHandler.BackgroundColor color)
@@ -204,25 +199,23 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
         {
             var node = TreeNodeRender.Instantiate().SetParent(handler);
             node.transform.SetSiblingIndex(1); // above the grid background, below native item views
-            var image = imageProperty.GetValue(node)!;
-            image.GetType().GetProperty("raycastTarget")!.SetValue(image, false);
-            imageEnabled ??= image.GetType().GetProperty("enabled")!;
+            node.image.raycastTarget=false;
             dropHighlights.Add(node);
         }
         for (int i = 0; i < dropHighlights.Count; i++)
         {
-            var node = dropHighlights[i]; var image = imageProperty.GetValue(node)!;
-            if (i >= count) { imageEnabled!.SetValue(image, false); continue; }
+            var node = dropHighlights[i]; var image = node.image;
+            if (i >= count) { image.enabled=false; continue; }
             node.rectTransform.anchorMin = node.rectTransform.anchorMax = node.rectTransform.pivot = new Vector2(0, 1);
             MachineryStyle.Place(node, i % width * cell, i / width * cell, cell, cell);
-            setHighlight.Invoke(RenderHandler.current, new object[] { image, color, RenderHandler.BackgroundType.Grid });
+            RenderHandler.current.SetHighlightColor(image,color,RenderHandler.BackgroundType.Grid);
         }
         return dropHighlights.GetRange(0, count);
     }
     public override void ClearHighlight()
     {
         base.ClearHighlight();
-        foreach (var node in dropHighlights) imageEnabled!.SetValue(imageProperty.GetValue(node), false);
+        foreach (var node in dropHighlights) node.image.enabled=false;
     }
     // False selects native sequential bulk insertion, not spatial formation placement.
     public override bool SupportsGroupPlacement => false;
@@ -293,9 +286,9 @@ internal sealed class VirtualInventory : GameGridScrollableInventory
                     MachineryStyle.Place(liquidLabel,2*cell,0,4*cell,3*cell);
                     foreach(var node in liquidLabel.GetComponentsInChildren<TreeNodeRender>(true))
                     {
-                        var text=typeof(TreeNodeRender).GetProperty("text")!.GetValue(node);
+                        var text=node.text;
                         if(text==null) continue;
-                        text.GetType().GetProperty("raycastTarget")!.SetValue(text,true);
+                        text.raycastTarget=true;
                         MachineryStyle.Place(node,0,0,4*cell,3*cell);
                     }
                 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
 using UnityEngine;
+using TMPro;
 
 namespace DeepSpaceAE.GameAdapter;
 
@@ -15,7 +16,7 @@ internal sealed class NativeStackBadge
     private readonly GameItemElement item;
     private readonly TreeNodeRender root;
     private readonly TreeNodeRender nativeCount,nativeShadow;
-    private readonly object countText,shadowText;
+    private readonly TextMeshProUGUI countText,shadowText;
     private bool visible=true,showSingle;
     private long quantity;
     internal NativeStackBadge(GameItemElement item,TreeNodeRender parent,int width,int height,bool raycast=true)
@@ -24,8 +25,7 @@ internal sealed class NativeStackBadge
         nativeCount=(TreeNodeRender)countField.GetValue(item)!;
         nativeShadow=(TreeNodeRender)shadowField.GetValue(item)!;
         root=TreeNodeRender.Instantiate(item,"AE display stack count").SetParent(parent);
-        var image=typeof(TreeNodeRender).GetProperty("image")!.GetValue(root)!;
-        image.GetType().GetProperty("enabled")!.SetValue(image,false);
+        root.image.enabled=false;
         MachineryStyle.Place(root,0,0,width,height);
         var shadow=NativeItemMirror.Copy(nativeShadow,root);
         var count=NativeItemMirror.Copy(nativeCount,root);
@@ -35,19 +35,12 @@ internal sealed class NativeStackBadge
         countText=Configure(count,Color.white,raycast);
         shadowText=Configure(shadow,new Color(41/255f,34/255f,52/255f,1),false);
     }
-    private static object Configure(TreeNodeRender node,Color color,bool raycast)
+    private static TextMeshProUGUI Configure(TreeNodeRender node,Color color,bool raycast)
     {
-        var text=typeof(TreeNodeRender).GetProperty("text")!.GetValue(node)!; var type=text.GetType();
-        type.GetProperty("color")!.SetValue(text,color);
-        type.GetProperty("fontSize")!.SetValue(text,8f);
-        type.GetProperty("fontSizeMin")!.SetValue(text,4f);
-        type.GetProperty("fontSizeMax")!.SetValue(text,8f);
-        type.GetProperty("enableAutoSizing")!.SetValue(text,true);
-        type.GetProperty("enableWordWrapping")!.SetValue(text,false);
-        type.GetProperty("raycastTarget")!.SetValue(text,raycast);
-        type.GetProperty("enabled")!.SetValue(text,true);
-        var alignment=type.GetProperty("alignment")!;
-        alignment.SetValue(text,Enum.Parse(alignment.PropertyType,"BottomRight"));
+        var text=node.text;
+        text.color=color; text.fontSize=8f; text.fontSizeMin=4f; text.fontSizeMax=8f;
+        text.enableAutoSizing=true; text.enableWordWrapping=false;
+        text.raycastTarget=raycast; text.enabled=true; text.alignment=TextAlignmentOptions.BottomRight;
         return text;
     }
     internal void Update(TreeNodeRender mirror,long quantity)
@@ -63,15 +56,15 @@ internal sealed class NativeStackBadge
         this.quantity=quantity; this.showSingle=showSingle;
         root.gameObject.SetActive(visible && quantity>(showSingle?0:1));
         string value=quantity.ToString(CultureInfo.InvariantCulture);
-        countText.GetType().GetProperty("text")!.SetValue(countText,value);
-        shadowText.GetType().GetProperty("text")!.SetValue(shadowText,value);
+        countText.text=value;
+        shadowText.text=value;
     }
     internal void SetVisibility(bool enabled,Color tint)
     {
         visible=enabled;
         root.gameObject.SetActive(enabled && quantity>(showSingle?0:1));
-        countText.GetType().GetProperty("color")!.SetValue(countText,tint);
-        shadowText.GetType().GetProperty("color")!.SetValue(shadowText,new Color(tint.r*41/255f,tint.g*34/255f,tint.b*52/255f,tint.a));
+        countText.color=tint;
+        shadowText.color=new Color(tint.r*41/255f,tint.g*34/255f,tint.b*52/255f,tint.a);
     }
     private void HideCopy(TreeNodeRender source,TreeNodeRender mirror)
     {
