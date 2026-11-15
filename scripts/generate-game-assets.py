@@ -151,6 +151,11 @@ def quartz_wrench():
     return result
 
 def assets():
+    wireless_source=REPO/'assets/ae2stuff-source'
+    for entry in json.loads((wireless_source/'sources.json').read_text())['files']:
+        data=(wireless_source/entry['file']).read_bytes()
+        if Path(entry['file']).suffix in ('.json','.txt'):data=data.replace(b'\r\n',b'\n')
+        assert hashlib.sha256(data).hexdigest()==entry['sha256'],entry['file']
     metadata = json.loads((SOURCE/'sources.json').read_text())
     for entry in metadata['files']:
         data = (SOURCE/entry['file']).read_bytes()
@@ -173,9 +178,15 @@ def assets():
     result.update(bus_pixel_assets())
     # Installed faces keep the shared thin AE2 storage-bus mounting geometry,
     # preserving four-face hit regions.
-    for kind in ('import','export'):
-        profile=project_top('storage_bus_base.json', image(f'{kind}_bus_sides.png'))
+    for kind in ('import','export','formation','annihilation'):
+        profile=project_top('storage_bus_base.json', image(f'{kind}_bus_sides.png' if kind in ('import','export') else 'plane_sides.png'))
         profile.alpha_composite(connector.crop((6,4,10,6)), (6,4))
+        if kind in ('formation','annihilation'):
+            # Plane faces mounted as buses use the existing four hit regions.
+            # Distinguish their original pale/blue plates with a lit edge band.
+            tint=(131,187,209,255) if kind=='formation' else (161,130,192,255)
+            for x in range(4,12):
+                if profile.getpixel((x,0))[3]:profile.putpixel((x,0),tint)
         rotations=[profile,profile.transpose(Image.Transpose.ROTATE_270),profile.transpose(Image.Transpose.ROTATE_180),profile.transpose(Image.Transpose.ROTATE_90)]
         for side,sprite in enumerate(rotations): result[f'{kind}-face-{side}.png']=sprite
     terminal=Image.new('RGBA',(16,16))
@@ -202,7 +213,7 @@ def assets():
     result['pipeline.png']=result['pipeline-15.png']
     result['energy-receiver.png']=image('energy_acceptor.png').resize((32,32),Image.Resampling.NEAREST)
     for name,img in list(result.items()):
-        if name in ('item-storage-bus.png','import-bus.png','export-bus.png'): continue
+        if name.endswith('-bus.png'): continue
         if not name.endswith('-off.png') and name[:-4]+'-off.png' not in result: result[name[:-4]+'-off.png']=inactive(img)
     result['capacity-upgrade.png']=image('card_capacity.png')
     result['tag-upgrade.png']=image('card_fuzzy.png')
@@ -222,6 +233,21 @@ def assets():
             if bounds and min(bounds[0],bounds[1],img.width-bounds[2],img.height-bounds[3])<margin:
                 result[name]=inset_device(img,margin)
     result.update(device_pixel_assets())
+    # Fluid variants retain the exact original bus geometry and alpha. Repaint
+    # active material blocks in the water ramp, including all installed faces.
+    for kind in ('item-storage-bus','import-bus','export-bus','bus-face','import-face','export-face'):
+        names=[kind+'.png'] if kind.endswith('-bus') else [f'{kind}-{side}.png' for side in range(4)]
+        for name in names:
+            sprite=result[name].copy()
+            for y in range(sprite.height):
+                for x in range(sprite.width):
+                    r,g,b,a=sprite.getpixel((x,y))
+                    if a and (max(r,g,b)-min(r,g,b)>20 or r+g+b>620):
+                        v=(r+g+b)//3
+                        rgb=(160,221,231) if v>170 else (97,174,196) if v>110 else (57,107,139)
+                        sprite.putpixel((x,y),rgb+(a,))
+            result['fluid-'+name]=sprite
+            if '-face-' in name:result['fluid-'+name[:-4]+'-off.png']=inactive(sprite)
     # Fill only the transparent margin, stopping immediately before the body:
     # 2px devices, 3px controller, 4px terminal. Never cover their frame/circuitry.
     for depth in (2,3,4):

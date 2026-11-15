@@ -39,9 +39,18 @@ public sealed partial class RuntimePilot
                 if(!root.childItems.Any(i=>i.modifiedShape.minX<gx+10 && i.modifiedShape.maxX>=gx-1
                     && i.modifiedShape.minY<gy+6 && i.modifiedShape.maxY>=gy-1))
                 { x=gx; y=gy; free=true; }
-        Check(free,"No isolated native rectangle for workshop topology reproduction.");
+        if(!free)
+        {
+            // The guarded fresh pilot slot can contain arbitrary gifts from
+            // other enabled mods. Add empty native grid space for this fixture
+            // instead of removing their items or depending on their dimensions.
+            Guard();
+            int oldWidth=root.inventoryShape.width;
+            root.SetShape(oldWidth+12,Math.Max(8,root.inventoryShape.height));
+            x=oldWidth+1; y=1;
+        }
         core=Spawn(Product+".core"); At(core,x,y);
-        var power=MainItems().First(i=>i.identifier=="energy_credit");
+        var power=Spawn("energy_credit"); Add(power);
         Adapter.Move(power,(GameInventory)Adapter.Static("PartStorage","Inventory",core)!);
         details="Fresh engineer slot; original supplies stored in a real storage bay; native 3x3 controller placed in an isolated rectangle.";
     }

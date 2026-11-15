@@ -12,7 +12,11 @@ namespace DeepSpaceAE.GameAdapter;
 internal static class NetworkActivitySavePatch
 {
     [HarmonyPrefix]
-    private static void Prefix()=>ModEntry.ActiveSession?.SaveNetworkActivity();
+    private static void Prefix()
+    {
+        ModEntry.ActiveSession?.RememberTerminalWindow();
+        ModEntry.ActiveSession?.SaveNetworkActivity();
+    }
 }
 
 internal sealed partial class GameSession

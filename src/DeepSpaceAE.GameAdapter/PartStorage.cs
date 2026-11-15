@@ -45,14 +45,20 @@ internal static partial class PartStorage
         var cards = Inventory(bus).childItems;
         bool tags = cards.Any(i => i.identifier == Tag);
         int capacity = Math.Min(tags ? 4 : 5, cards.Count(i => i.identifier == Capacity));
+        var filters=Filters(bus);
+        bool legacyFilter=!string.IsNullOrWhiteSpace(Text(bus,"filters")) || !string.IsNullOrWhiteSpace(Text(bus,"tag_filters"));
+        // Preserve an older implicit whitelist that already contains filters.
+        // Untouched filters and newly created buses default to a blacklist.
         return new StoragePolicy(Int(bus, "priority"), (StorageAccess)Math.Max(0, Math.Min(2, Int(bus, "access"))), tags,
-            Int(bus, "exclude") != 0, Int(bus, "extract_filter", 1) != 0, capacity, Filters(bus));
+            Int(bus, "exclude",legacyFilter?0:1) != 0,
+            Int(bus, "extract_filter", 1) != 0, capacity, filters);
     }
     internal static string[] Tags(GameItem item) => item.modifiedState.dict.Where(p => p.Value.valueEnabled && !p.Key.StartsWith("deepspaceae.", StringComparison.Ordinal))
         .Select(p => p.Key).Concat(item.GetGameItemType()).Distinct(StringComparer.Ordinal).ToArray();
 
     internal static void Create(GameItem item)
     {
+        if(IoBus.IsBus(item)) Number(item,"exclude",1);
         if (item.identifier == "deepspaceae.core")
         {
             var slot = new GameSlotInventory();
@@ -68,7 +74,7 @@ internal static partial class PartStorage
             slot.onSlotRemoveItemEndFunc += (_, _, _) => { ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item,true); };
             slot.maxSlotRemoveItemFunc = (_, _, _) => CanRemovePower(item) ? int.MaxValue : 0;
             slot.onSlotAddItemEndFunc += (battery, _, _) => {
-                if (ModEntry.ActiveSession?.Loading != false || !ReferenceEquals(item.parentInventory,GameSession.MainInventory())) { RestoreLocks(item); return; }
+                if (ModEntry.ActiveSession?.Loading != false) { RestoreLocks(item); return; }
                 if (!ModSettings.EnergyEnabled) { RestoreLocks(item); ModEntry.ActiveSession.Visuals.Invalidate(); ModEntry.ActiveSession.NativeStorageChanged(item,true); return; }
                 int cost = ModEntry.ActiveSession.CoreCost(item);
                 if(UsesPool(item)) { RestoreLocks(item); ModEntry.ActiveSession.Visuals.Invalidate(); return; }
@@ -96,8 +102,8 @@ internal static partial class PartStorage
                     int installed = 0;
                     foreach (var existing in grid.childItems.Where(b => !ReferenceEquals(b, bus)))
                     { int face = Int(existing, "cable_face", -1); if (face >= 0 && face < 4) installed |= 1 << face; }
-                    var root=GameSession.MainInventory();
-                    int connected=root!=null && ReferenceEquals(item.parentInventory,root)?new InventoryLayout(root).CableMask(item):0;
+                    var root=item.parentInventory;
+                    int connected=root!=null?new InventoryLayout(root).CableMask(item):0;
                     int chosen = CablePorts.ChooseFace(installed, connected);
                     if (chosen < 0) return;
                     Number(bus, "cable_face", chosen);

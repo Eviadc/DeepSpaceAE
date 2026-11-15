@@ -61,6 +61,24 @@
       "part": "FluidInterface",
       "name": "流体接口",
       "icon": "fluid-interface.svg"
+    },
+    {
+      "id": "deepspaceae.wireless_connector",
+      "part": "WirelessConnector",
+      "name": "无线连接器",
+      "icon": "wireless-connector.svg"
+    },
+    {
+      "id": "deepspaceae.formation_bus",
+      "part": "FormationBus",
+      "name": "放置总线",
+      "icon": "formation-bus.svg"
+    },
+    {
+      "id": "deepspaceae.annihilation_bus",
+      "part": "AnnihilationBus",
+      "name": "吸收总线",
+      "icon": "annihilation-bus.svg"
     }
   ]
 }

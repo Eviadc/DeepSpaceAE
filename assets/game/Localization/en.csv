@@ -6,17 +6,17 @@ item_capacity_name,AE Capacity Card
 item_tag_name,AE Category Card
 item_wrench_name,AE Wrench
 item_bus_desc,Install on a cable face to access adjacent storage. Double-click that face to configure it.
-item_part_desc,Place directly in the main inventory to join the network. Double-click to open.
+item_part_desc,Place in the main inventory, a machine bay, or an inventory with a wireless connector. Double-click to open.
 item_flavor,Applied energy in deep space.
 item_capacity_desc,Bus: +9 filter slots. Drawer: x4 capacity; max 5 cards. Drive: +2 bays; max 4 cards.
 item_tag_desc,Enables bus tag filters. One per bus. Terminal tag and current-customer filters are built in.
 item_wrench_desc,Use on the bus face to remove that bus. Use on a detached bus to remove its last upgrade card.
 error_enter_game,Load a game first.
-error_terminal_main,Terminal inactive: place it directly in the main inventory.
-error_terminal_network,"Terminal inactive: check the controller and cables. Use one controller per network."
+error_terminal_main,Terminal inactive: place it in the main inventory, a machine bay, or a connected inventory.
+error_terminal_network,Terminal inactive: check the controller and cables. Use one controller per network.
 error_network_power,Network unpowered: install a battery with enough energy for the night.
 error_operation,Operation incomplete. Keep the game log and check the network.
-error_part_main,Part inactive: place it directly in the main inventory.
+error_part_main,Part inactive: place it in the main inventory, a machine bay, or a connected inventory.
 error_reserve,The battery cannot reserve enough energy for the night.
 error_locked,Operations are locked.
 error_not_owned,You do not own this item.
@@ -71,12 +71,12 @@ ui_inactive,Inactive
 ui_access_both,Insert / extract
 ui_access_extract,Extract only
 ui_access_insert,Insert only
-ui_exclude,Exclude
-ui_include,Include
+ui_exclude,Blacklist
+ui_include,Whitelist
 ui_filter_extract,Filtered extraction
 ui_extract_all,Extract all
 ui_access_mode,Access mode
-ui_match_help,Include or exclude the items / tags in ghost slots. Empty filters allow everything.
+ui_match_help,Blacklist by default: empty allows everything. A whitelist allows only listed items or tags; empty rejects everything.
 ui_extract_help,Apply filters to extraction
 ui_priority,Priority
 ui_upgrades,Upgrades
@@ -84,7 +84,7 @@ ui_category_filter,Tag filter
 ui_item_filter,Item filter
 ui_bus_title,AE Storage Bus
 ui_set_filter,Drag an item here to set the filter
-ui_set_tag_filter,Drag an item here to choose a tag. Empty filters allow everything.
+ui_set_tag_filter,Drag an item here to choose a tag. An empty blacklist allows everything; an empty whitelist rejects everything.
 ui_click_clear,\nClick to clear
 ui_choose_category,Choose a tag from this item
 ui_tag_filter_help,Match the presence of a tag; its numeric value is ignored.
@@ -144,19 +144,19 @@ error_liquid_access,The storage bus does not allow this liquid action.
 error_liquid_use_native,Use the native select-container then click-target action to pour liquid.
 item_import_name,AE Import Bus
 item_export_name,AE Export Bus
-item_io_desc,Cable upgrade. Import takes machine output into the network; export feeds machine input. Uses native machine roles and hopper night windows.
-ui_io_import,Machine output -> network
-ui_io_export,Network -> machine input
+item_io_desc,Cable upgrade. Import takes machine output or ordinary stored items into the network; export fills machine input or ordinary storage. Uses native inventory rules and hopper night windows.
+ui_io_import,Output / storage -> network
+ui_io_export,Network -> input / storage
 ui_io_enabled,Night automation
 ui_io_order,Hopper order (1-15)
 ui_io_run,Transfer now
 ui_io_offline,Network offline / no power
-ui_io_no_slots,No compatible machine input/output slot
+ui_io_no_slots,"No compatible input, output or storage area"
 ui_io_moved,Transferred {0} units
 ui_io_idle,No eligible transfer / full or locked
 ui_io_error,Transfer stopped - check log
 upgrade_engineer_name,AE Engineer
-upgrade_engineer_desc,Wilde puts you in touch with a Fluix Researcher. Receive a controller + 8 cables + 2 storage buses + a terminal + a disk drive + 2 small disks + a wrench + an ME contact slip. Call 6322 to arrange a visit tomorrow. Bring your own battery. Make room in the main inventory; pending gifts resume when you open the shutter or next morning.
+upgrade_engineer_desc,"Wilde introduces you to the Fluix Researcher and provides an AE starter kit: a controller; 8 cables; 2 storage buses; a terminal; a drive; 2 small disks; a wrench; 2 wireless connectors; and an ME contact slip. Call 6322 to arrange a visit for tomorrow."
 upgrade_engineer_done,Fluix Researcher introduced. Gifts still pending: {0}.
 upgrade_engineer_fault,Starter delivery outcome unknown. Retain the log; it will not be sent again automatically.
 npc_steve_name,Fluix Researcher
@@ -178,22 +178,21 @@ ui_pool_summary,Power plan: {0} selected / {1} connected sources
 ui_source_reserved,Reserved: {0} kJ
 ui_core_slot_empty,Controller slot empty - receivers can supply power.
 item_drawer_name,Storage Drawer
-item_drawer_desc,2x2 single-kind drawer with 16 units. Each capacity card multiplies the limit by four; five cards maximum. Preserves real item state. Empty it to change kind. Connect through a storage bus.
+item_drawer_desc,2x2 single-kind drawer with 16 units. Each capacity card multiplies capacity by four, up to five cards. Supports type locking and optional overflow destruction, off by default. Connect through a storage bus.
 ui_drawer_count,Drawer stock: {0} / {1} units
 ui_all_tags,All tags
 ui_customer_demand,Current customer demand
 start_engineer_title,Network Engineer
-start_engineer_description,Begin with an AE storage kit + a fully charged native battery + an ME contact slip in addition to generalist supplies and their usual starting cost. Call 6322 to arrange the Fluix Researcher's visit tomorrow. Wilde's AE Engineer gift is already included. If inventory is full make space and open the shutter to receive the remainder.
-start_engineer_base,Storage bay x1 and generalist supplies; starting cost 50
-start_engineer_kit,AE controller x1; cables x8; storage buses x2; terminal x1
-start_engineer_disks,Drive x1; small disks x2; wrench x1
-start_engineer_power,One fully charged native battery
+start_engineer_description,"During your apprenticeship with The Mentor, you learned to organize stock with an AE network. You arrive with a storage kit and a research contact, ready to bring order to your own little shop."
+start_engineer_base,"Generalist supplies and a storage bay; starting cost 50"
+start_engineer_kit,"AE controller and terminal; 8 cables and 2 storage buses"
+start_engineer_disks,"Disk drive; 2 small disks and a wrench"
 start_engineer_pending,This gift is included in the Network Engineer start. Pending delivery: {0} items. Other mods may automatically pack delivered items into containers in your main inventory.
 setting_energy_name,AE network energy use (testing option)
 setting_energy_desc,Off by default: AE networks need no batteries and incur no energy use or grid charges. Enable to restore daily peak budgeting and pooled minimum-battery selection with required-source locks and native grid billing. Applies immediately. Existing energy receivers remain usable but are no longer sold or dropped. This option is for testing the power system.
 ui_power_disabled,Free power: no battery needed; batteries can be removed freely
-start_engineer_routing,Tag upgrade x1; import buses x2; export buses x2
-start_engineer_contact,ME contact slip x1 (6322; next-day visits)
+start_engineer_routing,"Tag upgrade; 2 import buses and 2 export buses"
+start_engineer_contact,"Research supplier at 6322; AE Engineer upgrade already unlocked"
 item_interface_name,ME Item Interface
 item_fluid_interface_name,ME Fluid Interface
 ui_interface_online,Connected to network
@@ -211,3 +210,44 @@ ui_interface_last,Last deposit: {0} units
 ui_modified,Modified
 ui_interface_auto_purchase,Store purchases automatically
 ui_interface_purchase_hint,Store purchases including wholesale.\nOff by default. Excess items follow\nthe normal placement setting.
+item_fluid_bus_name,AE Fluid Storage Bus
+item_fluid_import_name,AE Fluid Import Bus
+item_fluid_export_name,AE Fluid Export Bus
+item_formation_name,AE Formation Bus
+item_annihilation_name,AE Annihilation Bus
+item_wireless_name,AE Wireless Connector
+item_wireless_desc,Connect networks in any inventory. Select this connector and target another to pair; double-click to inspect or unlink.
+item_plane_desc,"Mount on a cable face. Works on the cell in front by default, or the entire containing inventory when configured. Items only."
+item_interface_modes_desc,Right-click and choose Toggle to switch item/fluid form; double-click to configure. Empty the fluid buffer before switching back.
+item_bus_modes_desc,Mount on a cable face and double-click that face to configure. Right-click and choose Toggle to switch item/fluid form; upgrades and filters are kept.
+ui_form_empty_first,Empty the interface liquid buffer before switching to item form.
+ui_form_fluid,Form: fluid
+ui_form_item,Form: item
+ui_form_toggle,Toggle item / fluid form
+ui_form_hint,Also available as Toggle in the item right-click menu.
+ui_wireless_hint,"Select a connector, then target its peer. Pairing replaces old links. Both inventories work with their windows closed."
+ui_wireless_main,main inventory
+ui_wireless_unpaired,"Unpaired, or peer unavailable"
+ui_wireless_paired,Paired: #{0} · {1}
+ui_wireless_unlink,Unlink pair
+ui_plane_absorb,Absorb from this inventory
+ui_plane_place,Place filtered network items
+ui_plane_scope,Scope
+ui_plane_front,Front cell (default)
+ui_plane_whole,Entire containing inventory
+ui_plane_scope_hint,An occupied front cell blocks placement. AE components and hoppers are never absorbed.
+ui_plane_choose_filter,An empty whitelist places nothing. Add a filter or switch to a blacklist.
+ui_fluid_io_moved,Transferred {0} mL of fluid
+ui_fluid_filter_hint,"Sample a filled container: fuzzy matches component types, exact matches ratios. Bottle type and volume are ignored."
+ui_fluid_filter_recapture,Drop a filled liquid container again to capture a fluid sample.
+ui_priority_value,"Priority: {0}"
+ui_terminal_size,"Cycle interface size: 100% → 50% → 75%"
+ui_drawer_unlocked,"Item type unlocked"
+ui_drawer_lock_waiting,"Locked: waiting for the first item"
+ui_drawer_locked_type,"Locked: {0}"
+ui_drawer_lock,"Lock item type"
+ui_drawer_unlock,"Unlock item type"
+ui_drawer_lock_help,"The drawer remembers its item type even when empty. Unlock and empty it before storing a different item."
+start_engineer_wireless,"2 wireless connectors to link separate inventories"
+ui_drawer_void,Destroy overflow
+ui_drawer_void_help,"Off by default. Incoming matching items beyond capacity are permanently destroyed. Existing stock is kept."

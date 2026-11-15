@@ -8,6 +8,8 @@ namespace DeepSpaceAE.GameAdapter;
 internal sealed partial class GameSession
 {
     private PixelWindow? terminalWindow, partWindow, editorWindow, noticeWindow;
+    private TerminalWindowState? terminalWindowState;
+    private MachineryButton? priorityButton;
     private VirtualInventory? terminalGrid;
     private GhostFilterInventory? filterGrid;
     private MachineryPanel? filterPanel;
@@ -28,20 +30,22 @@ internal sealed partial class GameSession
 
     internal VirtualInventory? BandSurface(GameInventory inventory, PixelWindow window)
         => terminalGrid != null && (ReferenceEquals(inventory,terminalGrid) || ReferenceEquals(window,terminalWindow)) ? terminalGrid : null;
+    internal void RememberTerminalWindow() => terminalWindowState?.Capture();
     private void CloseTerminal()
     {
+        terminalWindowState?.Capture(); terminalWindowState = null;
         NativeLiquidSelection.EndFor(openTerminal);
         if (NativeDrag.Gesture != null && ReferenceEquals(NativeDrag.Gesture.Surface.Owner, openTerminal)) NativeDrag.Gesture.Cancelled = true;
         terminalGrid?.ClearTiles();
         Unobserve(); displayedView = null; terminalGrid = null; packedRows = displayRows = null; packing = null; stackCounts.Clear();
         terminalStatus = null; tagField = null; displayedTags = Array.Empty<string>(); terminalFilterLocale="";
-        if (terminalWindow != null) { var w = terminalWindow; terminalWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); }
+        if (terminalWindow != null) { var w = terminalWindow; terminalWindow = null; w.Destroy(); }
     }
     private void ClosePart()
     {
         if (editorWindow != null) { var w = editorWindow; editorWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); }
         foreach(var borrowed in driveBorrowed) borrowed.Return(); driveBorrowed.Clear();
-        borrowedStorage?.Return(); borrowedStorage = null; displayedPart = null; filterGrid = null; filterPanel = null;
+        borrowedStorage?.Return(); borrowedStorage = null; displayedPart = null; filterGrid = null; filterPanel = null; priorityButton = null;
         if (partWindow != null) { var w = partWindow; partWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); }
     }
     internal void NativeWindowHidden(PixelWindow window)
@@ -93,7 +97,7 @@ internal sealed partial class GameSession
         }
         foreach(var pair in view.Liquids)
             view.Modified[pair.Key]=ActivityFor(Id(view.Core)).Modified(LiquidActivityKey(view.Live[pair.Key],pair.Value));
-        foreach (var inv in view.Inventories.Values.SelectMany(i => i).Concat(view.Attachments).Append(view.Root).Distinct())
+        foreach (var inv in view.Inventories.Values.SelectMany(i => i).Concat(view.Attachments).Concat(view.Board.Layout.Inventories).Append(view.Root).Distinct())
         {
             foreach (var item in inv.childItems) observations.GetValue(item, i => new Observation(i));
             observed.Add(inv); inv.onSlotAddItemEndFunc += Changed; inv.onSlotRemoveItemEndFunc += Changed; inv.onSlotChangeAmountItemFunc += Changed;
@@ -127,12 +131,13 @@ internal sealed partial class GameSession
                 .SetMainAlign(MachineryStack.Align.Start).SetAlign(MachineryStack.Align.Start);
             terminalWindow = MachineHelper.CreateMachineryWindow(true, new MachineryPanel((string?)null, body, "terminal"));
             terminalWindow.SetTitle(UiText.Get("ui_terminal_title")); terminalWindow.closeCallback = CloseTerminal;
+            terminalWindowState = TerminalWindowState.Attach(terminalWindow, terminal);
             if (DrawerStorage.IsDrawer(terminal)) terminalWindow.SetTitle(UiText.Get("item_drawer_name"));
             terminalWindow.handler.gameObject.AddComponent<TerminalCustomerWatch>().Session = this;
         }
         if (create) displayedTags = new[] { "" }; // Force initial options, including an empty catalog.
         RenderTerminal();
-        if (create) terminalWindow!.Show().Center();
+        if (create) { terminalWindow!.Show(); terminalWindowState!.Restore(); }
     }
     private void RenderTerminal()
     {
@@ -166,7 +171,15 @@ internal sealed partial class GameSession
         var data = DrawerStorage.Data(drawer); data.PrepareDisplay(); data.SetMachineryStyle();
         var stock = new BorrowedInventoryView(data) { AfterValidate = data.HideOtherStock }; driveBorrowed.Add(stock);
         var cards = new BorrowedInventoryView(DrawerStorage.Upgrades(drawer)); driveBorrowed.Add(cards);
+        bool locked = DrawerStorage.IsLocked(drawer);
+        string lockLabel = !locked ? UiText.Get("ui_drawer_unlocked") : DrawerStorage.LockedId(drawer).Length == 0
+            ? UiText.Get("ui_drawer_lock_waiting") : UiText.Get("ui_drawer_locked_type",DrawerStorage.LockedName(drawer));
+        var overflow=NativeWidgets.Toggle(UiText.Get("ui_drawer_void"),DrawerStorage.VoidOverflow(drawer),v=>DrawerStorage.SetVoidOverflow(drawer,v),140);
+        overflow.Control.SetTooltip(UiText.Get("ui_drawer_void_help"));
         var body = MachineryStack.Vertical(NativeWidgets.Text(UiText.Get("ui_drawer_count", data.Used, DrawerStorage.Capacity(drawer))),
+            NativeWidgets.Text(lockLabel),new MachineryButton(UiText.Get(locked?"ui_drawer_unlock":"ui_drawer_lock"),()=>DrawerStorage.ToggleLock(drawer))
+                .SetDescription(UiText.Get("ui_drawer_lock_help")),
+            overflow,
             new MachineryIntake(stock, true, false), NativeWidgets.Text(UiText.Get("ui_upgrade_data")), new MachineryIntake(cards, true, false));
         partWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel(UiText.Get("item_drawer_name"), body, "drawer", false));
         partWindow.closeCallback = ClosePart; partWindow.Show().Center();
@@ -185,7 +198,7 @@ internal sealed partial class GameSession
             grid.AttachPos(MachineryStack.Vertical(NativeWidgets.Text(label),new MachineryIntake(borrowed,true,false)),i%2,i/2);
         }
         var cards=new BorrowedInventoryView(DiskStorage.Upgrades(drive)); driveBorrowed.Add(cards);
-        var body=MachineryStack.Vertical(NativeWidgets.Text(UiText.Get("ui_drive_slots",unlocked)),grid,
+        var body=MachineryStack.Vertical(PriorityControl(drive),NativeWidgets.Text(UiText.Get("ui_drive_slots",unlocked)),grid,
             NativeWidgets.Text(UiText.Get("ui_drive_cards")),new MachineryIntake(cards,false,false));
         partWindow=MachineHelper.CreateMachineryWindow(true,MachineHelper.Panel(UiText.Get("item_drive_name"),body,"drive",false));
         partWindow.closeCallback=ClosePart; partWindow.Show().Center();
@@ -266,7 +279,7 @@ internal sealed partial class GameSession
         var policy = PartStorage.Policy(bus);
         filterGrid = new GhostFilterInventory(9, policy.Slots / 9);
         filterGrid.ConfigureFilter = (index, item) => CaptureGhost(bus, index, item);
-        bool io=IoBus.IsIo(bus);
+        bool io=IoBus.IsAutomation(bus);
         var access = io?null:NativeWidgets.Dropdown(new[] { UiText.Get("ui_access_both"), UiText.Get("ui_access_extract"), UiText.Get("ui_access_insert") },
             (int)policy.Access, value => ConfigureNumber(bus, "access", value), 110);
         var matching = NativeWidgets.Dropdown(new[] { UiText.Get("ui_include"), UiText.Get("ui_exclude") }, policy.Exclude ? 1 : 0,
@@ -275,16 +288,26 @@ internal sealed partial class GameSession
             value => { ConfigureNumber(bus,"io_exact",value); RenderFilters(); },110):null;
         var extraction = io?null:NativeWidgets.Toggle(UiText.Get("ui_filter_extract"), policy.FilterExtraction,
             value => ConfigureNumber(bus, "extract_filter", value ? 1 : 0), 110);
-        var options = io?MachineryStack.Vertical(NativeWidgets.Text(UiText.Get(bus.identifier==IoBus.Import?"ui_io_import":"ui_io_export")),
+        var options = io?MachineryStack.Vertical(NativeWidgets.Text(UiText.Get(IoBus.IsPlane(bus)?(IoBus.IsImport(bus)?"ui_plane_absorb":"ui_plane_place"):IoBus.IsImport(bus)?"ui_io_import":"ui_io_export")),
             NativeWidgets.Toggle(UiText.Get("ui_io_enabled"),PartStorage.Int(bus,"io_enabled",1)!=0,v=>ConfigureNumber(bus,"io_enabled",v?1:0)),
             NativeWidgets.Input(UiText.Get("ui_io_order"),IoBus.Order(bus).ToString(),v=>{ if(int.TryParse(v,out int n) && n>=1 && n<=15) ConfigureNumber(bus,"io_order",n); },110),
             NativeWidgets.Text(UiText.Get("ui_filter_matching")),matching,precision!,
-            new MachineryButton(UiText.Get("ui_priority"),()=>ShowPriority(bus),110,18),
+            PriorityControl(bus),
             new MachineryButton(UiText.Get("ui_io_run"),()=>{ RunAutomation(0,bus); ShowBus(bus); },110,18),
             NativeWidgets.Text(UiText.Get(string.IsNullOrEmpty(PartStorage.Text(bus,"io_status"))?"ui_io_idle":PartStorage.Text(bus,"io_status"),PartStorage.Int(bus,"io_moved")))):
             MachineryStack.Vertical(NativeWidgets.Text(UiText.Get("ui_access_mode")), access!,
             NativeWidgets.Text(UiText.Get("ui_filter_matching")), matching, extraction!,
-            new MachineryButton(UiText.Get("ui_priority"), () => ShowPriority(bus), 110, 18));
+            PriorityControl(bus));
+        if(PartModes.Supports(bus))
+            options=MachineryStack.Vertical(options,NativeWidgets.Text(UiText.Get(PartModes.IsFluid(bus)?"ui_form_fluid":"ui_form_item")),
+                new MachineryButton(UiText.Get("ui_form_toggle"),()=>ToggleForm(bus),110,18));
+        if(PartModes.IsFluid(bus) && io)
+            options=MachineryStack.Vertical(options,NativeWidgets.Text(UiText.Get("ui_fluid_filter_hint")),NativeWidgets.Toggle(UiText.Get("ui_interface_strict"),PartStorage.Int(bus,"fluid_strict",1)!=0,
+                v=>ConfigureNumber(bus,"fluid_strict",v?1:0),110));
+        if(IoBus.IsPlane(bus))
+            options=MachineryStack.Vertical(options,NativeWidgets.Text(UiText.Get("ui_plane_scope")),
+                NativeWidgets.Dropdown(new[]{UiText.Get("ui_plane_front"),UiText.Get("ui_plane_whole")},IoBus.WholeSpace(bus)?1:0,
+                    v=>ConfigureNumber(bus,"plane_whole",v),110),NativeWidgets.Text(UiText.Get("ui_plane_scope_hint")));
         filterPanel=MachineHelper.Panel(policy.Tags?UiText.Get("ui_category_filter"):UiText.Get("ui_item_filter"),filterGrid,"storage_bus");
         partWindow = MachineHelper.CreateMachineryWindow(true,
             new MachineryPanel(UiText.Get("ui_bus_settings"), options, "settings"),
@@ -312,10 +335,16 @@ internal sealed partial class GameSession
                 if (sprite != null) filterSprites[key] = sprite;
             }
             string name = string.IsNullOrEmpty(key) ? UiText.Get(policy.Tags?"ui_set_tag_filter":"ui_set_filter") : policy.Tags ? TagChoiceName(key) : FilterName(bus, slot, key);
-            if(!policy.Tags && IoBus.IsIo(bus) && key.Length>0)
+            if(!policy.Tags && PartModes.IsFluid(bus) && IoBus.IsIo(bus) && key.Length>0)
+            {
+                string recipe=PartStorage.Text(bus,"filter_liquid_name_"+i);
+                if(recipe.Length>0) name=recipe;
+            }
+            if(!policy.Tags && IoBus.IsAutomation(bus) && key.Length>0)
             {
                 string help=IoBus.Exact(bus)?"ui_match_exact_help":"ui_match_fuzzy_help";
                 if(IoBus.Exact(bus) && PartStorage.Text(bus,"filter_state_"+i).Length==0) help="ui_match_recapture";
+                if(PartModes.IsFluid(bus)) help=PartStorage.Text(bus,"filter_liquid_"+i).Length==0?"ui_fluid_filter_recapture":"ui_fluid_filter_hint";
                 name+="\n"+UiText.Get(help);
             }
             filterGrid.GhostTile(i, string.IsNullOrEmpty(key) ? null : sprite, name + UiText.Get("ui_click_clear"), () => { SetFilter(bus, slot, ""); RenderFilters(); });
@@ -333,10 +362,19 @@ internal sealed partial class GameSession
         if (slot < 0 || slot >= policy.Slots || !PartStorage.CanConfigure(bus)) return;
         if (!policy.Tags)
         {
-            if(IoBus.IsIo(bus))
+            if(IoBus.IsIo(bus) && LiquidStorage.IsContainer(item))
+            {
+                var liquid=LiquidStorage.Read(item).Composition;
+                PartStorage.String(bus,"filter_liquid_"+slot,liquid.Volume>0?liquid.Signature:"");
+                PartStorage.String(bus,"filter_liquid_kinds_"+slot,liquid.Volume>0?string.Join("\n",liquid.Parts.Select(p=>p.Key).OrderBy(k=>k,StringComparer.Ordinal)):"");
+                PartStorage.String(bus,"filter_liquid_name_"+slot,liquid.Volume>0?RecipeName(LiquidStorage.Read(item)):"");
+            }
+            else if(IoBus.IsIo(bus))
+            { PartStorage.String(bus,"filter_liquid_"+slot,""); PartStorage.String(bus,"filter_liquid_kinds_"+slot,""); PartStorage.String(bus,"filter_liquid_name_"+slot,""); }
+            if(IoBus.IsAutomation(bus))
             {
                 var state=TerminalStackKey.Read(item);
-                if(state==null && IoBus.Exact(bus)) { ShowNotice(UiText.Get("ui_match_unsupported")); return; }
+                if(state==null && IoBus.Exact(bus) && !PartModes.IsFluid(bus)) { ShowNotice(UiText.Get("ui_match_unsupported")); return; }
                 PartStorage.String(bus,"filter_state_"+slot,state??"");
             }
             SetFilter(bus, slot, item.identifier);
@@ -363,13 +401,24 @@ internal sealed partial class GameSession
     private static string TagChoiceName(string key)=>NativeWidgets.HasTagLabel(key)?NativeWidgets.TagName(key)+" (#"+key+")":"#"+key;
     private void CloseEditor()
     { if (editorWindow != null) { var w = editorWindow; editorWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); } }
-    private void ShowPriority(GameItem bus)
+    private MachineryButton PriorityControl(GameItem part)
     {
-        CloseEditor(); var field = NativeWidgets.Input(UiText.Get("ui_priority"), PartStorage.Policy(bus).Priority.ToString(), v => { if (int.TryParse(v, out var n)) ConfigureNumber(bus, "priority", n); }, 110);
+        priorityButton = new MachineryButton(UiText.Get("ui_priority_value", PartStorage.Int(part,"priority")), () => ShowPriority(part), 140, 18);
+        return priorityButton;
+    }
+    private void ConfigurePriority(GameItem part, int value)
+    {
+        if (DiskStorage.IsDrive(part) ? !GeneralHelper.IsItemEffectivelyOwned(part) : !PartStorage.CanConfigure(part)) return;
+        AutomationStructureChanged(); PartStorage.Number(part,"priority",value); Visuals.Invalidate(); StructureChanged(part);
+        if (ReferenceEquals(part,displayedPart)) priorityButton?.SetText(UiText.Get("ui_priority_value",value));
+    }
+    private void ShowPriority(GameItem part)
+    {
+        CloseEditor(); var field = NativeWidgets.Input(UiText.Get("ui_priority"), PartStorage.Int(part,"priority").ToString(), v => { if (int.TryParse(v, out var n)) ConfigurePriority(part,n); }, 110);
         void Change(int delta)
         {
-            long next = (long)PartStorage.Policy(bus).Priority + delta;
-            ConfigureNumber(bus, "priority", (int)Math.Max(int.MinValue, Math.Min(int.MaxValue, next))); field.Control.SetString(PartStorage.Policy(bus).Priority.ToString());
+            long next = (long)PartStorage.Int(part,"priority") + delta;
+            ConfigurePriority(part,(int)Math.Max(int.MinValue, Math.Min(int.MaxValue, next))); field.Control.SetString(PartStorage.Int(part,"priority").ToString());
         }
         editorWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel(UiText.Get("ui_priority"), MachineryStack.Vertical(field,
             MachineryStack.Horizontal(new MachineryButton("-10", () => Change(-10)), new MachineryButton("-1", () => Change(-1)),
@@ -378,7 +427,7 @@ internal sealed partial class GameSession
     }
     internal void NativeStorageChanged(GameItem? owner = null,bool topology=false)
     {
-        if(topology) AutomationStructureChanged();
+        if(topology) { AutomationStructureChanged(); terminalDirty=openTerminal!=null; ScheduleTerminalRefresh(); }
         if (owner != null) StructureChanged(owner);
         if (owner == null || ReferenceEquals(owner, displayedPart) || (displayedPart != null && ReferenceEquals(PartStorage.BusHost(displayedPart), owner))) RefreshPartLater();
     }
@@ -399,6 +448,11 @@ internal sealed partial class GameSession
             else if(DrawerStorage.IsDrawer(displayedPart))
             {
                 var position=partWindow?.rectTransform.position; ShowDrawer(displayedPart);
+                if(position.HasValue && partWindow!=null) { partWindow.rectTransform.position=position.Value; partWindow.FixBounds(); }
+            }
+            else if(WirelessConnector.IsConnector(displayedPart))
+            {
+                var position=partWindow?.rectTransform.position; ShowWireless(displayedPart);
                 if(position.HasValue && partWindow!=null) { partWindow.rectTransform.position=position.Value; partWindow.FixBounds(); }
             }
             else if(DiskStorage.IsDrive(displayedPart))

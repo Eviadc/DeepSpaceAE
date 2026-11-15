@@ -8,6 +8,8 @@ namespace DeepSpaceAE.GameAdapter;
 /// <summary>One fresh native observation. Never infer cells from screen/pixel positions.</summary>
 internal sealed class InventoryLayout
 {
+    internal readonly GameInventory Inventory;
+    private readonly bool spatial;
     internal readonly List<GameItem> Items;
     internal readonly List<GameItem> Parts = new();
     internal readonly HashSet<GameItem> Owned = new();
@@ -16,8 +18,11 @@ internal sealed class InventoryLayout
     private readonly Dictionary<GridCell,GameItem> grid = new();
     private readonly Dictionary<GameItem, List<GridCell>> footprints = new();
 
-    internal InventoryLayout(GameGridInventory root, bool partsOnly = false)
+    internal InventoryLayout(GameInventory root, bool partsOnly = false)
     {
+        Inventory=root;
+        spatial=(root is GameGridInventory || root is GameGridScrollableInventory)
+            && root is not DiskAreaInventory && root is not DrawerInventory && root is not InterfaceDepositInventory && root is not VirtualInventory;
         Items = root.childItems.Distinct().ToList(); // Native inventory views may expose aliases of the same item.
         foreach (var item in Items)
         {
@@ -26,6 +31,9 @@ internal sealed class InventoryLayout
             if (GeneralHelper.IsItemEffectivelyOwned(item)) Owned.Add(item);
             if (part && Owned.Contains(item)) { Parts.Add(item); partSet.Add(item); }
             var cells = new List<GridCell>();
+            // Slot/list inventories accept a connector too, but have no physical
+            // grid contacts. Do not invent adjacency from list order.
+            if(!spatial) { footprints.Add(item,cells); continue; }
             var shape = root.GetIncompleteItemInventorySlot(item).itemGridShape ?? item.modifiedShape;
             for (int y = 0; y < shape.height; y++)
                 for (int x = 0; x < shape.width; x++)
@@ -61,9 +69,12 @@ internal sealed class InventoryLayout
 
     internal GameItem? FrontOwner(GameItem bus)
     {
-        if (!BusCables.TryGetValue(bus, out var cable)) return null;
-        var cells = footprints[cable];
-        return cells.Count==0 ? null : grid.GetValueOrDefault(cells[0] + Step(cable, (GridSide)PartStorage.Int(bus, "cable_face")));
+        var cell=FrontCell(bus); return cell.HasValue?grid.GetValueOrDefault(cell.Value):null;
+    }
+    internal GridCell? FrontCell(GameItem bus)
+    {
+        if(!BusCables.TryGetValue(bus,out var cable) || footprints[cable].Count==0) return null;
+        return footprints[cable][0]+Step(cable,(GridSide)PartStorage.Int(bus,"cable_face"));
     }
 
     private static bool Allows(GameItem item, GridCell toward)
@@ -106,6 +117,7 @@ internal sealed class InventoryLayout
 
     internal IEnumerable<(int X,int Y,int Side)> DevicePorts(GameItem part)
     {
+        if(!spatial) yield break;
         var shape=part.modifiedShape;
         for(int y=0;y<shape.height;y++) for(int x=0;x<shape.width;x++)
         {

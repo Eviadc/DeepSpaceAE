@@ -28,3 +28,19 @@ The complete notice is included as StorageDrawers-LICENSE.txt; source URL/hash i
 
 DeepSpaceAE's own source code is Copyright (c) 2026 Eviadc, licensed under GNU GPL version3 or (at your option) any later version. See LICENSE and SOURCE.md in the mod package, or the repository LICENSE.
 The GPL grant does not relicense the separately identified artwork. Game, Unity and Harmony assemblies are external runtime dependencies and are not distributed in this package.
+
+## AE2 Stuff wireless connector reference
+
+The wireless connector artwork adapts the radio arcs and violet frame from bdew's AE2 Stuff.
+Source: https://github.com/bdew-minecraft/ae2stuff/tree/5ed912ea686d98d1a0e5c25a9f02f142cd6f8163
+Copyright (c) bdew, 2014–2020. MIT license; the complete license is in
+assets/ae2stuff-source/LICENSE.txt (distributed as AE2Stuff-LICENSE.txt).
+Reference asset URLs and SHA-256 values: assets/ae2stuff-source/sources.json.
+The final 32×32 sprites are authored directly with the existing native-style
+chassis and palette in scripts/device_pixel_art.py, with a 28×28 body and hard alpha.
+The shared DeepSpaceAE casing is CC BY-NC-SA 3.0 as described above.
+
+Formation and annihilation bus icons retain the pinned AE2 plane geometry, UVs
+and GUI transform. Mounted variants retain the cable bus hit geometry. Fluid
+variants recolor the same bus geometry with the water palette. The additional
+AE2 reference files are listed in assets/ae2-source/sources.json.

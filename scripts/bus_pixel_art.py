@@ -18,8 +18,9 @@ def rotate(p):
 def icon(kind,shift=None):
     # Subpixel alignment selects the native pixel grid, not a model deformation.
     # Keep the original planes and use one uniform scalar for both screen axes.
-    if shift is None:shift={'storage':(.25,0),'import':(0,.25),'export':(0,-.25)}[kind]
-    model=json.loads((SOURCE/(kind+'_bus_item.json')).read_text())
+    if shift is None:shift={'storage':(.25,0),'import':(0,.25),'export':(0,-.25),'formation':(0,0),'annihilation':(0,0)}[kind]
+    model=json.loads((SOURCE/('annihilation_plane.json' if kind in ('formation','annihilation') else kind+'_bus_item.json')).read_text())
+    if kind=='formation': model['textures']['plane']='ae2:part/formation_plane'
     faces=[];allpts=[]
     for e in model['elements']:
         a,b,c=e['from'];x,y,z=e['to']
@@ -30,6 +31,7 @@ def icon(kind,shift=None):
                'up':[(a,y,c),(x,y,c),(x,y,z),(a,y,z)],
                'down':[(a,b,z),(x,b,z),(x,b,c),(a,b,c)]}
         for face,coords in quads.items():
+            if face not in e['faces']:continue
             pts=[rotate(tuple(v-8 for v in p)) for p in coords];allpts.extend(pts)
             tex=e['faces'][face];u,v,u1,v1=tex['uv'];uv=[(u,v),(u1,v),(u1,v1),(u,v1)]
             turns=tex.get('rotation',0)//90;uv=uv[turns:]+uv[:turns]
@@ -78,7 +80,7 @@ def icon(kind,shift=None):
 
 def assets():
     result={}
-    for kind in ['storage','import','export']:
+    for kind in ['storage','import','export','formation','annihilation']:
         name='item-storage-bus' if kind=='storage' else kind+'-bus'
         result[name+'.png']=icon(kind)
     return result

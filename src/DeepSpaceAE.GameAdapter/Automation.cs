@@ -27,7 +27,7 @@ internal sealed partial class GameSession
             if(MapUIManager.Instance!=null && MapUIManager.Instance.IsOutside) return;
             var board=ReadBoard(); int generation=automationGeneration;
             var views=new Dictionary<string,View>(StringComparer.Ordinal);
-            var buses=board.Layout.Parts.Where(IoBus.IsIo).Where(b=>only==null?
+            var buses=board.Layout.Parts.Where(IoBus.IsAutomation).Where(b=>only==null?
                 PartStorage.Int(b,"io_enabled",1)!=0 && HopperHelper.WindowOf(IoBus.Order(b))==window:ReferenceEquals(b,only))
                 .OrderBy(IoBus.Order).ThenByDescending(b=>PartStorage.Policy(b).Priority).ThenBy(b=>b.GetUniqueID()).ToArray();
             foreach(var bus in buses)
@@ -35,12 +35,16 @@ internal sealed partial class GameSession
                 if(operations>=64 || generation!=automationGeneration) break;
                 if(!board.Evaluation.Devices.TryGetValue(Id(bus),out var connection) || connection.Status!=DeviceStatus.Online
                     || connection.CoreId==null || !board.Powered.Contains(connection.CoreId)) { Result(bus,0,"ui_io_offline"); continue; }
+                if(!views.TryGetValue(connection.CoreId,out var view)) views.Add(connection.CoreId,view=ReadStorage(board,connection.CoreId));
+                if(IoBus.IsPlane(bus))
+                { RunPlane(bus,board,view,moved,ref operations); continue; }
                 var machine=board.Layout.FrontOwner(bus);
                 if(machine==null || IsPart(machine) || !GeneralHelper.IsItemEffectivelyOwned(machine)) { Result(bus,0,"ui_io_no_slots"); continue; }
                 bool import=bus.identifier==IoBus.Import;
-                var slots=IoBus.MachineSlots(machine,import);
+                if(PartModes.IsFluid(bus))
+                { RunFluidBus(bus,machine,view,moved,ref operations); continue; }
+                var slots=IoBus.TargetSlots(machine,import);
                 if(slots.Count==0) { Result(bus,0,"ui_io_no_slots"); continue; }
-                if(!views.TryGetValue(connection.CoreId,out var view)) views.Add(connection.CoreId,view=ReadStorage(board,connection.CoreId));
                 var candidates=import?slots.SelectMany(s=>s.childItems).ToArray():view.Search.Find("")
                     .Select(r=>view.Live[r.Instance]).Where(i=>!ReferenceEquals(i.parentInventory?.GetParentItem(),machine)).ToArray();
                 int units=0,attempts=0;

@@ -15,10 +15,10 @@ public sealed class GameTextureTests
     [Fact]
     public void CoreTextureCoversAllNineCellsAndWhitelistContainsAllActiveAndInactiveImages()
     {
-        Assert.Equal(119, Directory.GetFiles(Root, "*.png").Length);
-        foreach (var name in new[] { "core", "terminal", "pipeline" })
+        Assert.Equal(166, Directory.GetFiles(Root, "*.png").Length);
+        foreach (var name in new[] { "core", "terminal", "pipeline", "wireless-connector" })
             Assert.True(File.Exists(Path.Combine(Root, name + "-off.png")));
-        foreach (var name in new[] { "item-storage-bus", "import-bus", "export-bus" })
+        foreach (var name in new[] { "item-storage-bus", "import-bus", "export-bus", "formation-bus", "annihilation-bus", "fluid-item-storage-bus", "fluid-import-bus", "fluid-export-bus" })
         {
             Assert.True(File.Exists(Path.Combine(Root, name + ".png")));
             Assert.False(File.Exists(Path.Combine(Root, name + "-off.png")));
@@ -29,6 +29,24 @@ public sealed class GameTextureTests
         Assert.Equal(48, height);
         foreach (int y in new[] { 8, 24, 40 })
             foreach (int x in new[] { 8, 24, 40 }) Assert.Equal(255, pixels[(y * width + x) * 4 + 3]);
+    }
+
+    [Fact]
+    public void WirelessArtworkKeepsHardAlphaTwoPixelMarginAndStableCasing()
+    {
+        var on=Decode("wireless-connector.png"); var off=Decode("wireless-connector-off.png");
+        Assert.Equal(32,on.Width); Assert.Equal(32,on.Height); Assert.Equal(on.Width,off.Width);
+        bool changed=false;
+        for(int y=0;y<32;y++) for(int x=0;x<32;x++)
+        {
+            int p=(y*32+x)*4; byte alpha=on.Pixels[p+3];
+            Assert.True(alpha==0 || alpha==255); Assert.Equal(alpha,off.Pixels[p+3]);
+            if(x<2 || y<2 || x>=30 || y>=30) Assert.Equal(0,alpha);
+            bool same=on.Pixels[p]==off.Pixels[p] && on.Pixels[p+1]==off.Pixels[p+1] && on.Pixels[p+2]==off.Pixels[p+2];
+            if(x<5 || y<5 || x>=27 || y>=27) Assert.True(same);
+            changed|=!same;
+        }
+        Assert.True(changed);
     }
 
     [Fact]
@@ -106,7 +124,7 @@ public sealed class GameTextureTests
     [Fact]
     public void BusFaceHitRegionsCoverTheirActualModelPixelsAndLeaveCenterFree()
     {
-        foreach (var kind in new[] { "bus", "import", "export" }) for(int side=0;side<4;side++)
+        foreach (var kind in new[] { "bus", "import", "export", "formation", "annihilation", "fluid-bus", "fluid-import", "fluid-export" }) for(int side=0;side<4;side++)
         {
             var (width,height,pixels)=Decode($"{kind}-face-{side}.png");
             var inactive=Decode($"{kind}-face-{side}-off.png");

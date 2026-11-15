@@ -14,6 +14,7 @@ internal sealed class CableVisuals
     private int generation;
     internal int Revision { get; private set; }
     private readonly Dictionary<GameItem,List<ItemSpriteModifier>> devicePorts=new();
+    private readonly HashSet<GameInventory> watched=new();
     internal List<ItemSpriteModifier> DevicePorts(GameItem item)=>devicePorts.TryGetValue(item,out var ports)?ports:new List<ItemSpriteModifier>();
     private sealed class BatteryState { internal int Energy, Output, Grid; }
     private readonly ConditionalWeakTable<GameItem, BatteryState> batteryStates = new();
@@ -30,16 +31,29 @@ internal sealed class CableVisuals
         var current = GameSession.MainInventory(); if (ReferenceEquals(current, root)) return;
         Detach(); root = current; if (root == null) return;
         sprites ??= ModLoader.Mods.FirstOrDefault(m => m.Manifest.ID == ModEntry.ModId)?.Sprites;
-        root.onSlotAddItemEndFunc += Changed; root.onSlotRemoveItemEndFunc += Changed;
+        Watch(new[]{root});
         Invalidate();
     }
     internal void Detach()
     {
         foreach (var core in animatedCores.ToArray()) StopAnimation(core);
-        if (root != null) { root.onSlotAddItemEndFunc -= Changed; root.onSlotRemoveItemEndFunc -= Changed; }
+        Watch(Array.Empty<GameInventory>());
         root = null; generation++; queued = false; poses.Clear(); devicePorts.Clear(); Revision++;
     }
-    private static string Base(GameItem part) => ModEntry.Parts.First(p => p.Id == part.identifier).Sprite;
+    private void Watch(IEnumerable<GameInventory> inventories)
+    {
+        var current=new HashSet<GameInventory>(inventories);
+        foreach(var inventory in current.ToArray())
+        {
+            var parent=inventory.GetParentItem()?.parentInventory;
+            while(parent!=null && current.Add(parent)) parent=parent.GetParentItem()?.parentInventory;
+        }
+        foreach(var inv in watched.Where(i=>!current.Contains(i)).ToArray())
+        { inv.onSlotAddItemEndFunc-=Changed; inv.onSlotRemoveItemEndFunc-=Changed; watched.Remove(inv); }
+        foreach(var inv in current) if(watched.Add(inv))
+        { inv.onSlotAddItemEndFunc+=Changed; inv.onSlotRemoveItemEndFunc+=Changed; }
+    }
+    private static string Base(GameItem part) => PartModes.Sprite(part);
     internal void Inactive(GameItem part)
     { if (GameSession.IsPart(part)) { StopAnimation(part); Apply(part, Base(part) + (IoBus.IsBus(part) ? "" : "-off")); } }
     private void StopAnimation(GameItem core)
@@ -80,20 +94,22 @@ internal sealed class CableVisuals
     private void Changed(GameItem item, GameInventory inventory, SlotMarker slot)
     {
         session.AutomationStructureChanged();
-        if (GameSession.IsPart(item) && !ReferenceEquals(item.parentInventory, root)) Inactive(item);
+        if (GameSession.IsPart(item) && (item.parentInventory==null || !watched.Contains(item.parentInventory))) Inactive(item);
         poses.Remove(item); Invalidate(); session.NativeStorageChanged();
     }
     private static (int, int, int, int, int, bool, bool) Pose(GameItem item)
     { var s = item.modifiedShape; return (s.minX, s.minY, s.width, s.height, s.orientation, s.flipped, GeneralHelper.IsItemEffectivelyOwned(item)); }
     internal void ShapeChanged(GameItem item)
     {
+        PartModes.Refresh(item);
         session.ActivityItemValidated(item);
         session.ItemChanged(item);
         session.InterfaceItemChanged(item);
         if (item.parentInventory is DrawerInventory drawer) drawer.RefreshItemDisplay(item);
-        if (GameSession.IsPart(item) && !ReferenceEquals(item.parentInventory, root)) Inactive(item);
+        if (GameSession.IsPart(item) && (item.parentInventory==null || !watched.Contains(item.parentInventory))) Inactive(item);
         if (root == null) return;
-        if (ReferenceEquals(item.parentInventory, root))
+        if (item.parentInventory!=null && watched.Contains(item.parentInventory) || WirelessConnector.IsConnector(item)
+            || NetworkLayout.IsMachineBay(item) || GameSession.IsPart(item) && NetworkLayout.IsMachineBay(item.parentInventory?.GetParentItem()))
         {
             if (!poses.TryGetValue(item, out var old) || old != Pose(item)) { session.AutomationStructureChanged(); Invalidate(); session.StructureChanged(item); session.NativeStorageChanged(); }
         }
@@ -122,8 +138,11 @@ internal sealed class CableVisuals
             try
             {
                 var board = session.ReadBoard(); var layout = board.Layout; poses.Clear(); devicePorts.Clear();
+                foreach(var old in watched.Where(i=>!layout.Inventories.Contains(i)))
+                    foreach(var item in old.childItems.Where(GameSession.IsPart)) Inactive(item);
+                Watch(layout.Inventories);
                 session.RefreshActivityNetworks(board);
-                foreach (var item in layout.Items) poses.Add(item, Pose(item));
+                foreach (var item in watched.SelectMany(inv=>inv.childItems).Distinct()) poses.Add(item, Pose(item));
                 foreach (var item in layout.Items.Where(GameSession.IsPart))
                 {
                     string id = session.Id(item);
@@ -132,12 +151,12 @@ internal sealed class CableVisuals
                     if (active && item.identifier == "deepspaceae.item_storage_bus")
                     {
                         var owner = layout.FrontOwner(item);
-                        active = owner != null && layout.Owned.Contains(owner) && !GameSession.IsPart(owner) && (LiquidStorage.IsContainer(owner) || GameSession.Contents(owner).Count > 0);
+                        active = owner != null && layout.Owned.Contains(owner) && !GameSession.IsPart(owner) && (PartModes.IsFluid(item)?LiquidStorage.IsContainer(owner):GameSession.Contents(owner).Count > 0);
                     }
                     if(active && IoBus.IsIo(item))
                     {
                         var machine=layout.FrontOwner(item);
-                        active=machine!=null && layout.Owned.Contains(machine) && IoBus.MachineSlots(machine,item.identifier==IoBus.Import).Count>0;
+                        active=machine!=null && layout.Owned.Contains(machine) && (PartModes.IsFluid(item)?IoBus.LiquidTargets(machine,IoBus.IsImport(item)).Any():IoBus.TargetSlots(machine,IoBus.IsImport(item)).Count>0);
                     }
                     string path = item.identifier == "deepspaceae.pipeline" ? "pipeline-" + layout.CableMask(item) : Base(item);
                     if(item.identifier!="deepspaceae.pipeline" && !IoBus.IsBus(item))

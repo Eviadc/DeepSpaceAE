@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Localization.Settings;
+using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.SceneManagement;
 
 namespace DeepSpaceAE.RuntimeTests;
@@ -17,6 +19,7 @@ public sealed partial class RuntimePilot : MonoBehaviour
     private float heartbeat;
     private bool priorBackground;
     private bool booted,done,hintChecked;
+    private string readyLocale="";
     private int step;
     private GameItem core=null!,drive=null!,receiver=null!,terminal=null!,small=null!,large=null!,overflow=null!;
     private GameItem drawer=null!,drawerCable=null!;
@@ -28,11 +31,13 @@ public sealed partial class RuntimePilot : MonoBehaviour
     internal void Configure(PilotConfig settings)
     {
         config=settings; report.runId=config.runId; report.productCommit=config.productCommit;
-        report.profile = config.topologyProfile ? "workshop-topology" : config.interfaceProfile ? "interfaces" : config.engineerStart ? "network-engineer" : "components";
+        report.profile = config.usabilityProfile ? "terminal-storage-usability" : config.expansionProfile ? "wireless-planes-modes" : config.topologyProfile ? "workshop-topology" : config.interfaceProfile ? "interfaces" : config.engineerStart ? "network-engineer" : "components";
         priorBackground=Application.runInBackground; Application.runInBackground=true;
         report.startedUtc=DateTime.UtcNow.ToString("O"); report.unityVersion=Application.unityVersion;
-        if(config.interfaceProfile || config.topologyProfile) ModHook.OnGameLoadedLate+=InterfaceLoaded;
-        deadline=Time.realtimeSinceStartup+(config.interfaceProfile?180:120); Write();
+        if(config.interfaceProfile || config.topologyProfile || config.expansionProfile || config.usabilityProfile) ModHook.OnGameLoadedLate+=InterfaceLoaded;
+        // Other enabled mods load large audio/texture libraries before the first
+        // usable menu frame. Keep startup bounded separately from case execution.
+        deadline=Time.realtimeSinceStartup+300; Write();
     }
     private void Update()
     {
@@ -61,8 +66,8 @@ public sealed partial class RuntimePilot : MonoBehaviour
                 if(!ModLoader.Mods.Any(m=>m.Manifest.ID=="deepspaceae" && m.IsEnabled))
                     throw new InvalidOperationException("Production mod failed to load; no fixture writes allowed.");
                 if(EmporiumEntry.Instance!=null) throw new InvalidOperationException("Existing game scene is active; refusing to start a pilot.");
-                if(config.interfaceProfile && !InterfaceMenuPreview()) return;
-                booted=true; report.status="creating_fresh_scenario"; Write();
+                if((config.interfaceProfile || config.usabilityProfile) && !InterfaceMenuPreview()) return;
+                booted=true; deadline=Time.realtimeSinceStartup+180; report.status="creating_fresh_scenario"; Write();
                 if (StartingScenario.Get(ExpectedScenario) == null) throw new InvalidOperationException("Requested native scenario is not registered.");
                 var data=NewGameData.Instance; data.startType=NewGameData.StartType.MODDED; data.startScenarioId=ExpectedScenario;
                 data.saveSlot=-1; data.saveFile=null!; data.skipIntro=true; data.disableTutorialHint=true;
@@ -83,12 +88,16 @@ public sealed partial class RuntimePilot : MonoBehaviour
                 report.saveSlot=PlayerStore.Instance.saveSlotId; report.day=StoreStation.GetDayCounter();
                 report.freshScenarioConfirmed=true; report.status="running"; Write();
             }
-            if((config.interfaceProfile || config.topologyProfile) && interfaceReloadWaiting)
+            if((config.interfaceProfile || config.topologyProfile || config.expansionProfile || config.usabilityProfile) && interfaceReloadWaiting)
             {
                 if(!interfaceReloadReady || EmporiumEntry.Instance?.invElement==null || (bool)Adapter.Property(Adapter.Session,"Loading")!) return;
-                root=EmporiumEntry.Instance.invElement; interfaceReloadWaiting=false;
+                root=EmporiumEntry.Instance.invElement; interfaceReloadWaiting=false; readyLocale="";
             }
             Guard();
+            // Native liquid names synchronously request the Mechanic table.
+            // Let its real async load finish before fixtures call WaterHelper;
+            // otherwise Addressables can re-enter an unfinished scene load.
+            if(!NativeTextReady()) return;
             if(!hintChecked)
             {
                 var ui=StoreUIManager.Instance;
@@ -104,14 +113,18 @@ public sealed partial class RuntimePilot : MonoBehaviour
                 Check(report.startupHintClosed,"Native startup hint did not close.");
                 hintChecked=true; next=Time.realtimeSinceStartup+5; Write(); return;
             }
-            var actions=config.topologyProfile ? new Action[]{TopologySetup,TopologyContacts,TopologyMountedBuses,TopologyDeviceChain,TopologySave,TopologyReload}
+            var actions=config.usabilityProfile ? new Action[]{UsabilitySetup,UsabilityWindowPosition,UsabilityZoom,UsabilityDrivePriority,UsabilityBusPriorities,
+                UsabilityDrawer,UsabilityUpgrade,UsabilityTrader,UsabilityMachineBays,UsabilityEmptyFilters,UsabilityMachineProduction,
+                UsabilityVoidOverflow,UsabilityReducedStock,UsabilityContainerBuses,UsabilitySave,UsabilityReload,UsabilityProductionReload}
+                :config.expansionProfile ? new Action[]{ExpansionSetup,ExpansionModes,ExpansionWireless,ExpansionInvalidate,ExpansionRefresh,ExpansionPlanes,ExpansionFluidBuses,ExpansionSave,ExpansionReload}
+                :config.topologyProfile ? new Action[]{TopologySetup,TopologyContacts,TopologyMountedBuses,TopologyDeviceChain,TopologySave,TopologyReload}
                 : config.interfaceProfile ? new Action[]{InterfaceStart,InterfaceNetwork,InterfaceItemInput,InterfaceTerminal,
                 InterfaceStrict,InterfaceMixed,InterfaceOutput,InterfaceNativePour,InterfaceSave,InterfaceReload,InterfaceLoot}
                 : config.engineerStart ? new Action[]{StartRegistry,StartSupplies,StartNoDuplicate,StartPower,Save}
                 : new Action[]{Load,Slots,Network,Power,Capacity,Terminal,Disconnect,Drawer,Filters,Save};
             if(step==actions.Length) { Finish(); return; }
             var watch=System.Diagnostics.Stopwatch.StartNew();
-            string id=(config.topologyProfile?"TOPOLOGY-":config.interfaceProfile?"IFACE-":config.engineerStart ? "START-" : "PILOT-")+(step+1).ToString("00");
+            string id=(config.usabilityProfile?"USABILITY-":config.expansionProfile?"EXPAND-":config.topologyProfile?"TOPOLOGY-":config.interfaceProfile?"IFACE-":config.engineerStart ? "START-" : "PILOT-")+(step+1).ToString("00");
             try { actions[step](); report.cases.Add(new CaseResult{id=id,status="PASS",detail=details,elapsedMs=watch.Elapsed.TotalMilliseconds}); Debug.Log("[AE-PILOT] "+id+" PASS: "+details); }
             catch(Exception e)
             {
@@ -128,6 +141,27 @@ public sealed partial class RuntimePilot : MonoBehaviour
         }
     }
     private string details="";
+    private bool NativeTextReady()
+    {
+        var initialization=LocalizationSettings.InitializationOperation;
+        if(!initialization.IsDone) return false;
+        Check(initialization.Status==AsyncOperationStatus.Succeeded,"Native localization initialization failed.");
+        var locale=LocalizationSettings.SelectedLocale;
+        if(locale==null || locale.Identifier.Code!=LocHelper.ResolveStartupLocale()) return false;
+        bool pending=false;
+        foreach(var table in new[]{"Mechanic","UI","Hint"})
+        {
+            var operation=LocalizationSettings.StringDatabase.GetTableAsync(table,locale);
+            if(!operation.IsDone) {pending=true;continue;}
+            Check(operation.Status==AsyncOperationStatus.Succeeded && operation.Result!=null,"Native localization table failed: "+table);
+        }
+        if(!pending && readyLocale!=locale.Identifier.Code)
+        {
+            readyLocale=locale.Identifier.Code;
+            Debug.Log("[AE-PILOT] Native localization tables ready for saved locale: "+readyLocale);
+        }
+        return !pending;
+    }
     private void Guard()
     {
         if(!FreshScenarioStarted || !ModHelper.IsStartingScenario(ExpectedScenario) || PlayerStore.Instance.saveSlotId!=report.saveSlot

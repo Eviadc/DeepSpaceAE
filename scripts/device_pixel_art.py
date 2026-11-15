@@ -193,9 +193,27 @@ def controller_frames(im):
 
 
 
+def wireless():
+    """AE2 Stuff side_on's green radio arcs and purple ring, authored at 32px.
+
+    Same native metal ramp, 28px silhouette and hard alpha as our other devices.
+    No resampling or generated high-resolution intermediate.
+    """
+    im=casing(32,2); d=ImageDraw.Draw(im)
+    rect(d,(5,5,26,26),'recess')
+    rect(d,(6,6,25,25),'violet_shade')
+    rect(d,(7,7,24,24),'violet')
+    rect(d,(9,9,22,22),'recess')
+    # Three symmetric staircase bands preserve the source's radio-wave identity.
+    for points in [[(10,14),(12,12),(19,12),(21,14)],[(12,17),(14,15),(17,15),(19,17)],[(14,20),(15,19),(16,19),(17,20)]]:
+        line(d,points,'trace_light')
+    rect(d,(15,22,16,23),'trace_dark')
+    for box in [(3,9,4,12),(27,9,28,12),(3,19,4,22),(27,19,28,22)]:rect(d,box,'metal_mid')
+    return im
+
 def assets():
-    """Return the 20 final-size sprites; never inset or darken them again."""
-    images={'item-interface':interface(),'fluid-interface':interface(True),'drive':drive(),'core':core()}
+    """Return final-size sprites; never inset or darken them again."""
+    images={'item-interface':interface(),'fluid-interface':interface(True),'drive':drive(),'core':core(),'wireless-connector':wireless()}
     result={}
     for name,sprite in images.items():
         result[name+'.png']=sprite

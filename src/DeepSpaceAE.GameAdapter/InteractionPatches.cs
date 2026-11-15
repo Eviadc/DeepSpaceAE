@@ -21,8 +21,20 @@ internal static class DoubleClickPatch
 internal static class SingleClickPatch
 {
     [HarmonyPrefix]
-    private static bool Prefix(GameItem __0)
-        => __0 == null || __0.isDebugMenu || InterfaceStorage.IsFluid(__0) || (!GameSession.IsPart(__0) && !DrawerStorage.IsDrawer(__0)) || ModEntry.ActiveSession == null;
+    private static bool Prefix(GameItem __0, bool __2, bool __3)
+    {
+        if(__0==null || __0.isDebugMenu || ModEntry.ActiveSession==null) return true;
+        if(InterfaceStorage.IsFluid(__0))
+        {
+            // Both forms retain the same saved deposit graph. Native ClickAction
+            // otherwise opens that graph and refuses selection for any container.
+            // Use its real activation/selection path without opening the proxy.
+            if(__3 && __0.MayActivateSlotItem() && __0.CanActivateSlotItem()) __0.ActivateSlotItem();
+            else if(__2 && !__0.MayActivateSlotItem()) ItemSelectHandler.current?.TrySelectItem(__0);
+            return false;
+        }
+        return WirelessConnector.IsConnector(__0) || (!GameSession.IsPart(__0) && !DrawerStorage.IsDrawer(__0));
+    }
 }
 
 [HarmonyPatch(typeof(GameItem), nameof(GameItem.ValidateShapeState))]

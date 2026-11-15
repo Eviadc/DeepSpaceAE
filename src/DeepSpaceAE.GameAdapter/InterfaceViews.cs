@@ -63,6 +63,8 @@ internal sealed partial class GameSession
             string last=PartStorage.Text(device,"interface_status");
             if(last.Length>0) elements.Add(NativeWidgets.Text(last));
         }
+        elements.Add(new MachineryButton(UiText.Get("ui_form_toggle"),()=>ToggleForm(device),240,18));
+        elements.Add(NativeWidgets.Text(UiText.Get("ui_form_hint")));
         string title=UiText.Get(InterfaceStorage.IsFluid(device)?"item_fluid_interface_name":"item_interface_name");
         partWindow=MachineHelper.CreateMachineryWindow(true,MachineHelper.Panel(title,MachineryStack.Vertical(elements.ToArray()),"interface",false));
         partWindow.closeCallback=ClosePart; partWindow.Show().Center();

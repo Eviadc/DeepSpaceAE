@@ -37,7 +37,6 @@ internal sealed partial class GameSession
     {
         if(item==null || !purchases.Remove(item) || Loading || writing || MainInventory()==null
             || MapUIManager.Instance?.IsOutside==true || !GeneralHelper.IsItemEffectivelyOwned(item)) return false;
-        if(!MainInventory()!.childItems.Any(i=>InterfaceStorage.IsItem(i) && InterfaceStorage.AutoPurchase(i))) return false;
         writing=true;
         try
         {

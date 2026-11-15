@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <Version>0.15.3</Version>
+    <Version>0.16.2</Version>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
@@ -10,6 +10,7 @@
     <Reference Include="Assembly-CSharp" HintPath="$(GameManagedDir)/Assembly-CSharp.dll" Private="false" />
     <Reference Include="UnityEngine" HintPath="$(GameManagedDir)/UnityEngine.dll" Private="false" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(GameManagedDir)/UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UIModule" HintPath="$(GameManagedDir)/UnityEngine.UIModule.dll" Private="false" />
     <Reference Include="UnityEngine.InputLegacyModule" HintPath="$(GameManagedDir)/UnityEngine.InputLegacyModule.dll" Private="false" />
     <Reference Include="0Harmony" HintPath="$(GameManagedDir)/0Harmony.dll" Private="false" />
   </ItemGroup>

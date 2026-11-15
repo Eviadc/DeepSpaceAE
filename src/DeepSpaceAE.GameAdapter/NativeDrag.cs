@@ -105,6 +105,18 @@ internal static class ProjectionNeverOwnsItemsPatch
     private static bool Prefix(SlotMarker __instance, int amount, ref int __result)
     {
         if(TerminalQuickTransfer.TryTake(__instance,amount,out var taken)) { __result=taken; return false; }
+        if(__instance.inventory is DrawerInventory drawer)
+        {
+            // A preview may predate a capacity, type-lock or overflow-toggle
+            // change. Recheck before native Expel can detach the incoming item.
+            var incoming=__instance.item;
+            if(incoming==null || incoming.parentInventory!=null && !incoming.MayRemove()) { __result=0; return false; }
+            var fresh=drawer.TryInventorySlot(incoming,amount<0?__instance.numTransfer:amount,Vector2.zero,incoming.modifiedShape,incoming.modifiedState);
+            __instance.numTransfer=Math.Min(__instance.numTransfer,fresh.numTransfer);
+            __instance.itemGridShape=fresh.itemGridShape; __instance.targetItem=null!;
+            if(__instance.numTransfer<=0) { __result=0; return false; }
+            return true;
+        }
         if(__instance.inventory is InterfaceDepositInventory input)
         { __result=__instance.item==null?0:ModEntry.ActiveSession?.DepositInterface(input.Owner,__instance.item,amount) ?? 0; return false; }
         if (__instance.inventory is GhostFilterInventory) { __result = 0; return false; }

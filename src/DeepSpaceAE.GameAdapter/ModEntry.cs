@@ -16,6 +16,9 @@ public sealed class ModEntry : IMod
         (DiskStorage.Drive, "item_drive_name", "drive", NetworkPart.DiskDrive),
         (IoBus.Import,"item_import_name","import-bus",NetworkPart.ImportBus),
         (IoBus.Export,"item_export_name","export-bus",NetworkPart.ExportBus),
+        (IoBus.Formation,"item_formation_name","formation-bus",NetworkPart.FormationBus),
+        (IoBus.Annihilation,"item_annihilation_name","annihilation-bus",NetworkPart.AnnihilationBus),
+        (WirelessConnector.Id,"item_wireless_name","wireless-connector",NetworkPart.WirelessConnector),
         (EnergyReceiver.Id,"item_receiver_name","energy-receiver",NetworkPart.EnergyReceiver),
         (InterfaceStorage.Item,"item_interface_name","item-interface",NetworkPart.ItemInterface),
         (InterfaceStorage.Fluid,"item_fluid_interface_name","fluid-interface",NetworkPart.FluidInterface) };
@@ -31,7 +34,7 @@ public sealed class ModEntry : IMod
         session = new GameSession(log);
         ActiveSession = session;
         acquisition=new Acquisition(log,session);
-        log.Log("DeepSpaceAE 0.15.3 / 100-Rev13 initialized.");
+        log.Log("DeepSpaceAE 0.16.2 / 100-Rev13 initialized.");
     }
 
     public void OnEnable()
@@ -99,7 +102,7 @@ public sealed class ModEntry : IMod
                 item.unitValue = AcquisitionCatalog.Price(item.identifier);
                 item.SetSpriteAndShapeFromMod(ModId, definition.Sprite + (IoBus.IsBus(item) ? "" : "-off"));
                 // Intentional custom part definition, not a guess about other inventory shapes.
-                int size = definition.Part == NetworkPart.Core ? 3 : definition.Part == NetworkPart.DiskDrive || definition.Part==NetworkPart.EnergyReceiver || definition.Part==NetworkPart.Terminal || InterfaceStorage.IsInterface(item) ? 2 : 1;
+                int size = definition.Part == NetworkPart.Core ? 3 : definition.Part == NetworkPart.DiskDrive || definition.Part==NetworkPart.EnergyReceiver || definition.Part==NetworkPart.Terminal || InterfaceStorage.IsInterface(item) || WirelessConnector.IsConnector(item) ? 2 : 1;
                 item.SetShape(new GridShapeBuilder(size, size).SetDataFill(1).Build());
                 item.mayStackItemFunc = (_, _) => false;
                 // Native default activation runs on single press. All AE windows use the
@@ -109,6 +112,9 @@ public sealed class ModEntry : IMod
                 item.canActivateSlotItemFunc = (_, _, _) => false;
                 if (definition.Part == NetworkPart.DiskDrive) DiskStorage.CreateDrive(item); else if(definition.Part==NetworkPart.EnergyReceiver) EnergyReceiver.Create(item);
                 else if(InterfaceStorage.IsInterface(item)) InterfaceStorage.Create(item); else PartStorage.Create(item);
+                if(WirelessConnector.IsConnector(item)) { WirelessConnector.Create(item); item.shortDescription=UiText.Get("item_wireless_desc"); }
+                if(IoBus.IsPlane(item)) item.shortDescription=UiText.Get("item_plane_desc");
+                PartModes.Create(item);
                 if (definition.Part == NetworkPart.Pipeline)
                 { NativeWidgets.FullCellHit(item); item.getItemSpriteModifierForItemFunc = CableVisuals.BusMarkers; }
                 else if(!IoBus.IsBus(item))
@@ -167,7 +173,7 @@ public sealed class ModEntry : IMod
             item.mayActivateSlotItemFunc = (_, _, _) => false; item.canActivateSlotItemFunc = (_, _, _) => false;
             DrawerStorage.Create(item); return item;
         });
-        log.Log("Registration complete: 16 component factories.");
+        log.Log("Registration complete: 18 components plus legacy fluid-interface save factory.");
     }
 
     private readonly HashSet<string> lootGroups = new(StringComparer.Ordinal);
@@ -179,7 +185,7 @@ public sealed class ModEntry : IMod
             (IoBus.Import,2f),(IoBus.Export,2f),
             (PartStorage.Capacity, 2f), (PartStorage.Tag, 1f), (PartStorage.Wrench, 3f),
             (DiskStorage.Drive, 1f), (DiskStorage.Small, 2f), (DiskStorage.Large, 0.5f), (DrawerStorage.Id, 2f),
-            (InterfaceStorage.Item,1f),(InterfaceStorage.Fluid,1f));
+            (InterfaceStorage.Item,2f),(WirelessConnector.Id,1f),(IoBus.Formation,2f),(IoBus.Annihilation,2f));
         // Rev13 scavenging and expedition POIs roll these native item groups.
         // POI_dumpingGround is a table of locations, not an item-loot group.
         foreach (var group in new[] { TableGroupMaster.dumpingGroundTG, TableGroupMaster.dumpingGroundFreshTG })

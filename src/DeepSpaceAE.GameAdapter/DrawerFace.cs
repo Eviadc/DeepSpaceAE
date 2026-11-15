@@ -24,9 +24,9 @@ internal sealed class DrawerFace
         foreach(var badge in badges) badge.Update(0,showSingle:true);
         badges[1].SetVisibility(false,Color.white);
     }
-    internal void Update(GameItem? item,long quantity)
+    internal void Update(GameItem? item,long quantity,Sprite? lockedSprite=null)
     {
-        Sprite? next=item is GameItemElement element?NativeItemMirror.CurrentSprite(element):null;
+        Sprite? next=item is GameItemElement element?NativeItemMirror.CurrentSprite(element):lockedSprite;
         if(next==sprite && quantity==count) return;
         if(next!=sprite)
         {

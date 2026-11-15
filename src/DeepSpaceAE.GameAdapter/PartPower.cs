@@ -19,7 +19,7 @@ internal static partial class PartStorage
     internal static bool CanInstall(GameItem core,GameItem source)
     {
         if(!GeneralHelper.IsItemEffectivelyOwned(core) || !CanRemovePower(core)) return false;
-        if(!ModSettings.EnergyEnabled || !ReferenceEquals(core.parentInventory,GameSession.MainInventory()))
+        if(!ModSettings.EnergyEnabled)
             return IsPowerItem(source) && CanRemoveSource(source);
         int cost=ModEntry.ActiveSession?.CoreCost(core) ?? 2;
         if(UsesPool(core)) return IsPowerItem(source) && CanRemoveSource(source);

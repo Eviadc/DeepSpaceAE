@@ -18,13 +18,29 @@ internal sealed partial class Acquisition
     private static int Get(string key,int fallback=0)=>ModHelper.GetModDataInt(ModEntry.ModId,key,fallback);
     private static void Put(string key,int value)=>ModHelper.SetModDataInt(ModEntry.ModId,key,value);
     private bool EngineerGift => Get("engineer_start_v1") == 1;
-    private IReadOnlyList<string> GiftItems => EngineerGift ? EngineerStart.Items(Get("engineer_skip_intro_v1") != 0) : AcquisitionCatalog.UpgradeGifts;
+    private IReadOnlyList<string> CurrentGiftItems => EngineerGift ? EngineerStart.Items(Get("engineer_skip_intro_v1") != 0) : AcquisitionCatalog.UpgradeGifts;
+    private IReadOnlyList<string> GiftItems => ModHelper.HasModData(ModEntry.ModId,"gift_plan_v2")
+        ? ModHelper.GetModData(ModEntry.ModId,"gift_plan_v2","").Split(new[]{'\n'},StringSplitOptions.RemoveEmptyEntries) : CurrentGiftItems;
+    private void RecordGiftPlan(IReadOnlyList<string> items)
+        => ModHelper.SetModData(ModEntry.ModId,"gift_plan_v2",string.Join("\n",items));
+    private void EnsureGiftPlan()
+    {
+        if (ModHelper.HasModData(ModEntry.ModId,"gift_plan_v2")) return;
+        // Older cursors refer to a different ordered loadout. Preserve already
+        // delivered items; completed grants must never replay after a mod update.
+        var old = CurrentGiftItems.Where(id=>id!=AcquisitionCatalog.Wireless).ToList();
+        if (EngineerGift) old.Insert(old.Count-6,"energy_credit");
+        int delivered = Math.Max(0,Get("gift_cursor"));
+        var remaining = delivered >= old.Count ? new List<string>() : CurrentGiftItems.ToList();
+        foreach (var id in old.Take(delivered)) remaining.Remove(id);
+        RecordGiftPlan(remaining); Put("gift_cursor",0);
+    }
     internal void Enable()
     {
         EnableContact();
         ModHelper.AddStartingScenario(ModEntry.ModId, EngineerStart.Scenario,
             () => UiText.Get("start_engineer_title"), () => UiText.Get("start_engineer_description"),
-            new Func<string>[] { () => UiText.Get("start_engineer_base"), () => UiText.Get("start_engineer_kit"), () => UiText.Get("start_engineer_disks"), () => UiText.Get("start_engineer_routing"), () => UiText.Get("start_engineer_power"), () => UiText.Get("start_engineer_contact") },
+            new Func<string>[] { () => UiText.Get("start_engineer_base"), () => UiText.Get("start_engineer_kit"), () => UiText.Get("start_engineer_disks"), () => UiText.Get("start_engineer_routing"), () => UiText.Get("start_engineer_wireless"), () => UiText.Get("start_engineer_contact") },
             BeginEngineerStart, iconKey: ModEntry.ModId + ":engineer-start", tag: () => "AE", tagTone: StartingScenario.TagTone.Positive);
         // RegisterModUpgrade accesses the lazy PlayerStore singleton. OnEnable runs
         // before NewGameData exists, so defer until a real new/loaded world is ready.
@@ -71,6 +87,7 @@ internal sealed partial class Acquisition
         Put("engineer_start_v1", 1); Put("engineer_skip_intro_v1", PlayerStore.Instance.skipIntro ? 1 : 0);
         Put("engineer_standard_bay", 1);
         Put("gift_cursor", 0); Put("gift_inflight", 0);
+        RecordGiftPlan(CurrentGiftItems);
         PlayerStore.Instance.playerCash -= EngineerStart.GeneralistCost;
     }
     private void RestoreEngineerUnlock()
@@ -97,7 +114,7 @@ internal sealed partial class Acquisition
     }
     private void StartGift()
     {
-        if(!ModHelper.HasModData(ModEntry.ModId,"gift_cursor")) { Put("gift_cursor",0); Put("gift_inflight",0); }
+        if(!ModHelper.HasModData(ModEntry.ModId,"gift_cursor")) { Put("gift_cursor",0); Put("gift_inflight",0); RecordGiftPlan(CurrentGiftItems); }
         Resume();
     }
     internal void Deliver()
@@ -107,6 +124,7 @@ internal sealed partial class Acquisition
         // Old unresolved saves remain untouched, as requested. New grants use
         // an ordinary cursor and the native placement result, without this flag.
         if(Get("gift_inflight")!=0) return;
+        EnsureGiftPlan();
         delivering=true;
         try
         {
@@ -123,11 +141,6 @@ internal sealed partial class Acquisition
                     pendingGift=item;
                     // Preserve the old pending v1 grant; new starts receive a standard storage bay.
                     if (EngineerGift && id == "storage_bay" && Get("engineer_standard_bay") == 0) ItemFeatureHelper.SetShabby(item);
-                    if (EngineerGift && id == EngineerStart.Battery)
-                    {
-                        int maximum = item.GetTagReadonly(PowerHelper.POWER_SOURCE_ITEM_MAX_ENERGY).GetInt();
-                        PowerHelper.SetPowerSourceAt(item, maximum);
-                    }
                     GeneralHelper.SetItemOwned(item,true);
                 }
                 var slot=root.TryFindOneValidInventorySlot(item);
@@ -169,8 +182,9 @@ internal sealed partial class Acquisition
     }
     private StoreClient CreateSteve(int day)
     {
-        var planned=ModHelper.GetModData(ModEntry.ModId,"steve_stock","").Split('\n')
-            .Where(s=>s.Length>0 && s!=EnergyReceiver.Id).ToArray();
+        // Also normalize appointments booked before paired stock was introduced.
+        var planned=AcquisitionCatalog.PairWirelessStock(ModHelper.GetModData(ModEntry.ModId,"steve_stock","").Split('\n')
+            .Where(s=>s.Length>0 && s!=EnergyReceiver.Id)).ToArray();
         var client=new StoreClient { identifier=Steve,displayName=UiText.Get("npc_steve_name"),spriteName=Steve,
             clientFaction="FACTION_LOWER_LEVEL",clientIntent=StoreClient.ClientIntent.SELL,
             isOfferWholesale=false,wholesaleDiscount=0,isBargainAvailable=false,nonShootable=true };
@@ -180,10 +194,12 @@ internal sealed partial class Acquisition
             {
                 Put("steve_served_day",day); Put("steve_appointment_day",0); // persist before creating sale stock
                 var table=EmporiumEntry.Instance.frontInvinvElement;
-                foreach(var id in planned)
+                for(int i=0;i<planned.Length;i++)
                 {
+                    var id=planned[i];
                     if(!table.HasFreeCell()) break;
                     if(!AcquisitionCatalog.Offers.Any(o=>o.Id==id)) continue;
+                    if(id==AcquisitionCatalog.Wireless) { OfferWirelessPair(); i++; continue; }
                     var item=ItemSpawner.Spawn(id);
                     if(item==null) { log.Error("AE trader item factory unavailable: "+id); continue; }
                     // The native supplier also skips stock that cannot fit. Its
@@ -194,5 +210,16 @@ internal sealed partial class Acquisition
             client.OnIntroduced();
         });
         AeTraderDialogue.Configure(client); client.CompleteClientCreation(); return client;
+    }
+    private void OfferWirelessPair()
+    {
+        var first=ItemSpawner.Spawn(AcquisitionCatalog.Wireless);
+        if(first==null) return;
+        if(!PlayerStore.Instance.TryAddDirectSellingItemToTable(first)) return;
+        var second=ItemSpawner.Spawn(AcquisitionCatalog.Wireless);
+        if(second!=null && PlayerStore.Instance.TryAddDirectSellingItemToTable(second)) return;
+        // These are newly generated, unpaid supplier items. If the counter only
+        // fits one, retract it so the offer can never contain half a pair.
+        first.Destroy();
     }
 }

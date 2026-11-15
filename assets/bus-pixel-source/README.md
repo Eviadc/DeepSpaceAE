@@ -6,3 +6,5 @@
 Source: https://github.com/AppliedEnergistics/Applied-Energistics-2
 模型署名Sea_Kerman；纹理Copyright (c) 2020 Ridanisaurus Rid，Copyright (c) 2013–2020 AlgorithmX2 and AE2 contributors。
 DeepSpaceAE投影及配色修改采用CC BY-NC-SA 3.0。逐文件来源见assets/ae2-source/sources.json，完整署名见assets/THIRD-PARTY-NOTICES.md。
+
+放置／吸收总线沿用固定 AE2 提交的 formation_plane / annihilation_plane 原模型、UV 和 GUI 视角，直接光栅化至 16×16、长边 14px。安装态保持总线四面命中区域。流体形态保留物品形态的几何与 alpha，以水色材质区分；没有放大后缩小的中间图。

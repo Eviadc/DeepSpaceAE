@@ -18,6 +18,42 @@ internal static class DrawerStorage
     internal static void FaceVisibility(GameItem item,bool fake,bool enabled,Color tint)
     { if(drawers.TryGetValue(item,out var data)) data.Data.FaceVisibility(fake,enabled,tint); }
     internal static int Capacity(GameItem item) => DrawerCapacity.Limit(Math.Min(5, Upgrades(item).childItems.Count(c => c.identifier == PartStorage.Capacity)));
+    internal static bool IsLocked(GameItem drawer) => PartStorage.Int(drawer,"drawer_locked") != 0;
+    internal static bool VoidOverflow(GameItem drawer) => PartStorage.Int(drawer,"drawer_void") != 0;
+    internal static void SetVoidOverflow(GameItem drawer,bool enabled)
+    {
+        if(!GeneralHelper.IsItemEffectivelyOwned(drawer)) return;
+        PartStorage.Number(drawer,"drawer_void",enabled?1:0);
+        ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(drawer);
+    }
+    internal static string LockedId(GameItem drawer) => PartStorage.Text(drawer,"drawer_type");
+    internal static string LockedName(GameItem drawer) => Data(drawer).childItems.FirstOrDefault()?.name
+        ?? PartStorage.Text(drawer,"drawer_type_name");
+    internal static bool AcceptsType(GameItem drawer, GameItem item) => !IsLocked(drawer)
+        || LockedId(drawer).Length == 0 || LockedId(drawer) == item.identifier;
+    internal static void RememberType(GameItem drawer, GameItem? item)
+    {
+        if (!IsLocked(drawer) || LockedId(drawer).Length != 0 || item == null) return;
+        PartStorage.String(drawer,"drawer_type",item.identifier);
+        PartStorage.String(drawer,"drawer_type_name",item.name ?? item.identifier);
+        PartStorage.String(drawer,"drawer_type_icon",item.spriteAtlasPath+"\n"+item.spritePath+"\n"+(item.useSpriteFromMod?"1":"0"));
+    }
+    internal static Sprite? LockedSprite(GameItem drawer)
+    {
+        if (!IsLocked(drawer)) return null;
+        var source = PartStorage.Text(drawer,"drawer_type_icon").Split('\n');
+        if (source.Length != 3) return null;
+        return source[2] == "1" ? ModLoader.Mods.FirstOrDefault(m=>m.Manifest.ID==source[0])?.Sprites.GetValueOrDefault(source[1])
+            : RenderHandler.TryLoadFromAtlas(source[0],source[1]);
+    }
+    internal static void ToggleLock(GameItem drawer)
+    {
+        if (!GeneralHelper.IsItemEffectivelyOwned(drawer)) return;
+        PartStorage.Number(drawer,"drawer_locked",IsLocked(drawer)?0:1);
+        PartStorage.String(drawer,"drawer_type",""); PartStorage.String(drawer,"drawer_type_name",""); PartStorage.String(drawer,"drawer_type_icon","");
+        RememberType(drawer,Data(drawer).childItems.FirstOrDefault());
+        Data(drawer).QueueDisplay(); ModEntry.ActiveSession?.NativeStorageChanged(drawer);
+    }
     internal static void Create(GameItem item)
     {
         var data = new Storage { Data = new DrawerInventory(item), Cards = new GameGridInventory(5, 1) };
@@ -30,6 +66,7 @@ internal static class DrawerStorage
         {
             if (ReferenceEquals(inventory, data.Data))
             {
+                RememberType(item,data.Data.childItems.FirstOrDefault());
                 // A hidden non-representative instance must become visible when
                 // it leaves the pile for an ordinary native inventory.
                 if (!ReferenceEquals(stock.parentInventory, data.Data) && stock is GameItemElement removed) removed.handler.gameObject.SetActive(true);
@@ -87,6 +124,7 @@ internal sealed class DrawerInventory : GameGridInventory
         displayDirty=false;
         var stock=childItems;
         var first = stock.FirstOrDefault(); representative = first;
+        DrawerStorage.RememberType(Drawer,first);
         int width = first?.modifiedShape.globalWidth ?? 2, height = first?.modifiedShape.globalHeight ?? 2;
         if (inventoryShape.width != width || inventoryShape.height != height) SetShape(width, height);
         displayCount=0;
@@ -95,7 +133,7 @@ internal sealed class DrawerInventory : GameGridInventory
             displayCount+=item.unitCount;
             RefreshVisibility(item);
         }
-        face?.Update(first,displayCount);
+        face?.Update(first,displayCount,DrawerStorage.LockedSprite(Drawer));
     }
     internal void HideOtherStock()
     {
@@ -106,7 +144,7 @@ internal sealed class DrawerInventory : GameGridInventory
     internal void RefreshItemDisplay(GameItem item)
     {
         RefreshVisibility(item);
-        if(ReferenceEquals(representative,item)) face?.Update(item,displayCount);
+        if(ReferenceEquals(representative,item)) face?.Update(item,displayCount,DrawerStorage.LockedSprite(Drawer));
     }
     internal DrawerInventory(GameItem drawer) : base(1, 1)
     {
@@ -115,20 +153,26 @@ internal sealed class DrawerInventory : GameGridInventory
         // Keep native instances separate. Native GetStackSlot uses MaxNumAdd on
         // the existing target, so it must not bypass the unit budget by merging.
         maxSlotAddItemFunc = (item, _, slot) => slot.targetItem != null || ReferenceEquals(item.parentInventory, this)
-            ? 0 : (int)Math.Max(0, DrawerStorage.Capacity(Drawer) - Used);
+            ? 0 : CanVoid(item)?int.MaxValue:(int)Math.Max(0, DrawerStorage.Capacity(Drawer) - Used);
     }
     internal bool CanReplace(GameItem existing,GameItem incoming) => incoming.child==null
+        && DrawerStorage.AcceptsType(Drawer,incoming)
         && !GraphUtils.FindParentEquals(this,incoming)
         && DrawerCapacity.Fits(DrawerStorage.Capacity(Drawer),Used,existing.unitCount,incoming.unitCount)
-        && childItems.All(i=>ReferenceEquals(i,existing) || DrawerStorage.Same(i,incoming));
+        && Identical(incoming);
     public override bool SupportsGroupPlacement => false;
     private bool Budget(GameItem item,int amount) => DrawerCapacity.Fits(DrawerStorage.Capacity(Drawer), Used,
         ReferenceEquals(item.parentInventory, this) ? item.unitCount : 0, amount);
-    private bool Identical(GameItem item) => childItems.All(i => ReferenceEquals(i, item) || DrawerStorage.Same(i, item));
+    private bool CanVoid(GameItem item)=>ModEntry.ActiveSession?.Loading==false && DrawerStorage.VoidOverflow(Drawer)
+        && !IsInsertLocked() && item.child==null
+        && (item.parentInventory==null || item.MayRemove())
+        && GeneralHelper.IsItemEffectivelyOwned(Drawer) && GeneralHelper.IsItemEffectivelyOwned(item);
+    private bool Identical(GameItem item) => DrawerStorage.AcceptsType(Drawer,item)
+        && childItems.All(i => ReferenceEquals(i, item) || DrawerStorage.Same(i, item));
     public override bool MayHaveValidInventorySlot(GameItem item)
     {
         if (item == null || item.unitCount <= 0 || item.child != null || IsInsertLocked() || GraphUtils.FindParentEquals(this, item)
-            || !GeneralHelper.MayOwnershipAcceptItem(item, this) || !Budget(item,1) || !Identical(item)) return false;
+            || !GeneralHelper.MayOwnershipAcceptItem(item, this) || !Budget(item,1) && !CanVoid(item) || !Identical(item)) return false;
         if (item.mayInventoryAddItemFunc != null && !item.mayInventoryAddItemFunc.InvokeAllReduce(item, this, InvokeFuncExtensions.BoolReduceOR)) return false;
         return mayInventoryAddItemFunc == null || mayInventoryAddItemFunc.InvokeAllReduce(item, this, InvokeFuncExtensions.BoolReduceOR);
     }
@@ -150,10 +194,32 @@ internal sealed class DrawerInventory : GameGridInventory
         return (ReferenceEquals(item.parentInventory, this) || MayHaveValidInventorySlot(item))
             && item.CheckIsStateValid(this, slot, shape, state) && CheckChangeParentShapeStateModifier(item, slot, shape, state);
     }
-    public override bool CheckShapePlacement(GameItem item, GridShape shape, List<GameItem> ignored) => ReferenceEquals(item.parentInventory, this) || Budget(item,1);
+    public override bool CheckShapePlacement(GameItem item, GridShape shape, List<GameItem> ignored) => ReferenceEquals(item.parentInventory, this)
+        || Identical(item) && (Budget(item,1) || CanVoid(item));
     public override bool UncheckedAccept(GameItem item)
     {
-        if (ModEntry.ActiveSession?.Loading == false && (!Budget(item,item.unitCount) || !Identical(item))) return false;
+        if (ModEntry.ActiveSession?.Loading == false)
+        {
+            if(!Identical(item) || !Budget(item,item.unitCount) && !CanVoid(item)) return false;
+            if(CanVoid(item))
+            {
+                // Only the incoming units may be discarded. Saved stock, a
+                // capacity downgrade and merely enabling this option never void.
+                if(item.parentInventory!=null || childItems.Contains(item)) return false;
+                int incoming=item.unitCount;
+                int retained=(int)Math.Min(incoming,Math.Max(0,DrawerStorage.Capacity(Drawer)-Used));
+                if(retained==0)
+                {
+                    item.Destroy(); QueueDisplay(); ModEntry.ActiveSession?.NativeStorageChanged(Drawer); return true;
+                }
+                if(retained<incoming)
+                {
+                    item.SetAmount(retained);
+                    if(base.UncheckedAccept(item)) return true;
+                    item.SetAmount(incoming); return false;
+                }
+            }
+        }
         bool accepted=base.UncheckedAccept(item); // Loading retains all saved instances, including over-capacity stock.
         if(accepted && ModEntry.ActiveSession?.Loading!=false) QueueDisplay();
         return accepted;

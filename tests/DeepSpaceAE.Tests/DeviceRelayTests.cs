@@ -14,6 +14,7 @@ public sealed class DeviceRelayTests
     [InlineData(NetworkPart.ItemInterface)]
     [InlineData(NetworkPart.FluidInterface)]
     [InlineData(NetworkPart.EnergyReceiver)]
+    [InlineData(NetworkPart.WirelessConnector)]
     public void IndependentDeviceCarriesNetworkToItsOtherSide(NetworkPart part)
     {
         var nodes = new[] { new NetworkNode("core", NetworkPart.Core),

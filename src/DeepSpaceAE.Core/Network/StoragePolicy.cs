@@ -28,7 +28,6 @@ public sealed class StoragePolicy
     }
     public bool Matches(string id, IEnumerable<string> tags)
     {
-        if (keys.Count == 0) return true;
         bool match = Tags ? tags.Any(keys.Contains) : keys.Contains(id);
         return Exclude ? !match : match;
     }
@@ -50,7 +49,7 @@ public sealed class ExtractionFilter
         foreach (var p in policies)
         {
             if (p.Access == StorageAccess.InsertOnly) continue;
-            if (!p.FilterExtraction || p.Keys.Count == 0) { all = true; break; }
+            if (!p.FilterExtraction || p.Exclude && p.Keys.Count == 0) { all = true; break; }
             if (!p.Exclude) { foreach (var key in p.Keys) (p.Tags ? tags : ids).Add(key); }
             else negative.Add(p);
         }

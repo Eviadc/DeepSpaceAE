@@ -9,6 +9,8 @@
     <Reference Include="UnityEngine.CoreModule" HintPath="$(GameManagedDir)/UnityEngine.CoreModule.dll" Private="false" />
     <Reference Include="UnityEngine.JSONSerializeModule" HintPath="$(GameManagedDir)/UnityEngine.JSONSerializeModule.dll" Private="false" />
     <Reference Include="UnityEngine.ScreenCaptureModule" HintPath="$(GameManagedDir)/UnityEngine.ScreenCaptureModule.dll" Private="false" />
+    <Reference Include="Unity.Localization" HintPath="$(GameManagedDir)/Unity.Localization.dll" Private="false" />
+    <Reference Include="Unity.ResourceManager" HintPath="$(GameManagedDir)/Unity.ResourceManager.dll" Private="false" />
   </ItemGroup>
   <Target Name="RequireRealRuntime" BeforeTargets="PrepareForBuild">
     <Error Condition="!Exists('$(GameModDir)/DeepSpaceAE.Core.dll')" Text="Build against the installed production mod; no game or mod stubs." />

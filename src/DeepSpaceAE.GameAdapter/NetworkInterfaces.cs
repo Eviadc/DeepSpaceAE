@@ -11,7 +11,7 @@ internal sealed partial class GameSession
     private readonly Dictionary<GameItem,string> interfaceLiquids=new();
     private View ReadInterface(GameItem device)
     {
-        if(Loading || !ReferenceEquals(device.parentInventory,MainInventory()) || !GeneralHelper.IsItemEffectivelyOwned(device))
+        if(Loading || !GeneralHelper.IsItemEffectivelyOwned(device))
             throw new Rejected(UiText.Get("error_part_main"));
         var board=ReadBoard();
         if(!board.Evaluation.Devices.TryGetValue(Id(device),out var connection) || connection.Status!=DeviceStatus.Online || connection.CoreId==null)
@@ -33,7 +33,7 @@ internal sealed partial class GameSession
     }
     internal int PreviewInterface(GameItem device,GameItem item)
     {
-        if(Loading || item==null || item.unitCount<=0 || !GeneralHelper.IsItemEffectivelyOwned(item)) return 0;
+        if(Loading || !InterfaceStorage.IsItem(device) || item==null || item.unitCount<=0 || !GeneralHelper.IsItemEffectivelyOwned(item)) return 0;
         var state=InterfaceStorage.Get(device);
         if(ReferenceEquals(state.PreviewItem,item) && state.PreviewRevision==Visuals.Revision && state.PreviewUnits==item.unitCount) return state.Preview;
         try { state.Preview=InterfacePlacement(ReadInterface(device),item).numTransfer; }
@@ -44,7 +44,7 @@ internal sealed partial class GameSession
     }
     internal int DepositInterface(GameItem device,GameItem item,int amount)
     {
-        if(Loading || writing) return 0;
+        if(Loading || writing || !InterfaceStorage.IsItem(device)) return 0;
         writing=true;
         try
         {
@@ -66,7 +66,7 @@ internal sealed partial class GameSession
     }
     internal void QueueInterfaces()
     {
-        if(Loading || interfaceQueued || interfacePumping || MainInventory()?.childItems.Any(InterfaceStorage.IsFluid)!=true) return;
+        if(Loading || interfaceQueued || interfacePumping || MainInventory()==null) return;
         interfaceQueued=true; int expected=interfaceGeneration;
         LetterboxManager.RunNextUpdate(()=>{
             if(expected!=interfaceGeneration) return;
@@ -78,7 +78,7 @@ internal sealed partial class GameSession
     internal void InterfaceItemChanged(GameItem item)
     {
         if(Loading || MainInventory()==null) return;
-        if(!(InterfaceStorage.IsFluid(item) && ReferenceEquals(item.parentInventory,MainInventory())) && !interfaceLiquids.ContainsKey(item)) return;
+        if(!InterfaceStorage.IsFluid(item) && !interfaceLiquids.ContainsKey(item)) return;
         if(!LiquidStorage.IsContainer(item)) return;
         string stamp=LiquidStorage.Read(item).Stamp;
         if(interfaceLiquids.TryGetValue(item,out var old) && stamp==old) return;

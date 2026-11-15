@@ -13,8 +13,8 @@ public sealed class StorageFeatureTests
     public void RoutingTriesHighestPriorityEligibleBusWithDeterministicTies()
     {
         var policies = new Dictionary<string,StoragePolicy> {
-            ["c"] = P(new[]{"battery"},priority:100), ["b"] = P(Array.Empty<string>(),priority:20),
-            ["a"] = P(Array.Empty<string>(),priority:20), ["read"] = P(Array.Empty<string>(),access:StorageAccess.ExtractOnly,priority:999) };
+            ["c"] = P(new[]{"battery"},priority:100), ["b"] = P(Array.Empty<string>(),exclude:true,priority:20),
+            ["a"] = P(Array.Empty<string>(),exclude:true,priority:20), ["read"] = P(Array.Empty<string>(),exclude:true,access:StorageAccess.ExtractOnly,priority:999) };
         Assert.Equal(new[]{"c","a","b"},StorageRouting.InsertionOrder(policies,"battery",Array.Empty<string>()));
         Assert.Equal(new[]{"a","b"},StorageRouting.InsertionOrder(policies,"ore",Array.Empty<string>()));
     }
@@ -56,6 +56,22 @@ public sealed class StorageFeatureTests
                 string id="k"+random.Next(10); var tags=Enumerable.Range(0,random.Next(6)).Select(_=>"k"+random.Next(10)).ToArray();
                 Assert.Equal(policies.Any(p=>p.CanExtract(id,tags)),compiled.Allows(id,tags));
             }
+        }
+    }
+    [Fact]
+    public void EmptyWhitelistsRejectAndEmptyBlacklistsAllowAcrossItemAndTagRoutes()
+    {
+        foreach(bool tags in new[]{false,true})
+        {
+            var allow=P(Array.Empty<string>(),tags:tags,exclude:true);
+            var deny=P(new[]{"", " "},tags:tags);
+            Assert.True(allow.CanInsert("paper",new[]{"HOUSEHOLD"}));
+            Assert.True(allow.CanExtract("paper",new[]{"HOUSEHOLD"}));
+            Assert.False(deny.CanInsert("paper",new[]{"HOUSEHOLD"}));
+            Assert.False(deny.CanExtract("paper",new[]{"HOUSEHOLD"}));
+            Assert.False(new ExtractionFilter(new[]{deny}).Allows("paper",new[]{"HOUSEHOLD"}));
+            Assert.True(new ExtractionFilter(new[]{deny,allow}).Allows("paper",new[]{"HOUSEHOLD"}));
+            Assert.Empty(StorageRouting.InsertionOrder(new Dictionary<string,StoragePolicy>{{"empty",deny}},"paper",new[]{"HOUSEHOLD"}));
         }
     }
     [Fact]

@@ -3,7 +3,8 @@ param(
     [switch]$Launch,
     [switch]$UpdateOnly,
     [switch]$EngineerStart,
-    [switch]$Interfaces
+    [switch]$Interfaces,
+    [switch]$Usability
 )
 . "$PSScriptRoot/env.ps1"
 . "$PSScriptRoot/game-path.ps1"
@@ -36,7 +37,7 @@ New-Item -ItemType Directory -Path $backup | Out-Null
 foreach ($file in $saveFiles) { Copy-Item -LiteralPath $file.FullName -Destination $backup }
 $existing = @(Get-ChildItem -LiteralPath $saveDir -File | ForEach-Object { if ($_.Name -match '^save_(\d+)\.es3$') { [int]$Matches[1] } })
 $product = Get-Content -LiteralPath (Join-Path $productDir 'build-info.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-$config = [ordered]@{ runId=$runId; outputDirectory=$output; productCommit=$product.sourceCommit; existingSlots=$existing; exitAfterRun=$true; engineerStart=[bool]($EngineerStart -or $Interfaces); interfaceProfile=[bool]$Interfaces }
+$config = [ordered]@{ runId=$runId; outputDirectory=$output; productCommit=$product.sourceCommit; existingSlots=$existing; exitAfterRun=$true; engineerStart=[bool]($EngineerStart -or $Interfaces -or $Usability); interfaceProfile=[bool]$Interfaces; usabilityProfile=[bool]$Usability }
 $json = $config | ConvertTo-Json -Depth 5
 [IO.File]::WriteAllText((Join-Path $pilotDir 'run.json'), $json, (New-Object Text.UTF8Encoding($false)))
 [IO.File]::WriteAllText((Join-Path $output 'config.json'), $json, (New-Object Text.UTF8Encoding($false)))

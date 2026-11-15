@@ -241,6 +241,36 @@
       "file": "export_bus_item.json",
       "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/item/export_bus.json",
       "sha256": "b9573e2fa944450a2aa4b1ad8a5c0edba31c85e721ba33bafa795ae596aa74e8"
+    },
+    {
+      "file": "annihilation_plane.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/item/annihilation_plane.json",
+      "sha256": "956c653704487efca16131d466b3fe1e8cadf53200bd0e1e8d9bfb7ac772acf5"
+    },
+    {
+      "file": "formation_plane.json",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/models/item/formation_plane.json",
+      "sha256": "bb9e3acffc9e36c313fb74ce5741ed3fbc64e090ca0b386153498e11a383e74d"
+    },
+    {
+      "file": "annihilation_plane.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/annihilation_plane.png",
+      "sha256": "6cf2d25f03df07aeb417d143f1c17ff5ceb5317955f4d1d61ba9ed88bb8887ba"
+    },
+    {
+      "file": "formation_plane.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/formation_plane.png",
+      "sha256": "c353da7f983750ad20c61f203ceec91afc86517030cdf058a1509b68af8105f4"
+    },
+    {
+      "file": "plane_sides.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/plane_sides.png",
+      "sha256": "3f261633d9b8dc48996eeb033a863c279b33f98c48cb11b9951f06b4e1a4a892"
+    },
+    {
+      "file": "transition_plane_back.png",
+      "source": "https://raw.githubusercontent.com/AppliedEnergistics/Applied-Energistics-2/629d953f987f37a768fbf96551c97d3dfd07b7ee/src/main/resources/assets/ae2/textures/part/transition_plane_back.png",
+      "sha256": "651b6696b2a9f7e0268b91132d9c0356f941a79ec27adfd321a657b82ed63710"
     }
   ]
 }

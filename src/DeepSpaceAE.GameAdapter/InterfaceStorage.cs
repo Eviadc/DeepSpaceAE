@@ -8,15 +8,17 @@ internal static class InterfaceStorage
     internal const string Item="deepspaceae.item_interface",Fluid="deepspaceae.fluid_interface";
     internal sealed class State
     {
+        internal bool Ready;
         internal InterfaceDepositInventory? Inventory;
         internal GameItem? PreviewItem;
         internal int PreviewRevision=-1,PreviewUnits,Preview;
     }
     private static readonly ConditionalWeakTable<GameItem,State> data=new();
-    internal static bool IsItem(GameItem item)=>item.identifier==Item;
-    internal static bool IsFluid(GameItem item)=>item.identifier==Fluid;
-    internal static bool IsInterface(GameItem item)=>IsItem(item) || IsFluid(item);
+    internal static bool IsItem(GameItem item)=>IsInterface(item) && !PartModes.IsFluid(item);
+    internal static bool IsFluid(GameItem item)=>IsInterface(item) && PartModes.IsFluid(item);
+    internal static bool IsInterface(GameItem item)=>item.identifier==Item || item.identifier==Fluid;
     internal static State Get(GameItem item)=>data.GetOrCreateValue(item);
+    internal static bool Ready(GameItem item)=>data.TryGetValue(item,out var state) && state.Ready;
     internal static int Mode(GameItem item)=>PartStorage.Int(item,"interface_mode");
     internal static bool AutoPurchase(GameItem item)=>PartStorage.Int(item,"interface_auto_purchase")!=0;
     internal static bool Strict(GameItem item)=>PartStorage.Int(item,"interface_strict",1)!=0;
@@ -24,19 +26,20 @@ internal static class InterfaceStorage
     internal static void Create(GameItem item)
     {
         var state=Get(item);
-        if(IsFluid(item))
-        {
-            // Native chemical components, temperature, selection/target actions,
-            // inspection and persistence. No parallel liquid representation.
-            WaterHelper.InitLiquidContainerItem(item,20000,AcquisitionCatalogPrice(item),isGraduated:true);
-            AudioHelper.InitSolidMetal(item);
-        }
-        else
-        {
-            state.Inventory=new InterfaceDepositInventory(item);
-            var graph=new PixelWindow(true,UiText.Get("item_interface_name"));
-            graph.Attach(state.Inventory); item.SetContentWindow(graph);
-        }
+        // Initialize the native liquid graph exactly once. Never recreate it on a
+        // toggle: doing so would erase composition, temperature or saved settings.
+        WaterHelper.InitLiquidContainerItem(item,20000,AcquisitionCatalogPrice(item),isGraduated:true);
+        var may=item.mayThisTargetItemFunc; var can=item.canThisTargetItemFunc; var action=item.onThisTargetItemFunc;
+        item.maySelectSlotItemFunc=(self,_,_)=>IsFluid(self) && WaterHelper.CanUseWaterContainer(self);
+        item.canSelectSlotItemFunc=(self,_,_)=>IsFluid(self) && WaterHelper.CanUseWaterContainer(self);
+        item.mayThisTargetItemFunc=(self,target)=>IsFluid(self) && may?.Invoke(self,target)==true;
+        item.canThisTargetItemFunc=(self,target)=>IsFluid(self) && can?.Invoke(self,target)==true;
+        item.onThisTargetItemFunc=(self,target)=>{ if(IsFluid(self)) action?.Invoke(self,target); };
+        AudioHelper.InitSolidMetal(item);
+        state.Inventory=new InterfaceDepositInventory(item);
+        var graph=new PixelWindow(true,UiText.Get("item_interface_name"));
+        graph.Attach(state.Inventory); item.SetContentWindow(graph);
+        state.Ready=true;
     }
     private static int AcquisitionCatalogPrice(GameItem item)=>DeepSpaceAE.Core.Network.AcquisitionCatalog.Price(item.identifier);
 }

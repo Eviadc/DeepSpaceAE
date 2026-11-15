@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace DeepSpaceAE.Core.Network;
 
-public enum NetworkPart { Core, Pipeline, ItemStorageBus, Terminal, DiskDrive, ImportBus, ExportBus, EnergyReceiver, ItemInterface, FluidInterface }
+public enum NetworkPart { Core, Pipeline, ItemStorageBus, Terminal, DiskDrive, ImportBus, ExportBus, EnergyReceiver, ItemInterface, FluidInterface, WirelessConnector, FormationBus, AnnihilationBus }
 
 /// <summary>Logical model node. No grid coordinates, game types or rotation assumptions.</summary>
 public sealed class NetworkNode
@@ -16,7 +16,8 @@ public sealed class NetworkNode
     public bool IsDevice => Part != NetworkPart.Core && Part != NetworkPart.Pipeline;
     // Functional devices may also carry the network. Mounted cable buses have
     // only their host connection; they do not relay through the target machine.
-    public bool CanRelay => Part != NetworkPart.ItemStorageBus && Part != NetworkPart.ImportBus && Part != NetworkPart.ExportBus;
+    public bool CanRelay => Part != NetworkPart.ItemStorageBus && Part != NetworkPart.ImportBus && Part != NetworkPart.ExportBus
+        && Part != NetworkPart.FormationBus && Part != NetworkPart.AnnihilationBus;
 
     public NetworkNode(string id, NetworkPart part, string? containerId = null)
     {

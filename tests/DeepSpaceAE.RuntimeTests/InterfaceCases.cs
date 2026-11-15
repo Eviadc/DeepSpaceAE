@@ -74,7 +74,7 @@ public sealed partial class RuntimePilot
                 "AE disk ghost is not bound to the real native bay: sprite="+NodeSprite(node)?.name+"; size="+node.rectTransform.sizeDelta);
         }
         Check(fluid.GetTagReadonly(WaterHelper.LIQUID_CONTAINER_CAPACITY).GetInt()==20000000,"Fluid interface buffer is not 20 litres.");
-        details="Current engineer start: 21 AE components plus contact slip, no interfaces, 33/33 gifts. Native menu icon, 2x2 devices, horizontal disks, ten AE ghost bays, 20L buffer.";
+        details="Current engineer start: 23 AE components plus contact slip including two wireless connectors; no supplied battery; 34/34 gifts. Native menu icon, 2x2 devices, horizontal disks, ten AE ghost bays, 20L buffer.";
     }
     private void InterfaceNetwork()
     {
@@ -107,10 +107,11 @@ public sealed partial class RuntimePilot
                 Adapter.Move(bus,(GameInventory)Adapter.Static("PartStorage","Inventory",wire)!);
                 Adapter.Static("PartStorage","Number",bus,"cable_face",2);
                 Adapter.Static("PartStorage","Number",bus,"priority",dx==3?20:10);
+                bus.ToggleSlotItem();
             }
         }
         Add(small); Add(large); var bays=Adapter.Slots("DiskStorage","Bays",drive); Adapter.Move(small,bays[0]); Adapter.Move(large,bays[1]);
-        var power=MainItems().First(i=>i.identifier=="energy_credit"); Adapter.Move(power,(GameInventory)Adapter.Static("PartStorage","Inventory",core)!);
+        var power=Spawn("energy_credit"); Add(power); Adapter.Move(power,(GameInventory)Adapter.Static("PartStorage","Inventory",core)!);
         Adapter.Call(Adapter.Property(Adapter.Session,"Visuals")!,"Invalidate");
         var board=Adapter.Board(); var evaluation=Adapter.Evaluation(board);
         foreach(var device in new[]{terminal,drive,input,fluid}) Check(Adapter.DeviceStatus(evaluation,Adapter.Id(device))=="Online","Fixture endpoint is offline: "+device.identifier);
@@ -240,7 +241,7 @@ public sealed partial class RuntimePilot
         Check(WaterHelper.GetTotalVolume(fluid)==savedFluid && WaterHelper.GetTotalVolume(tankA)==savedA && WaterHelper.GetTotalVolume(tankB)==savedB,"Native liquid amounts changed across save/load.");
         Check((int)Adapter.Static("InterfaceStorage","Mode",fluid)! ==1 && ((string)Adapter.Static("InterfaceStorage","Output",fluid)!).Length>0,"Interface settings were not saved.");
         Check(all.Count(i=>i.GetUniqueID()==cargoId)==1,"Routed disk cargo was not saved.");
-        Check(ModHelper.GetModDataInt(Product,"gift_cursor",-1)==33,"Start gift cursor changed after reload.");
+        Check(ModHelper.GetModDataInt(Product,"gift_cursor",-1)==34,"Start gift cursor changed after reload.");
         report.saveReloadTested=true;
         details="Actual native save/reload of the same fresh slot: IDs, disk cargo, horizontal disk/2x2 terminal, exact liquid volumes, output mode/filter and current gift cursor survive without duplication.";
     }
@@ -248,8 +249,8 @@ public sealed partial class RuntimePilot
     {
         const string table=Product+".scavenging";
         var entries=ModHelper.GetLootEntries(table);
-        Check(entries.Count==15 && entries.All(e=>e.weight>0 && e.id.StartsWith(Product+".",StringComparison.Ordinal))
-            && entries.All(e=>e.id!=Product+".energy_receiver"),"Native AE scavenging table has invalid candidates.");
+        Check(entries.Count==17 && entries.All(e=>e.weight>0 && e.id.StartsWith(Product+".",StringComparison.Ordinal))
+            && entries.All(e=>e.id!=Product+".energy_receiver" && e.id!=Product+".fluid_interface"),"Native AE scavenging table has invalid candidates.");
         foreach(var group in new[]{TableGroupMaster.dumpingGroundTG,TableGroupMaster.dumpingGroundFreshTG})
         {
             var registered=ModHelper.GetLootGroupEntries(group).Where(e=>e.id==table).ToArray();
@@ -262,6 +263,6 @@ public sealed partial class RuntimePilot
     private void InterfaceLoot()
     {
         CheckScavengingLoot();
-        details="Before and after real save/reload: both native scavenging groups contain one AE entry at weight 20, all 15 candidates exclude the energy receiver, and native filtered group rolls resolve AE items. Scavenging UI and random drop rates were not exercised.";
+        details="Before and after real save/reload: both native scavenging groups contain one AE entry at weight 20, all 17 candidates exclude the energy receiver and separate fluid interface, and native filtered group rolls resolve AE items. Scavenging UI and random drop rates were not exercised.";
     }
 }

@@ -6,17 +6,17 @@ item_capacity_name,AE 容量升级
 item_tag_name,AE 标签升级
 item_wrench_name,AE 扳手
 item_bus_desc,安装在线缆侧面以访问相邻容器；双击对应部位配置，总线所在面不连接外部线缆。
-item_part_desc,放置于主物品栏接入网络。双击打开。
+item_part_desc,放置在主物品栏、机器区或有无线连接器的物品栏中接入网络。双击打开。
 item_flavor,深空中的应用能源。
 item_capacity_desc,总线：每张+9筛选格；抽屉：每张容量×4，最多5张；驱动器：每张+2盘位，最多4张。
 item_tag_desc,为总线启用标签筛选，每条总线限一张。终端自带标签和当前顾客需求筛选。
 item_wrench_desc,对线缆上对应总线部位使用可卸下该总线；对独立总线使用可拆出最后一张升级卡。
 error_enter_game,请先进入游戏。
-error_terminal_main,终端未激活：请直接放入主物品栏。
+error_terminal_main,终端未激活：请放入主物品栏、机器区或已联网的物品栏。
 error_terminal_network,终端未激活：检查核心与线缆。每个网络只能有一个核心。
 error_network_power,网络未供电：在核心中安装足够供整晚使用的电池。
 error_operation,操作未完成，请保留游戏日志并检查网络状态。
-error_part_main,组件未激活：请直接放入主物品栏。
+error_part_main,组件未激活：请放入主物品栏、机器区或已联网的物品栏。
 error_reserve,电池无法预留整晚用电。
 error_locked,操作已锁定。
 error_not_owned,物品不属于你。
@@ -71,12 +71,12 @@ ui_inactive,未激活
 ui_access_both,存入 / 取出
 ui_access_extract,仅取出
 ui_access_insert,仅存入
-ui_exclude,排除
-ui_include,包含
+ui_exclude,黑名单
+ui_include,白名单
 ui_filter_extract,筛选取出
 ui_extract_all,全部取出
 ui_access_mode,访问模式
-ui_match_help,包含或排除幽灵格中的物品 / 标签；空筛选允许全部。
+ui_match_help,默认黑名单：空筛选允许全部。白名单仅允许筛选中的物品／标签，空筛选拒绝全部。
 ui_extract_help,取出时是否也应用筛选
 ui_priority,优先级
 ui_upgrades,升级
@@ -84,7 +84,7 @@ ui_category_filter,标签筛选
 ui_item_filter,物品筛选
 ui_bus_title,AE 存储总线
 ui_set_filter,拖入物品以设置筛选
-ui_set_tag_filter,拖入物品选择一个标签；空筛选允许全部。
+ui_set_tag_filter,拖入物品选择一个标签；空黑名单允许全部，空白名单拒绝全部。
 ui_click_clear,\n单击清除
 ui_choose_category,选择此物品的标签
 ui_tag_filter_help,按标签是否存在筛选，不比较其数值。
@@ -144,19 +144,19 @@ error_liquid_access,存储总线当前规则不允许此方向的液体操作。
 error_liquid_use_native,液体使用原版交互：选中容器后点击目标倒液。
 item_import_name,AE 输入总线
 item_export_name,AE 输出总线
-item_io_desc,线缆升级。输入总线将机器出料收回网络；输出总线将网络物品送入机器进料槽。采用原版槽位与料斗夜间阶段。
-ui_io_import,机器出料 → 网络
-ui_io_export,网络 → 机器进料
+item_io_desc,线缆升级。输入总线将机器出料或普通储物区中的物品收回网络；输出总线将网络物品送入机器进料或普通储物区。遵守原版库存规则与料斗夜间阶段。
+ui_io_import,出料／储物区 → 网络
+ui_io_export,网络 → 进料／储物区
 ui_io_enabled,夜间自动传输
 ui_io_order,料斗顺序（1-15）
 ui_io_run,立即传输
 ui_io_offline,网络离线或供电不足
-ui_io_no_slots,未找到兼容的机器进料/出料槽
+ui_io_no_slots,未找到兼容的进料、出料或储物区
 ui_io_moved,已传输 {0} 件
 ui_io_idle,没有可传物品或目标满/锁定
 ui_io_error,传输已停止，请检查日志
 upgrade_engineer_name,AE工程师
-upgrade_engineer_desc,王尔德为你引荐福鲁伊克斯研究员，赠送核心×1、线缆×8、存储总线×2、终端×1、硬盘驱动器×1、小硬盘×2、扳手×1及ME供货电话条×1。拨打6322预约次日来访。电池需自备。请腾出主物品栏；未送达部分在开卷帘门或次日继续发放。
+upgrade_engineer_desc,"王尔德为你引荐福鲁伊克斯研究员，并送来一套AE入门设备：核心×1、线缆×8、存储总线×2、终端×1、硬盘驱动器×1、小硬盘×2、扳手×1、无线连接器×2及ME供货电话条×1。拨打6322，可预约研究员次日来访。"
 upgrade_engineer_done,已介绍福鲁伊克斯研究员。赠品尚待送达：{0}件。
 upgrade_engineer_fault,基础组件发放结果不明，请保留日志；不会自动重复发放。
 npc_steve_name,福鲁伊克斯研究员
@@ -178,22 +178,21 @@ ui_pool_summary,整网供电：已选 {0} / 已接 {1} 个电源
 ui_source_reserved,已预留 {0} kJ
 ui_core_slot_empty,控制器电池槽为空，可由接收器供电。
 item_drawer_name,抽屉
-item_drawer_desc,2×2 单种物品抽屉，基础容量16件。每张容量卡使上限×4，最多五张。保留真实物品状态；放空后可改存其他物品。用存储总线接入AE网络。
+item_drawer_desc,2×2 单种物品抽屉，基础容量16件，每张容量卡×4，最多5张。可锁定物品种类；可选溢出销毁默认关闭。用存储总线接入AE网络。
 ui_drawer_count,抽屉存量：{0} / {1} 件
 ui_all_tags,全部标签
 ui_customer_demand,当前顾客需求
 start_engineer_title,网络工程师
-start_engineer_description,带着一套AE存储设备开始经营。保留普通开局的基础物资与启动开销，额外获得AE基础套件、满电电池及ME供货电话条。拨打6322预约福鲁伊克斯研究员次日来访；王尔德的AE工程师礼包已包含在开局中。若主库存放不下，整理空间后开启卷帘门继续领取。
-start_engineer_base,储藏区×1及普通开局基础物资；启动开销50
-start_engineer_kit,AE核心×1、线缆×8、存储总线×2、终端×1
-start_engineer_disks,硬盘驱动器×1、小硬盘×2、扳手×1
-start_engineer_power,一块原版满电电池
+start_engineer_description,"在导师身边学徒时，你学会了用AE网络整理货物。如今，你带着一套存储设备和研究员的联系方式，准备让这间小店井井有条。"
+start_engineer_base,"普通开局物资与储藏区；启动开销50"
+start_engineer_kit,"AE核心、终端、8根线缆及2个存储总线"
+start_engineer_disks,"硬盘驱动器、2块小硬盘及扳手"
 start_engineer_pending,网络工程师开局已包含此礼包。尚待发放：{0}件。其他模组可能将已发物品自动收入主栏的容器中。
 setting_energy_name,AE 网络耗电（测试选项）
 setting_energy_desc,默认关闭：AE 网络无需电池且不扣电或收取电费。开启后恢复当日峰值耗电、共用电池最少组合、必要电池锁定及原生电网结算逻辑。应用后立即生效；已有能源接收器仍可使用，但不再出售或掉落。此选项用于测试供电机制。
 ui_power_disabled,免电模式 · 无需电池，电池可自由取出
-start_engineer_routing,标签升级×1、输入总线×2、输出总线×2
-start_engineer_contact,ME供货电话条×1（6322，预约次日来访）
+start_engineer_routing,"标签升级、2个输入总线及2个输出总线"
+start_engineer_contact,"研究员供货电话6322；已解锁AE工程师升级"
 item_interface_name,ME物品接口
 item_fluid_interface_name,ME流体接口
 ui_interface_online,网络已连接
@@ -211,3 +210,44 @@ ui_interface_last,最近存入：{0}件
 ui_modified,修改时间
 ui_interface_auto_purchase,自动收纳购入物品
 ui_interface_purchase_hint,成交后存入本网络（含批发）。\n默认关闭；放不下时保留原版落点。
+item_fluid_bus_name,AE 流体存储总线
+item_fluid_import_name,AE 流体输入总线
+item_fluid_export_name,AE 流体输出总线
+item_formation_name,AE 放置总线
+item_annihilation_name,AE 吸收总线
+item_wireless_name,AE 无线连接器
+item_wireless_desc,在任意物品栏中连接网络。单击选中后点击另一个连接器配对；双击查看或断开连接。
+item_plane_desc,安装在线缆侧面。默认只处理面前一格，可在配置中改为整个所在物品栏；只处理物品。
+item_interface_modes_desc,右键菜单“切换”可切换物品／流体形态，双击配置。切回物品前须排空流体缓冲。
+item_bus_modes_desc,安装在线缆侧面，双击对应部位配置。右键菜单“切换”可切换物品／流体形态，保留升级卡和筛选。
+ui_form_empty_first,请先排空接口中的液体，再切换为物品形态。
+ui_form_fluid,当前形态：流体
+ui_form_item,当前形态：物品
+ui_form_toggle,切换物品／流体形态
+ui_form_hint,也可在物品的右键菜单中选择“切换”。
+ui_wireless_hint,单击选中连接器，再点击另一端配对。重新配对会解除旧连接；两端所在的物品栏可关闭窗口。
+ui_wireless_main,主物品栏
+ui_wireless_unpaired,未配对，或另一端不可用
+ui_wireless_paired,已配对：#{0} · {1}
+ui_wireless_unlink,解除配对
+ui_plane_absorb,从所在物品栏吸收入网
+ui_plane_place,从网络放置筛选物品
+ui_plane_scope,作用范围
+ui_plane_front,仅面前一格（默认）
+ui_plane_whole,整个所在物品栏
+ui_plane_scope_hint,面前已有物品时不再放置；不会吸收 AE 组件或料斗。
+ui_plane_choose_filter,白名单为空，不放置物品。请添加筛选或切换黑名单。
+ui_fluid_io_moved,本次转移 {0} mL 液体
+ui_fluid_filter_hint,拖入有液体的容器：模糊匹配组分种类，精确匹配比例；不比较瓶型和液量。
+ui_fluid_filter_recapture,请重新拖入有液体的容器作为流体筛选样品。
+ui_priority_value,"优先级：{0}"
+ui_terminal_size,"切换界面尺寸：100% → 50% → 75%"
+ui_drawer_unlocked,"未锁定物品"
+ui_drawer_lock_waiting,"已锁定：等待放入第一件物品"
+ui_drawer_locked_type,"已锁定：{0}"
+ui_drawer_lock,"锁定物品种类"
+ui_drawer_unlock,"解锁物品种类"
+ui_drawer_lock_help,"锁定后，取空也会保留物品种类。解锁并清空后，才能换存其他物品。"
+start_engineer_wireless,"2个无线连接器，可配对连接不同库存"
+ui_drawer_void,溢出销毁
+ui_drawer_void_help,默认关闭。开启后，符合种类但超出容量的新投入物品会永久销毁；已有库存不变。

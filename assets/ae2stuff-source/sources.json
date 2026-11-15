@@ -1,0 +1,37 @@
+{
+  "commit": "5ed912ea686d98d1a0e5c25a9f02f142cd6f8163",
+  "license": "MIT",
+  "copyright": "Copyright (c) bdew, 2014 - 2020",
+  "files": [
+    {
+      "file": "LICENSE.txt",
+      "source": "https://raw.githubusercontent.com/bdew-minecraft/ae2stuff/5ed912ea686d98d1a0e5c25a9f02f142cd6f8163/LICENSE.txt",
+      "sha256": "9e8e7fd48884d7156abde981adb0c31623f18275ec896fc0e95f904b81f69ed7"
+    },
+    {
+      "file": "wireless.json",
+      "source": "https://raw.githubusercontent.com/bdew-minecraft/ae2stuff/5ed912ea686d98d1a0e5c25a9f02f142cd6f8163/resources/assets/ae2stuff/blockstates/wireless.json",
+      "sha256": "267a43e8ce7fa821d365e458c76953e11d0b13b29a4bddcdc3d78e6280571ea0"
+    },
+    {
+      "file": "side_off.png",
+      "source": "https://raw.githubusercontent.com/bdew-minecraft/ae2stuff/5ed912ea686d98d1a0e5c25a9f02f142cd6f8163/resources/assets/ae2stuff/textures/blocks/wireless/side_off.png",
+      "sha256": "4e02e64f4c4b6ec0b953e05c17dffcedbace4e4e248d76fe16bfe7a7b541443d"
+    },
+    {
+      "file": "side_on.png",
+      "source": "https://raw.githubusercontent.com/bdew-minecraft/ae2stuff/5ed912ea686d98d1a0e5c25a9f02f142cd6f8163/resources/assets/ae2stuff/textures/blocks/wireless/side_on.png",
+      "sha256": "b0fb75a07385a0e7e37ebb2cef109f4c07f3827020f090cae61e9591dda756dc"
+    },
+    {
+      "file": "top_off.png",
+      "source": "https://raw.githubusercontent.com/bdew-minecraft/ae2stuff/5ed912ea686d98d1a0e5c25a9f02f142cd6f8163/resources/assets/ae2stuff/textures/blocks/wireless/top_off.png",
+      "sha256": "b1fda7991b9dca85a29196e0a3a63ab86be538568af3b807813533783aae7208"
+    },
+    {
+      "file": "top_on.png",
+      "source": "https://raw.githubusercontent.com/bdew-minecraft/ae2stuff/5ed912ea686d98d1a0e5c25a9f02f142cd6f8163/resources/assets/ae2stuff/textures/blocks/wireless/top_on.png",
+      "sha256": "831ef9a12d304571015bfbdf6986b9e3bacbac28188a71194de23565ca753276"
+    }
+  ]
+}

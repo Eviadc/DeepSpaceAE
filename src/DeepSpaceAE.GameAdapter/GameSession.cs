@@ -59,6 +59,7 @@ internal sealed partial class GameSession
     internal string Id(GameItem item) => item.GetUniqueID().ToString("X8",CultureInfo.InvariantCulture);
     internal Guid GuidFor(GameItem item) => identities.GetValue(item, _ => new Token()).Id;
     internal static bool IsPart(GameItem item) => item.identifier != null && ModEntry.PartKinds.ContainsKey(item.identifier);
+    internal static bool IsComponent(GameItem item)=>item.identifier?.StartsWith("deepspaceae.",StringComparison.Ordinal)==true;
     internal void Reset()
     {
         PartStorage.ResetPowerSettlement();
@@ -141,7 +142,7 @@ internal sealed partial class GameSession
     }
     internal sealed class Board
     {
-        internal InventoryLayout Layout = null!;
+        internal NetworkLayout Layout = null!;
         internal NetworkTopology Topology = null!;
         internal NetworkEvaluation Evaluation = null!;
         internal Dictionary<string, GameItem> ById = new(StringComparer.Ordinal);
@@ -151,7 +152,7 @@ internal sealed partial class GameSession
     internal Board ReadBoard(bool reserve = false)
     {
         var root = MainInventory() ?? throw new Rejected(UiText.Get("error_enter_game"));
-        var board = new Board { Layout = new InventoryLayout(root) };
+        var board = new Board { Layout = new NetworkLayout(root) };
         foreach (var part in board.Layout.Parts) board.ById.Add(Id(part), part);
         var nodes = board.Layout.Parts.Select(i => new NetworkNode(Id(i), ModEntry.PartKinds[i.identifier],
             i.identifier == "deepspaceae.item_storage_bus" || DiskStorage.IsDrive(i) ? Id(i) : null));
@@ -176,7 +177,6 @@ internal sealed partial class GameSession
     internal int CoreCost(GameItem core)
     {
         if(!ModSettings.EnergyEnabled) return 0;
-        if (!ReferenceEquals(core.parentInventory, MainInventory())) return 2;
         var board = ReadBoard();
         return board.Evaluation.NightCosts.TryGetValue(Id(core), out var cost) ? cost : 2;
     }
@@ -193,6 +193,9 @@ internal sealed partial class GameSession
                     item.name = UiText.Get(definition.NameKey);
                     item.shortDescription = IoBus.IsBus(item) ? UiText.Get(IoBus.IsIo(item)?"item_io_desc":"item_bus_desc") : definition.Part == NetworkPart.Pipeline ? UiText.Get("item_cable_desc") : UiText.Get("item_part_desc");
                     item.flavorText = UiText.Get("item_flavor");
+                    PartModes.Refresh(item);
+                    if(WirelessConnector.IsConnector(item)) item.shortDescription=UiText.Get("item_wireless_desc");
+                    if(IoBus.IsPlane(item)) item.shortDescription=UiText.Get("item_plane_desc");
                 }
                 if (IsPart(item) && !ReferenceEquals(item.parentInventory, MainInventory())) Visuals.Inactive(item);
                 if (item.identifier == "deepspaceae.core" || EnergyReceiver.IsReceiver(item)) PartStorage.RestoreLocks(item);
@@ -267,12 +270,12 @@ internal sealed partial class GameSession
         {
             if (!ReferenceEquals(terminal.parentInventory, root) || !GeneralHelper.IsItemEffectivelyOwned(terminal)) throw new Rejected(UiText.Get("error_part_main"));
             var local = new View { Board = board, Root = root, Core = terminal };
-            var policy = new StoragePolicy(0, StorageAccess.ReadWrite, false, false, false, 0, Array.Empty<string>());
+            var policy = new StoragePolicy(0, StorageAccess.ReadWrite, false, true, false, 0, Array.Empty<string>());
             local.Owners.Add(terminal, terminal); local.Policies.Add(terminal, policy); local.Inventories.Add(terminal, Contents(terminal));
             local.Attachments.Add(DrawerStorage.Upgrades(terminal));
             return ReadCatalog(local, new Dictionary<GameItem, List<StoragePolicy>> { [terminal] = new List<StoragePolicy> { policy } });
         }
-        if (!ReferenceEquals(terminal.parentInventory, root) || !GeneralHelper.IsItemEffectivelyOwned(terminal)) throw new Rejected(UiText.Get("error_terminal_main"));
+        if (!GeneralHelper.IsItemEffectivelyOwned(terminal)) throw new Rejected(UiText.Get("error_not_owned"));
         if (!board.Evaluation.Devices.TryGetValue(Id(terminal), out var connection) || connection.Status != DeviceStatus.Online || connection.CoreId == null)
             throw new Rejected(UiText.Get("error_terminal_network"));
         if (!board.Powered.Contains(connection.CoreId)) throw new Rejected(UiText.Get("error_network_power"));
@@ -289,11 +292,12 @@ internal sealed partial class GameSession
             if (bc.Status != DeviceStatus.Online || bc.CoreId != coreId) continue;
             var owner = board.Layout.FrontOwner(bus);
             if (owner == null || IsPart(owner) || DiskStorage.IsDisk(owner) || !board.Layout.Owned.Contains(owner)) continue;
-            if(LiquidStorage.IsContainer(owner))
+            if(PartModes.IsFluid(bus) && LiquidStorage.IsContainer(owner))
             {
                 if(!view.LiquidPolicies.TryGetValue(owner,out var liquidPolicies)) view.LiquidPolicies.Add(owner,liquidPolicies=new List<StoragePolicy>());
                 liquidPolicies.Add(PartStorage.Policy(bus));
             }
+            if(PartModes.IsFluid(bus)) continue;
             if (!view.Inventories.TryGetValue(owner, out var invs)) { invs = Contents(owner); view.Inventories.Add(owner, invs); }
             if (invs.Count == 0) continue;
             var policy = PartStorage.Policy(bus); view.Owners.Add(bus, owner); view.Policies.Add(bus, policy);
@@ -307,7 +311,7 @@ internal sealed partial class GameSession
             var invs=bays.Take(DiskStorage.Unlocked(drive)).Where(b=>b.childItem!=null).Select(b=>b.childItem).Where(DiskStorage.IsDisk).Distinct()
                 .Select(d=>DiskStorage.Data(d)).Cast<GameInventory>().ToList();
             view.Inventories.Add(drive,invs); view.Owners.Add(drive,drive);
-            var policy=new StoragePolicy(0,StorageAccess.ReadWrite,false,false,false,0,Array.Empty<string>());
+            var policy=new StoragePolicy(PartStorage.Int(drive,"priority"),StorageAccess.ReadWrite,false,true,false,0,Array.Empty<string>());
             view.Policies.Add(drive,policy); ownerPolicies.Add(drive,new List<StoragePolicy>{policy});
         }
         return catalog?ReadCatalog(view, ownerPolicies):view;
@@ -366,6 +370,7 @@ internal sealed partial class GameSession
             if (!GeneralHelper.IsItemEffectivelyOwned(part)) throw new Rejected(UiText.Get("error_not_owned"));
             if (DrawerStorage.IsDrawer(part)) ShowDrawer(part);
             else if(InterfaceStorage.IsInterface(part)) ShowInterface(part);
+            else if(WirelessConnector.IsConnector(part)) ShowWireless(part);
             else if (DiskStorage.IsDrive(part)) ShowDrive(part);
             else if(EnergyReceiver.IsReceiver(part)) ShowReceiver(part);
             else if (part.identifier == "deepspaceae.core") ShowCore(part);
@@ -394,9 +399,10 @@ internal sealed partial class GameSession
     {
         if (!PartStorage.CanConfigure(bus)) return;
         AutomationStructureChanged();
+        if(PartStorage.Read(bus,"exclude")==null) PartStorage.Number(bus,"exclude",PartStorage.Policy(bus).Exclude?1:0);
         var filters = PartStorage.Filters(bus); filters[slot] = value.Replace("\n", "").Replace("\r", "").Trim();
         bool tags=PartStorage.Policy(bus).Tags;
-        if(filters[slot].Length==0 && !tags && IoBus.IsIo(bus)) PartStorage.String(bus,"filter_state_"+slot,"");
+        if(filters[slot].Length==0 && !tags && IoBus.IsAutomation(bus)) PartStorage.String(bus,"filter_state_"+slot,"");
         PartStorage.String(bus, tags ? "tag_filters" : "filters", string.Join("\n", filters)); Visuals.Invalidate(); StructureChanged(bus);
     }
     private GameItem? WrenchItem(GameItem target)
