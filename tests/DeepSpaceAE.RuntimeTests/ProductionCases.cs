@@ -24,6 +24,14 @@ public sealed partial class RuntimePilot
     {
         var item=Spawn(id); Add(item); GridAt(grid,item,gx,gy); return item;
     }
+    private GameItem[] StockDrawer(GameInventory data,int count)
+    {
+        // Toilet paper is natively unstackable: preserve separate real instances.
+        var items=new List<GameItem>();
+        for(int i=0;i<count;i++)
+        { var item=Spawn("toilet_paper"); Add(item); Adapter.Move(item,data); items.Add(item); }
+        return items.ToArray();
+    }
     private void UsabilityMachineBays()
     {
         Adapter.Call(Adapter.Session,"Close");
@@ -133,13 +141,14 @@ public sealed partial class RuntimePilot
             Check(ReferenceEquals(full.parentInventory,output),"Unavailable network lost a machine's new output.");
             Adapter.Move(full,root); StowTopology(full); disk.UnlockInv();
             var drawer=(GameInventory)Adapter.Static("DrawerStorage","Data",productionDrawer)!;
-            var prior=Spawn("toilet_paper"); prior.SetAmount(15); Add(prior); Adapter.Move(prior,drawer);
+            var prior=StockDrawer(drawer,15);
             disk.LockInv(); Adapter.Call(Adapter.Session,"ConfigureNumber",productionStorageBus,"exclude",1);
-            var partial=Spawn("toilet_paper"); partial.SetAmount(4); PlantHarvest.Output(ctx,partial);
-            Check(prior.unitCount==15 && drawer.childItems.Sum(i=>i.unitCount)==16
-                && ReferenceEquals(partial.parentInventory,output) && partial.unitCount==3,"Partially accepted output lost or duplicated the native remainder.");
+            var partial=Spawn("toilet_paper"); partial.SetAmount(4);
+            Check(GraphUtils.TryAcceptAll(output,partial)==0,"Native batch output retained unplaced units despite available fallback space.");
+            Check(prior.All(i=>i.unitCount==1 && ReferenceEquals(i.parentInventory,drawer)) && drawer.childItems.Sum(i=>i.unitCount)==16
+                && output.childItems.Sum(i=>i.unitCount)==3 && output.childItems.All(i=>i.identifier==partial.identifier),"Partially accepted output lost or duplicated the native remainder.");
             foreach(var item in drawer.childItems.ToArray()) { Adapter.Move(item,root); StowTopology(item); }
-            Adapter.Move(partial,root); StowTopology(partial);
+            foreach(var item in output.childItems.ToArray()) { Adapter.Move(item,root); StowTopology(item); }
             disk.UnlockInv(); Adapter.Call(Adapter.Session,"ConfigureNumber",productionStorageBus,"exclude",0);
             var spilled=Spawn("toothpaste"); output.overrideLockInsert=true;
             GraphUtils.EmporiumTryAdd(output,spilled);
@@ -158,17 +167,19 @@ public sealed partial class RuntimePilot
     {
         var data=(GameInventory)Adapter.Static("DrawerStorage","Data",productionDrawer)!;
         Check(!(bool)Adapter.Static("DrawerStorage","VoidOverflow",productionDrawer)!,"Overflow destruction is enabled by default.");
-        var original=Spawn("toilet_paper"); original.SetAmount(15); Add(original); Adapter.Move(original,data);
-        var incoming=Spawn("toilet_paper"); incoming.SetAmount(4); Add(incoming);
-        Check(data.TryFindOneValidInventorySlot(incoming).numTransfer==1,"Normal drawer did not respect remaining capacity.");
+        var original=StockDrawer(data,15);
+        var incoming=Enumerable.Range(0,4).Select(_=>{ var item=Spawn("toilet_paper"); Add(item); return item; }).ToArray();
+        Check(data.TryFindOneValidInventorySlot(incoming[0]).numTransfer==1,"Normal drawer did not respect remaining capacity.");
         Adapter.Call(Adapter.Session,"OpenPart",productionDrawer);
         var panel=(PixelWindow)Adapter.Field(Adapter.Session,"partWindow")!;
         var field=panel.handler.GetComponentsInChildren<TreeNodeRender>(true).Select(n=>n.element)
             .Where(e=>e?.GetType().FullName=="DeepSpaceAE.GameAdapter.NativeWidgets+Field").Distinct().Single();
         ((CustomUIElement)Adapter.Field(field!,"Control")!).SetBool(true,true);
         Check((bool)Adapter.Static("DrawerStorage","VoidOverflow",productionDrawer)!,"Actual overflow toggle callback did not save.");
-        Check(data.TryFindOneValidInventorySlot(incoming).TryAcceptOnce(4)==4 && original.unitCount==15
-            && data.childItems.Sum(i=>i.unitCount)==16,"Overflow changed original stock or retained too many new units.");
+        Check(incoming.All(i=>data.TryFindOneValidInventorySlot(i).TryAcceptOnce(1)==1)
+            && original.All(i=>i.unitCount==1 && ReferenceEquals(i.parentInventory,data))
+            && incoming.Count(i=>((GameItemElement)i).IsDestroyed())==3 && data.childItems.Sum(i=>i.unitCount)==16,
+            "Overflow changed original stock or retained too many new units.");
         var extra=Spawn("toilet_paper"); Add(extra); var stale=data.TryFindOneValidInventorySlot(extra);
         Adapter.Static("DrawerStorage","SetVoidOverflow",productionDrawer,false);
         Check(stale.TryAcceptOnce(1)==0 && ReferenceEquals(extra.parentInventory,root),"Stale void preview detached an item after disabling overflow.");
@@ -223,28 +234,46 @@ public sealed partial class RuntimePilot
         Check(outputs.SequenceEqual(new[]{MachineHydroponic.GetOutputSlot(productionMachine)})
             && !inputs.Contains(MachineHelper.GetBatterySlot(productionMachine))
             && !inputs.Contains(MachineHelper.GetModuleInv(productionMachine)),"General storage support exposed a machine's auxiliary bays.");
-        var grid=BayGrid(productionBay); Adapter.Move(productionMachine,root);
-        var export=Mount(PlaceBay(grid,Product+".pipeline",1,4),"export_bus",2);
+        // Native storage bays cannot nest inside machine bays. Keep the real
+        // containers in the main inventory, linked to the bay network wirelessly.
+        var containers=new[]{Spawn("storage_bay"),Spawn("hypertech_bay")};
+        int width=3+containers.Max(i=>i.modifiedShape.globalWidth),height=Math.Max(2,containers.Max(i=>i.modifiedShape.globalHeight));
+        int cx=0,cy=0; bool free=false;
+        for(int gy=1;gy+height<=root.inventoryShape.height && !free;gy++)
+            for(int gx=1;gx+width<=root.inventoryShape.width && !free;gx++)
+                if(!root.childItems.Any(i=>i.modifiedShape.minX<gx+width && i.modifiedShape.maxX>=gx-1
+                    && i.modifiedShape.minY<gy+height && i.modifiedShape.maxY>=gy-1))
+                { cx=gx; cy=gy; free=true; }
+        if(!free)
+        {
+            Guard(); cx=root.inventoryShape.width+1; cy=1;
+            root.SetShape(cx+width+1,Math.Max(root.inventoryShape.height,height+2));
+        }
+        var remote=PlaceBay(BayGrid(productionBay),Product+".wireless_connector",7,0);
+        var local=Spawn(Product+".wireless_connector"); At(local,cx,cy); Pair(local,remote);
+        var incomingCable=Spawn(Product+".pipeline"); At(incomingCable,cx+2,cy);
+        var outgoingCable=Spawn(Product+".pipeline"); At(outgoingCable,cx+2,cy+1);
+        var importBus=Mount(incomingCable,"import_bus",1); var export=Mount(outgoingCable,"export_bus",1);
         var disk=Adapter.Data(productionDisk);
         Adapter.Call(Adapter.Session,"ConfigureNumber",export,"exclude",0);
         Adapter.Call(Adapter.Session,"SetFilter",export,0,"toilet_paper");
-        foreach(string kind in new[]{"storage_bay","hypertech_bay"})
+        foreach(var container in containers)
         {
-            var container=PlaceBay(grid,kind,0,5);
+            string kind=container.identifier; At(container,cx+3,cy);
             var slots=(List<GameInventory>)Adapter.Static("IoBus","TargetSlots",container,true)!;
             var destinations=(List<GameInventory>)Adapter.Static("IoBus","TargetSlots",container,false)!;
             Check(slots.Count==(kind=="hypertech_bay"?2:1) && slots.SequenceEqual(destinations),"Ordinary/two-page storage discovery differs by direction.");
             Check(((List<GameInventory>)Adapter.Static("IoBus","MachineSlots",container,true)!).Count==0,"Ordinary insertion was classified as new machine output.");
             var paper=Spawn("toilet_paper"); Add(paper); Adapter.Move(paper,slots.Last());
             Check(ReferenceEquals(paper.parentInventory,slots.Last()),"Ordinary storage insertion was intercepted as production.");
-            Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"exclude",0);
-            Adapter.Call(Adapter.Session,"SetFilter",productionImport,0,""); RunBus(productionImport);
+            Adapter.Call(Adapter.Session,"ConfigureNumber",importBus,"exclude",0);
+            Adapter.Call(Adapter.Session,"SetFilter",importBus,0,""); RunBus(importBus);
             Check(ReferenceEquals(paper.parentInventory,slots.Last()),"Container import ignored an empty whitelist.");
-            Adapter.Call(Adapter.Session,"SetFilter",productionImport,0,paper.identifier);
+            Adapter.Call(Adapter.Session,"SetFilter",importBus,0,paper.identifier);
             slots.Last().LockInv();
-            try { RunBus(productionImport); Check(ReferenceEquals(paper.parentInventory,slots.Last()),"Import ignored a locked ordinary source."); }
+            try { RunBus(importBus); Check(ReferenceEquals(paper.parentInventory,slots.Last()),"Import ignored a locked ordinary source."); }
             finally { slots.Last().UnlockInv(); }
-            RunBus(productionImport); Check(ReferenceEquals(paper.parentInventory,disk),"Import did not extract from ordinary storage/inactive tab.");
+            RunBus(importBus); Check(ReferenceEquals(paper.parentInventory,disk),"Import did not extract from ordinary storage/inactive tab.");
             foreach(var slot in slots) slot.LockInv();
             try
             {
@@ -254,7 +283,7 @@ public sealed partial class RuntimePilot
             }
             finally { foreach(var slot in slots) slot.UnlockInv(); }
             GeneralHelper.SetItemOwned(container,false);
-            try { RunBus(productionImport); Check(ReferenceEquals(paper.parentInventory,slots.Last()),"Import took goods from an unowned container."); }
+            try { RunBus(importBus); Check(ReferenceEquals(paper.parentInventory,slots.Last()),"Import took goods from an unowned container."); }
             finally { GeneralHelper.SetItemOwned(container,true); }
             var bottle=Spawn("small_bottled_water"); Add(bottle); Adapter.Move(bottle,slots.Last());
             foreach(bool import in new[]{true,false})
@@ -264,13 +293,15 @@ public sealed partial class RuntimePilot
             else
             {
                 productionKeys["container"]=container.GetUniqueID(); productionKeys["container_export"]=export.GetUniqueID();
+                productionKeys["container_import"]=importBus.GetUniqueID();
                 productionKeys["container_stock"]=paper.GetUniqueID();
             }
         }
         var drawerSlots=(List<GameInventory>)Adapter.Static("IoBus","TargetSlots",productionDrawer,true)!;
         Check(drawerSlots.Count==1 && ReferenceEquals(drawerSlots[0],Adapter.Static("DrawerStorage","Data",productionDrawer)),"Drawer automation exposed upgrade cards.");
         productionIds=ordinaryMachineBay.FindAllChildItems().Concat(productionBay.FindAllChildItems())
-            .Concat(productionMachine.FindAllChildItems()).Concat(new[]{ordinaryMachineBay,productionBay,productionMachine})
+            .Concat(containers[1].FindAllChildItems()).Concat(incomingCable.FindAllChildItems()).Concat(outgoingCable.FindAllChildItems())
+            .Concat(new[]{ordinaryMachineBay,productionBay,containers[1],local,incomingCable,outgoingCable})
             .Distinct().Select(i=>i.GetUniqueID()).ToArray();
         details="Real import/export transfers passed for an ordinary storage bay and the inactive page of a two-page native bay. Empty whitelists, locked sources/destinations and unowned containers remain protected. Fluid targets include stored bottles; machine auxiliaries and drawer cards are excluded.";
     }
@@ -282,7 +313,7 @@ public sealed partial class RuntimePilot
         var containerSlots=(List<GameInventory>)Adapter.Static("IoBus","TargetSlots",Get("container"),true)!;
         var stored=Get("container_stock");
         Check(containerSlots.Contains(stored.parentInventory),"Ordinary storage contents did not restore.");
-        RunBus(Get("import")); Check(ReferenceEquals(stored.parentInventory,Adapter.Data(Get("disk"))),"Ordinary container import failed after reload.");
+        RunBus(Get("container_import")); Check(ReferenceEquals(stored.parentInventory,Adapter.Data(Get("disk"))),"Ordinary container import failed after reload.");
         RunBus(Get("container_export")); Check(containerSlots.Contains(stored.parentInventory),"Ordinary container export failed after reload.");
         var saved=Get("drawer"); var data=(GameInventory)Adapter.Static("DrawerStorage","Data",saved)!;
         Check((bool)Adapter.Static("DrawerStorage","VoidOverflow",saved)! && (bool)Adapter.Static("DrawerStorage","IsLocked",saved)!
