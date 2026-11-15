@@ -14,6 +14,7 @@ internal sealed partial class GameSession
         if(Loading || !GeneralHelper.IsItemEffectivelyOwned(device))
             throw new Rejected(UiText.Get("error_part_main"));
         var board=ReadBoard();
+        if(DrawerController.IsController(device)) return ReadDrawerController(device,board,catalog:false);
         if(!board.Evaluation.Devices.TryGetValue(Id(device),out var connection) || connection.Status!=DeviceStatus.Online || connection.CoreId==null)
             throw new Rejected(UiText.Get("ui_interface_offline"));
         if(!board.Powered.Contains(connection.CoreId)) throw new Rejected(UiText.Get("error_network_power"));
@@ -33,7 +34,7 @@ internal sealed partial class GameSession
     }
     internal int PreviewInterface(GameItem device,GameItem item)
     {
-        if(Loading || !InterfaceStorage.IsItem(device) || item==null || item.unitCount<=0 || !GeneralHelper.IsItemEffectivelyOwned(item)) return 0;
+        if(Loading || (!InterfaceStorage.IsItem(device) && !DrawerController.IsController(device)) || item==null || item.unitCount<=0 || !GeneralHelper.IsItemEffectivelyOwned(item)) return 0;
         var state=InterfaceStorage.Get(device);
         if(ReferenceEquals(state.PreviewItem,item) && state.PreviewRevision==Visuals.Revision && state.PreviewUnits==item.unitCount) return state.Preview;
         try { state.Preview=InterfacePlacement(ReadInterface(device),item).numTransfer; }
@@ -44,7 +45,7 @@ internal sealed partial class GameSession
     }
     internal int DepositInterface(GameItem device,GameItem item,int amount)
     {
-        if(Loading || writing || !InterfaceStorage.IsItem(device)) return 0;
+        if(Loading || writing || (!InterfaceStorage.IsItem(device) && !DrawerController.IsController(device))) return 0;
         writing=true;
         try
         {

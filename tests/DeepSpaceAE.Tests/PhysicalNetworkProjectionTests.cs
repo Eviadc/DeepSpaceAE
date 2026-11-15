@@ -10,6 +10,7 @@ public sealed class PhysicalNetworkProjectionTests
     [Theory]
     [InlineData(NetworkPart.Terminal)]
     [InlineData(NetworkPart.DiskDrive)]
+    [InlineData(NetworkPart.DrawerController)]
     [InlineData(NetworkPart.ItemInterface)]
     [InlineData(NetworkPart.FluidInterface)]
     [InlineData(NetworkPart.ItemStorageBus)]
@@ -19,7 +20,7 @@ public sealed class PhysicalNetworkProjectionTests
     public void CoreAdjacentDeviceStaysOnlineAfterDanglingCableIsAdded(NetworkPart part)
     {
         var nodes = new[] { new NetworkNode("core", NetworkPart.Core),
-            new NetworkNode("device", part, part == NetworkPart.DiskDrive || part == NetworkPart.ItemStorageBus ? "storage" : null),
+            new NetworkNode("device", part, part == NetworkPart.DiskDrive || part == NetworkPart.DrawerController || part == NetworkPart.ItemStorageBus ? "storage" : null),
             new NetworkNode("a-stub", NetworkPart.Pipeline), new NetworkNode("b-stub", NetworkPart.Pipeline),
             new NetworkNode("remote", NetworkPart.Terminal) };
         var before = new[] { new NetworkLink("core", "device") };

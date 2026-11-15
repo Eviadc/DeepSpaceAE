@@ -10,7 +10,7 @@ internal sealed partial class GameSession
     internal const string CustomerFilter = "deepspaceae.customer_demand";
     private string terminalFilterLocale="";
     private bool HasTagFilters => openTerminal?.identifier == "deepspaceae.terminal";
-    private bool PowerView(View view) => DrawerStorage.IsDrawer(view.Core)
+    private bool PowerView(View view) => DrawerStorage.IsDrawer(view.Core) || DrawerController.IsController(view.Core)
         || view.Board.Powered.Contains(Id(view.Core));
     internal static bool MatchesCustomer(GameItem item)
     {

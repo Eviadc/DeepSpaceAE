@@ -36,6 +36,7 @@ internal sealed class CableVisuals
     }
     internal void Detach()
     {
+        AutomaticPin.Clear();
         foreach (var core in animatedCores.ToArray()) StopAnimation(core);
         Watch(Array.Empty<GameInventory>());
         root = null; generation++; queued = false; poses.Clear(); devicePorts.Clear(); Revision++;
@@ -55,7 +56,7 @@ internal sealed class CableVisuals
     }
     private static string Base(GameItem part) => PartModes.Sprite(part);
     internal void Inactive(GameItem part)
-    { if (GameSession.IsPart(part)) { StopAnimation(part); Apply(part, Base(part) + (IoBus.IsBus(part) ? "" : "-off")); } }
+    { if (GameSession.IsPart(part)) { AutomaticPin.Set(part,false); StopAnimation(part); Apply(part, Base(part) + (IoBus.IsBus(part) ? "" : "-off")); } }
     private void StopAnimation(GameItem core)
     {
         if (!animatedCores.Remove(core)) return;
@@ -93,7 +94,7 @@ internal sealed class CableVisuals
     }
     private void Changed(GameItem item, GameInventory inventory, SlotMarker slot)
     {
-        session.AutomationStructureChanged();
+        if(GameSession.IsPart(item) || item.child!=null || LiquidStorage.IsContainer(item)) session.AutomationStructureChanged();
         if (GameSession.IsPart(item) && (item.parentInventory==null || !watched.Contains(item.parentInventory))) Inactive(item);
         poses.Remove(item); Invalidate(); session.NativeStorageChanged();
     }
@@ -101,11 +102,12 @@ internal sealed class CableVisuals
     { var s = item.modifiedShape; return (s.minX, s.minY, s.width, s.height, s.orientation, s.flipped, GeneralHelper.IsItemEffectivelyOwned(item)); }
     internal void ShapeChanged(GameItem item)
     {
+        AutomationPlacement.Validated(item);
         PartModes.Refresh(item);
         session.ActivityItemValidated(item);
         session.ItemChanged(item);
         session.InterfaceItemChanged(item);
-        if (item.parentInventory is DrawerInventory drawer) drawer.RefreshItemDisplay(item);
+        if (item.parentInventory is DrawerInventory drawer) { drawer.StateChanged(item); drawer.RefreshItemDisplay(item); }
         if (GameSession.IsPart(item) && (item.parentInventory==null || !watched.Contains(item.parentInventory))) Inactive(item);
         if (root == null) return;
         if (item.parentInventory!=null && watched.Contains(item.parentInventory) || WirelessConnector.IsConnector(item)
@@ -138,12 +140,13 @@ internal sealed class CableVisuals
             try
             {
                 var board = session.ReadBoard(); var layout = board.Layout; poses.Clear(); devicePorts.Clear();
+                AutomaticPin.Retain(layout.Parts);
                 foreach(var old in watched.Where(i=>!layout.Inventories.Contains(i)))
                     foreach(var item in old.childItems.Where(GameSession.IsPart)) Inactive(item);
                 Watch(layout.Inventories);
                 session.RefreshActivityNetworks(board);
                 foreach (var item in watched.SelectMany(inv=>inv.childItems).Distinct()) poses.Add(item, Pose(item));
-                foreach (var item in layout.Items.Where(GameSession.IsPart))
+                foreach (var item in layout.Items.Where(GameSession.IsPart).Union(layout.Parts))
                 {
                     string id = session.Id(item);
                     bool active = board.Evaluation.ComponentCore.TryGetValue(id, out var core) && board.Powered.Contains(core);
@@ -158,6 +161,7 @@ internal sealed class CableVisuals
                         var machine=layout.FrontOwner(item);
                         active=machine!=null && layout.Owned.Contains(machine) && (PartModes.IsFluid(item)?IoBus.LiquidTargets(machine,IoBus.IsImport(item)).Any():IoBus.TargetSlots(machine,IoBus.IsImport(item)).Count>0);
                     }
+                    AutomaticPin.Set(item,active);
                     string path = item.identifier == "deepspaceae.pipeline" ? "pipeline-" + layout.CableMask(item) : Base(item);
                     if(item.identifier!="deepspaceae.pipeline" && !IoBus.IsBus(item))
                     {
@@ -178,6 +182,7 @@ internal sealed class CableVisuals
             }
             catch (Exception e)
             {
+                AutomaticPin.Clear();
                 foreach (var item in root.childItems.Where(GameSession.IsPart)) Inactive(item);
                 log.Error("AE appearance update failed: " + Diagnostics.ConsoleText(e.ToString()));
             }

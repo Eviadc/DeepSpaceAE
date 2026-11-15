@@ -11,6 +11,7 @@ public sealed class DeviceRelayTests
     [Theory]
     [InlineData(NetworkPart.Terminal)]
     [InlineData(NetworkPart.DiskDrive)]
+    [InlineData(NetworkPart.DrawerController)]
     [InlineData(NetworkPart.ItemInterface)]
     [InlineData(NetworkPart.FluidInterface)]
     [InlineData(NetworkPart.EnergyReceiver)]
@@ -18,7 +19,7 @@ public sealed class DeviceRelayTests
     public void IndependentDeviceCarriesNetworkToItsOtherSide(NetworkPart part)
     {
         var nodes = new[] { new NetworkNode("core", NetworkPart.Core),
-            new NetworkNode("device", part, part == NetworkPart.DiskDrive ? "device-disk" : null),
+            new NetworkNode("device", part, part == NetworkPart.DiskDrive || part == NetworkPart.DrawerController ? "device-disk" : null),
             new NetworkNode("wire", NetworkPart.Pipeline), new NetworkNode("remote", NetworkPart.Terminal) };
         var edges = new[] { new NetworkLink("core", "device"), new NetworkLink("device", "wire"), new NetworkLink("wire", "remote") };
         var evaluation = new NetworkEvaluation(PhysicalNetworkProjection.Build(nodes, edges));
@@ -28,11 +29,13 @@ public sealed class DeviceRelayTests
         Assert.Equal(2, evaluation.EndpointCounts["core"]);
     }
 
-    [Fact]
-    public void AdjacentDevicesRelayWithoutAnyCableAndExposeTheRealStorageOnce()
+    [Theory]
+    [InlineData(NetworkPart.DiskDrive)]
+    [InlineData(NetworkPart.DrawerController)]
+    public void AdjacentDevicesRelayWithoutAnyCableAndExposeTheRealStorageOnce(NetworkPart storage)
     {
         var nodes = new[] { new NetworkNode("core", NetworkPart.Core), new NetworkNode("input", NetworkPart.ItemInterface),
-            new NetworkNode("drive", NetworkPart.DiskDrive, "disk"), new NetworkNode("fluid", NetworkPart.FluidInterface),
+            new NetworkNode("drive", storage, "disk"), new NetworkNode("fluid", NetworkPart.FluidInterface),
             new NetworkNode("terminal", NetworkPart.Terminal) };
         var edges = new[] { new NetworkLink("core", "input"), new NetworkLink("input", "drive"),
             new NetworkLink("drive", "fluid"), new NetworkLink("fluid", "terminal") };

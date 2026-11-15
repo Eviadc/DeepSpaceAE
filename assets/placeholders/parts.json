@@ -79,6 +79,12 @@
       "part": "AnnihilationBus",
       "name": "吸收总线",
       "icon": "annihilation-bus.svg"
+    },
+    {
+      "id": "deepspaceae.drawer_controller",
+      "part": "DrawerController",
+      "name": "抽屉控制器",
+      "icon": "drawer-controller.svg"
     }
   ]
 }

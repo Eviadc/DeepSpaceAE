@@ -17,6 +17,31 @@ internal sealed class InventoryLayout
     private readonly HashSet<GameItem> partSet = new();
     private readonly Dictionary<GridCell,GameItem> grid = new();
     private readonly Dictionary<GameItem, List<GridCell>> footprints = new();
+    private readonly Dictionary<GameItem,HashSet<GameItem>> drawerGroups = new();
+
+    internal HashSet<GameItem> DrawerMembers(GameItem controller)
+    {
+        var result=new HashSet<GameItem>();
+        IEnumerable<GameItem> AdjacentDrawers(GameItem item)
+        {
+            foreach(var cell in footprints[item]) for(int side=0;side<4;side++)
+            {
+                var other=grid.GetValueOrDefault(cell+GridSides.Step((GridSide)side));
+                if(other!=null && !ReferenceEquals(item,other) && Owned.Contains(other) && DrawerStorage.IsDrawer(other)) yield return other;
+            }
+        }
+        foreach(var start in AdjacentDrawers(controller))
+        {
+            if(!drawerGroups.TryGetValue(start,out var group))
+            {
+                group=new HashSet<GameItem>{start}; var pending=new Queue<GameItem>(); pending.Enqueue(start);
+                while(pending.Count>0) foreach(var next in AdjacentDrawers(pending.Dequeue())) if(group.Add(next)) pending.Enqueue(next);
+                foreach(var member in group) drawerGroups[member]=group;
+            }
+            result.UnionWith(group);
+        }
+        return result;
+    }
 
     internal InventoryLayout(GameInventory root, bool partsOnly = false)
     {

@@ -262,7 +262,10 @@ internal static class NativeTerminalViewChangedPatch
 {
     [HarmonyPostfix]
     private static void Postfix(GameItemElement __instance)
-    { VirtualInventory.ItemTile.Changed(__instance); ModEntry.ActiveSession?.TerminalItemValidated(__instance); }
+    {
+        if(__instance.parentInventory is DrawerInventory drawer) drawer.RefreshItemDisplay(__instance);
+        VirtualInventory.ItemTile.Changed(__instance); ModEntry.ActiveSession?.TerminalItemValidated(__instance);
+    }
 }
 [HarmonyPatch(typeof(GameItemElement), nameof(GameItemElement.ApplyAnimationFrame))]
 internal static class NativeTerminalAnimationChangedPatch

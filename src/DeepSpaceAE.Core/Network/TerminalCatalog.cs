@@ -29,7 +29,7 @@ public sealed class TerminalCatalog
         var attached = new HashSet<string>(StringComparer.Ordinal);
         if (Connection.Status == DeviceStatus.Online)
         {
-            foreach (var node in topology.Nodes.Values.Where(n => n.Part == NetworkPart.ItemStorageBus || n.Part == NetworkPart.DiskDrive))
+            foreach (var node in topology.Nodes.Values.Where(n => n.ContainerId != null))
             {
                 var bus = Network.Devices[node.Id];
                 if (bus.Status == DeviceStatus.Online && bus.CoreId == Connection.CoreId) attached.Add(node.ContainerId!);

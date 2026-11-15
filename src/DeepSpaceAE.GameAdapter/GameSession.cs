@@ -155,7 +155,7 @@ internal sealed partial class GameSession
         var board = new Board { Layout = new NetworkLayout(root) };
         foreach (var part in board.Layout.Parts) board.ById.Add(Id(part), part);
         var nodes = board.Layout.Parts.Select(i => new NetworkNode(Id(i), ModEntry.PartKinds[i.identifier],
-            i.identifier == "deepspaceae.item_storage_bus" || DiskStorage.IsDrive(i) ? Id(i) : null));
+            i.identifier == "deepspaceae.item_storage_bus" || DiskStorage.IsDrive(i) || DrawerController.IsController(i) ? Id(i) : null));
         board.Topology = PhysicalNetworkProjection.Build(nodes, board.Layout.Edges(Id));
         board.Evaluation = new NetworkEvaluation(board.Topology);
         if(!ModSettings.EnergyEnabled)
@@ -196,6 +196,7 @@ internal sealed partial class GameSession
                     PartModes.Refresh(item);
                     if(WirelessConnector.IsConnector(item)) item.shortDescription=UiText.Get("item_wireless_desc");
                     if(IoBus.IsPlane(item)) item.shortDescription=UiText.Get("item_plane_desc");
+                    if(DrawerController.IsController(item)) item.shortDescription=UiText.Get("item_drawer_controller_desc");
                 }
                 if (IsPart(item) && !ReferenceEquals(item.parentInventory, MainInventory())) Visuals.Inactive(item);
                 if (item.identifier == "deepspaceae.core" || EnergyReceiver.IsReceiver(item)) PartStorage.RestoreLocks(item);
@@ -266,6 +267,7 @@ internal sealed partial class GameSession
     private View Read(GameItem terminal)
     {
         var board = ReadBoard(); var root = MainInventory()!;
+        if(DrawerController.IsController(terminal)) return ReadDrawerController(terminal,board);
         if (DrawerStorage.IsDrawer(terminal))
         {
             if (!ReferenceEquals(terminal.parentInventory, root) || !GeneralHelper.IsItemEffectivelyOwned(terminal)) throw new Rejected(UiText.Get("error_part_main"));
@@ -313,6 +315,14 @@ internal sealed partial class GameSession
             view.Inventories.Add(drive,invs); view.Owners.Add(drive,drive);
             var policy=new StoragePolicy(PartStorage.Int(drive,"priority"),StorageAccess.ReadWrite,false,true,false,0,Array.Empty<string>());
             view.Policies.Add(drive,policy); ownerPolicies.Add(drive,new List<StoragePolicy>{policy});
+        }
+        foreach(var controller in board.Layout.Parts.Where(DrawerController.IsController))
+        {
+            if(!board.Evaluation.Devices.TryGetValue(Id(controller),out var dc) || dc.Status!=DeviceStatus.Online || dc.CoreId!=coreId) continue;
+            var inventories=board.Layout.DrawerMembers(controller).OrderByDescending(d=>DrawerStorage.Data(d).Used>0 || DrawerStorage.IsLocked(d) && DrawerStorage.LockedId(d).Length>0).Select(d=>(GameInventory)DrawerStorage.Data(d)).ToList();
+            view.Inventories.Add(controller,inventories); view.Owners.Add(controller,controller);
+            var policy=DrawerController.Policy(controller); view.Policies.Add(controller,policy);
+            ownerPolicies.Add(controller,new List<StoragePolicy>{policy});
         }
         return catalog?ReadCatalog(view, ownerPolicies):view;
     }
@@ -369,6 +379,7 @@ internal sealed partial class GameSession
             }
             if (!GeneralHelper.IsItemEffectivelyOwned(part)) throw new Rejected(UiText.Get("error_not_owned"));
             if (DrawerStorage.IsDrawer(part)) ShowDrawer(part);
+            else if(DrawerController.IsController(part)) ShowDrawerController(part);
             else if(InterfaceStorage.IsInterface(part)) ShowInterface(part);
             else if(WirelessConnector.IsConnector(part)) ShowWireless(part);
             else if (DiskStorage.IsDrive(part)) ShowDrive(part);

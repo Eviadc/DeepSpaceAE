@@ -31,10 +31,10 @@ public sealed partial class RuntimePilot : MonoBehaviour
     internal void Configure(PilotConfig settings)
     {
         config=settings; report.runId=config.runId; report.productCommit=config.productCommit;
-        report.profile = config.usabilityProfile ? "terminal-storage-usability" : config.expansionProfile ? "wireless-planes-modes" : config.topologyProfile ? "workshop-topology" : config.interfaceProfile ? "interfaces" : config.engineerStart ? "network-engineer" : "components";
+        report.profile = config.drawerProfile ? "drawer-controller-performance" : config.usabilityProfile ? "terminal-storage-usability" : config.expansionProfile ? "wireless-planes-modes" : config.topologyProfile ? "workshop-topology" : config.interfaceProfile ? "interfaces" : config.engineerStart ? "network-engineer" : "components";
         priorBackground=Application.runInBackground; Application.runInBackground=true;
         report.startedUtc=DateTime.UtcNow.ToString("O"); report.unityVersion=Application.unityVersion;
-        if(config.interfaceProfile || config.topologyProfile || config.expansionProfile || config.usabilityProfile) ModHook.OnGameLoadedLate+=InterfaceLoaded;
+        if(config.interfaceProfile || config.topologyProfile || config.expansionProfile || config.usabilityProfile || config.drawerProfile) ModHook.OnGameLoadedLate+=InterfaceLoaded;
         // Other enabled mods load large audio/texture libraries before the first
         // usable menu frame. Keep startup bounded separately from case execution.
         deadline=Time.realtimeSinceStartup+300; Write();
@@ -88,7 +88,7 @@ public sealed partial class RuntimePilot : MonoBehaviour
                 report.saveSlot=PlayerStore.Instance.saveSlotId; report.day=StoreStation.GetDayCounter();
                 report.freshScenarioConfirmed=true; report.status="running"; Write();
             }
-            if((config.interfaceProfile || config.topologyProfile || config.expansionProfile || config.usabilityProfile) && interfaceReloadWaiting)
+            if((config.interfaceProfile || config.topologyProfile || config.expansionProfile || config.usabilityProfile || config.drawerProfile) && interfaceReloadWaiting)
             {
                 if(!interfaceReloadReady || EmporiumEntry.Instance?.invElement==null || (bool)Adapter.Property(Adapter.Session,"Loading")!) return;
                 root=EmporiumEntry.Instance.invElement; interfaceReloadWaiting=false; readyLocale="";
@@ -113,7 +113,8 @@ public sealed partial class RuntimePilot : MonoBehaviour
                 Check(report.startupHintClosed,"Native startup hint did not close.");
                 hintChecked=true; next=Time.realtimeSinceStartup+5; Write(); return;
             }
-            var actions=config.usabilityProfile ? new Action[]{UsabilitySetup,UsabilityWindowPosition,UsabilityZoom,UsabilityDrivePriority,UsabilityBusPriorities,
+            var actions=config.drawerProfile ? new Action[]{DrawerSetup,DrawerSmallLoad,DrawerLargeLoad,DrawerControllerRoutes,DrawerQuickActions,DrawerPinsDisconnect,DrawerPinsRestore,DrawerManualIo,DrawerManualPlanes,DrawerManualFluids,DrawerSave,DrawerReload}
+                :config.usabilityProfile ? new Action[]{UsabilitySetup,UsabilityWindowPosition,UsabilityZoom,UsabilityDrivePriority,UsabilityBusPriorities,
                 UsabilityDrawer,UsabilityUpgrade,UsabilityTrader,UsabilityMachineBays,UsabilityEmptyFilters,UsabilityMachineProduction,
                 UsabilityVoidOverflow,UsabilityReducedStock,UsabilityContainerBuses,UsabilitySave,UsabilityReload,UsabilityProductionReload}
                 :config.expansionProfile ? new Action[]{ExpansionSetup,ExpansionModes,ExpansionWireless,ExpansionInvalidate,ExpansionRefresh,ExpansionPlanes,ExpansionFluidBuses,ExpansionSave,ExpansionReload}
@@ -124,7 +125,7 @@ public sealed partial class RuntimePilot : MonoBehaviour
                 : new Action[]{Load,Slots,Network,Power,Capacity,Terminal,Disconnect,Drawer,Filters,Save};
             if(step==actions.Length) { Finish(); return; }
             var watch=System.Diagnostics.Stopwatch.StartNew();
-            string id=(config.usabilityProfile?"USABILITY-":config.expansionProfile?"EXPAND-":config.topologyProfile?"TOPOLOGY-":config.interfaceProfile?"IFACE-":config.engineerStart ? "START-" : "PILOT-")+(step+1).ToString("00");
+            string id=(config.drawerProfile?"DRAWER-":config.usabilityProfile?"USABILITY-":config.expansionProfile?"EXPAND-":config.topologyProfile?"TOPOLOGY-":config.interfaceProfile?"IFACE-":config.engineerStart ? "START-" : "PILOT-")+(step+1).ToString("00");
             try { actions[step](); report.cases.Add(new CaseResult{id=id,status="PASS",detail=details,elapsedMs=watch.Elapsed.TotalMilliseconds}); Debug.Log("[AE-PILOT] "+id+" PASS: "+details); }
             catch(Exception e)
             {

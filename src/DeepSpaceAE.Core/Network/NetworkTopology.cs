@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace DeepSpaceAE.Core.Network;
 
-public enum NetworkPart { Core, Pipeline, ItemStorageBus, Terminal, DiskDrive, ImportBus, ExportBus, EnergyReceiver, ItemInterface, FluidInterface, WirelessConnector, FormationBus, AnnihilationBus }
+public enum NetworkPart { Core, Pipeline, ItemStorageBus, Terminal, DiskDrive, ImportBus, ExportBus, EnergyReceiver, ItemInterface, FluidInterface, WirelessConnector, FormationBus, AnnihilationBus, DrawerController }
 
 /// <summary>Logical model node. No grid coordinates, game types or rotation assumptions.</summary>
 public sealed class NetworkNode
@@ -23,9 +23,9 @@ public sealed class NetworkNode
     {
         if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Node ID is required.", nameof(id));
         if (!Enum.IsDefined(typeof(NetworkPart), part)) throw new ArgumentOutOfRangeException(nameof(part));
-        if ((part == NetworkPart.ItemStorageBus || part == NetworkPart.DiskDrive) && string.IsNullOrWhiteSpace(containerId))
+        if ((part == NetworkPart.ItemStorageBus || part == NetworkPart.DiskDrive || part == NetworkPart.DrawerController) && string.IsNullOrWhiteSpace(containerId))
             throw new ArgumentException("Storage device needs a model container ID.", nameof(containerId));
-        if (part != NetworkPart.ItemStorageBus && part != NetworkPart.DiskDrive && containerId != null)
+        if (part != NetworkPart.ItemStorageBus && part != NetworkPart.DiskDrive && part != NetworkPart.DrawerController && containerId != null)
             throw new ArgumentException("Only storage devices attach containers.", nameof(containerId));
         Id = id;
         Part = part;

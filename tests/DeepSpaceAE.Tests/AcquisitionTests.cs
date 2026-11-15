@@ -8,8 +8,8 @@ public sealed class AcquisitionTests
     [Fact]
     public void StockCatalogExcludesTheReceiverAndKeepsNonzeroAppearanceChances()
     {
-        Assert.Equal(17,AcquisitionCatalog.Offers.Count);
-        Assert.Equal(17,AcquisitionCatalog.Offers.Select(o=>o.Id).Distinct().Count());
+        Assert.Equal(18,AcquisitionCatalog.Offers.Count);
+        Assert.Equal(18,AcquisitionCatalog.Offers.Select(o=>o.Id).Distinct().Count());
         Assert.DoesNotContain(AcquisitionCatalog.Offers,o=>o.Id=="deepspaceae.energy_receiver");
         Assert.DoesNotContain(AcquisitionCatalog.Offers,o=>o.Id=="deepspaceae.fluid_interface");
         Assert.Contains(AcquisitionCatalog.Offers,o=>o.Id=="deepspaceae.wireless_connector" && o.Minimum>=2);
@@ -24,9 +24,9 @@ public sealed class AcquisitionTests
         var basic=AcquisitionCatalog.RollStock(p=>p==100,(min,_)=>min);
         Assert.Equal(3,basic.Count(id=>id=="deepspaceae.pipeline"));
         Assert.Equal(3,basic.Count(id=>id=="deepspaceae.capacity_upgrade"));
-        Assert.Equal(10,basic.Count);
+        Assert.Equal(12,basic.Count);
         Assert.Single(basic,id=>id=="deepspaceae.tag_upgrade");
-        Assert.Equal("deepspaceae.disk_large",basic[0]);
+        Assert.Equal(AcquisitionCatalog.Wireless,basic[0]);
         Assert.Single(basic,id=>id=="deepspaceae.disk_large");
         Assert.Equal(2,basic.Count(id=>id=="deepspaceae.disk_small"));
         var all=AcquisitionCatalog.RollStock(_=>true,(_,max)=>max);
@@ -44,13 +44,13 @@ public sealed class AcquisitionTests
         Assert.DoesNotContain("deepspaceae.disk_large",AcquisitionCatalog.Starter);
     }
     [Fact]
-    public void WirelessOffersKeepTheirChanceAndAlwaysContainCompletePairs()
+    public void WirelessOffersAreGuaranteedAndAlwaysContainCompletePairs()
     {
         foreach(bool optional in new[]{false,true})
         foreach(bool maximum in new[]{false,true})
         {
             var stock=AcquisitionCatalog.RollStock(chance=>chance==100 || optional,(min,max)=>maximum?max:min);
-            int count=optional?(maximum?4:2):0;
+            int count=maximum?4:2;
             Assert.Equal(count,stock.Count(id=>id==AcquisitionCatalog.Wireless));
             Assert.All(stock.Take(count),id=>Assert.Equal(AcquisitionCatalog.Wireless,id));
         }

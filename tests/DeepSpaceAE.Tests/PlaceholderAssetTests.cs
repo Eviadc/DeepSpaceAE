@@ -43,7 +43,7 @@ public sealed class PlaceholderAssetTests
         foreach (var part in parts)
         {
             var kind = Enum.Parse<NetworkPart>(part.GetProperty("part").GetString()!);
-            var node = new NetworkNode("asset-check", kind, kind == NetworkPart.ItemStorageBus || kind == NetworkPart.DiskDrive ? "box" : null);
+            var node = new NetworkNode("asset-check", kind, kind == NetworkPart.ItemStorageBus || kind == NetworkPart.DiskDrive || kind == NetworkPart.DrawerController ? "box" : null);
             var icon = part.GetProperty("icon").GetString()!;
             Assert.Equal(icon, Path.GetFileName(icon));
             var svg = XDocument.Load(Path.Combine(root, icon)).Root!;

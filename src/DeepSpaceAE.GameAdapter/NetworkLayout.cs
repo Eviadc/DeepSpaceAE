@@ -37,6 +37,8 @@ internal sealed class NetworkLayout
     internal GridCell? FrontCell(GameItem bus)=>locations.TryGetValue(bus,out var layout)?layout.FrontCell(bus):null;
     internal GameInventory? InventoryOf(GameItem part)=>locations.TryGetValue(part,out var layout)?layout.Inventory:null;
     internal int CableMask(GameItem cable)=>locations.TryGetValue(cable,out var layout)?layout.CableMask(cable):0;
+    internal IEnumerable<GameItem> DrawerMembers(GameItem controller)=>locations.TryGetValue(controller,out var layout)
+        ?layout.DrawerMembers(controller).OrderBy(i=>i.GetUniqueID()):Enumerable.Empty<GameItem>();
     internal IEnumerable<(int X,int Y,int Side)> DevicePorts(GameItem part)=>locations.TryGetValue(part,out var layout)
         ?layout.DevicePorts(part):Enumerable.Empty<(int,int,int)>();
     internal IEnumerable<NetworkLink> Edges(Func<GameItem,string> id)

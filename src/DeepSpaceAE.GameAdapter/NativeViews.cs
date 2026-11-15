@@ -108,7 +108,7 @@ internal sealed partial class GameSession
         { inv.onSlotAddItemEndFunc+=Changed; inv.onSlotRemoveItemEndFunc+=Changed; inv.onSlotChangeAmountItemFunc+=Changed; }
         if (create)
         {
-            if (DrawerStorage.IsDrawer(terminal)) liquidMode = false;
+            if (DrawerStorage.IsDrawer(terminal) || DrawerController.IsController(terminal)) liquidMode = false;
             terminalGrid = new VirtualInventory(terminal, 12, 8);
             terminalGrid.Redraw = RenderTerminal;
             var query = NativeWidgets.Input(UiText.Get("ui_terminal_search"), search, value => { if (search == value) return; search = value; terminalGrid?.SetScroll(0); RenderTerminal(); }, 128);
@@ -117,7 +117,7 @@ internal sealed partial class GameSession
             var sortField = NativeWidgets.Dropdown(new[] { UiText.Get("ui_native_order"), UiText.Get("ui_name"), UiText.Get("ui_quantity"), UiText.Get("ui_modified") }, (int)sort, i => { sort = (CatalogSort)i; packedRows=null; terminalGrid?.SetScroll(0); RenderTerminal(); }, 70, 4);
             MachineryButton? modeButton=null;
             modeButton=new MachineryButton(UiText.Get(liquidMode?"ui_liquids":"ui_items"),()=>{
-                if(DrawerStorage.IsDrawer(terminal)) return;
+                if(DrawerStorage.IsDrawer(terminal) || DrawerController.IsController(terminal)) return;
                 NativeLiquidSelection.EndFor(openTerminal); liquidMode=!liquidMode; tag=""; packedRows=null;
                 modeButton!.SetText(UiText.Get(liquidMode?"ui_liquids":"ui_items"));
                 terminalGrid?.SetScroll(0); RenderTerminal();
@@ -133,6 +133,7 @@ internal sealed partial class GameSession
             terminalWindow.SetTitle(UiText.Get("ui_terminal_title")); terminalWindow.closeCallback = CloseTerminal;
             terminalWindowState = TerminalWindowState.Attach(terminalWindow, terminal);
             if (DrawerStorage.IsDrawer(terminal)) terminalWindow.SetTitle(UiText.Get("item_drawer_name"));
+            if (DrawerController.IsController(terminal)) terminalWindow.SetTitle(UiText.Get("item_drawer_controller_name"));
             terminalWindow.handler.gameObject.AddComponent<TerminalCustomerWatch>().Session = this;
         }
         if (create) displayedTags = new[] { "" }; // Force initial options, including an empty catalog.
@@ -408,7 +409,7 @@ internal sealed partial class GameSession
     }
     private void ConfigurePriority(GameItem part, int value)
     {
-        if (DiskStorage.IsDrive(part) ? !GeneralHelper.IsItemEffectivelyOwned(part) : !PartStorage.CanConfigure(part)) return;
+        if (DiskStorage.IsDrive(part) || DrawerController.IsController(part) ? !GeneralHelper.IsItemEffectivelyOwned(part) : !PartStorage.CanConfigure(part)) return;
         AutomationStructureChanged(); PartStorage.Number(part,"priority",value); Visuals.Invalidate(); StructureChanged(part);
         if (ReferenceEquals(part,displayedPart)) priorityButton?.SetText(UiText.Get("ui_priority_value",value));
     }
@@ -453,6 +454,11 @@ internal sealed partial class GameSession
             else if(WirelessConnector.IsConnector(displayedPart))
             {
                 var position=partWindow?.rectTransform.position; ShowWireless(displayedPart);
+                if(position.HasValue && partWindow!=null) { partWindow.rectTransform.position=position.Value; partWindow.FixBounds(); }
+            }
+            else if(DrawerController.IsController(displayedPart))
+            {
+                var position=partWindow?.rectTransform.position; ShowDrawerController(displayedPart);
                 if(position.HasValue && partWindow!=null) { partWindow.rectTransform.position=position.Value; partWindow.FixBounds(); }
             }
             else if(DiskStorage.IsDrive(displayedPart))

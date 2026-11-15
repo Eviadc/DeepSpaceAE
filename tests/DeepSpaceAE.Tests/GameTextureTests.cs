@@ -15,8 +15,8 @@ public sealed class GameTextureTests
     [Fact]
     public void CoreTextureCoversAllNineCellsAndWhitelistContainsAllActiveAndInactiveImages()
     {
-        Assert.Equal(166, Directory.GetFiles(Root, "*.png").Length);
-        foreach (var name in new[] { "core", "terminal", "pipeline", "wireless-connector" })
+        Assert.Equal(168, Directory.GetFiles(Root, "*.png").Length);
+        foreach (var name in new[] { "core", "terminal", "pipeline", "wireless-connector", "drawer-controller" })
             Assert.True(File.Exists(Path.Combine(Root, name + "-off.png")));
         foreach (var name in new[] { "item-storage-bus", "import-bus", "export-bus", "formation-bus", "annihilation-bus", "fluid-item-storage-bus", "fluid-import-bus", "fluid-export-bus" })
         {

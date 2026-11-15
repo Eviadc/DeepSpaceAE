@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using HarmonyLib;
 using DeepSpaceAE.Core.Network;
 using UnityEngine;
 namespace DeepSpaceAE.GameAdapter;
@@ -66,7 +67,8 @@ internal static class DrawerStorage
         {
             if (ReferenceEquals(inventory, data.Data))
             {
-                RememberType(item,data.Data.childItems.FirstOrDefault());
+                data.Data.StockChanged(stock);
+                RememberType(item,data.Data.First);
                 // A hidden non-representative instance must become visible when
                 // it leaves the pile for an ordinary native inventory.
                 if (!ReferenceEquals(stock.parentInventory, data.Data) && stock is GameItemElement removed) removed.handler.gameObject.SetActive(true);
@@ -101,12 +103,61 @@ internal static class DrawerStorage
 
 internal sealed class DrawerInventory : GameGridInventory
 {
+    // Native childItems returns a new list on every access. Keep a reference to
+    // the authoritative list, never a second ownership graph.
+    private static readonly AccessTools.FieldRef<GameGridInventory,List<GameItem>> nativeItems = AccessTools.FieldRefAccess<GameGridInventory,List<GameItem>>("items");
+    private static readonly AccessTools.FieldRef<GameGridInventory,int> nativeWidth = AccessTools.FieldRefAccess<GameGridInventory,int>("<widthPixels>k__BackingField");
+    private static readonly AccessTools.FieldRef<GameGridInventory,int> nativeHeight = AccessTools.FieldRefAccess<GameGridInventory,int>("<heightPixels>k__BackingField");
+    private static readonly Action<GameGridInventory> validateBackground = AccessTools.MethodDelegate<Action<GameGridInventory>>(AccessTools.Method(typeof(GameGridInventory),"ValidateBackground"));
+    private static readonly Action<GameGridInventory> validateCells = AccessTools.MethodDelegate<Action<GameGridInventory>>(AccessTools.Method(typeof(GameGridInventory),"ValidateCellBackdrops"));
+    private static readonly AccessTools.FieldRef<GameGridInventory,TreeNodeRender> nativeBackground = AccessTools.FieldRefAccess<GameGridInventory,TreeNodeRender>("background");
+    private static readonly AccessTools.FieldRef<GameGridInventory,TreeNodeRender> nativeBorder = AccessTools.FieldRefAccess<GameGridInventory,TreeNodeRender>("insideBorder");
+    private static readonly AccessTools.FieldRef<GameGridInventory,bool> nativeHideBorder = AccessTools.FieldRefAccess<GameGridInventory,bool>("hideBorder");
+    private static readonly System.Reflection.PropertyInfo imageProperty=typeof(TreeNodeRender).GetProperty("image")!;
+    private static readonly System.Reflection.PropertyInfo imageColor=imageProperty.PropertyType.GetProperty("color")!;
+    private static readonly System.Reflection.PropertyInfo imageEnabled=imageProperty.PropertyType.GetProperty("enabled")!;
+    private readonly Dictionary<GameItem,int> quantities = new();
+    private readonly HashSet<GameItem> variants = new();
+    private GameItem? typeRepresentative;
+    private bool typeDirty;
+    private long used;
+    internal List<GameItem> Stock => nativeItems(this);
+    internal GameItem? First => Stock.Count == 0 ? null : Stock[0];
+    internal void StockChanged(GameItem item)
+    {
+        quantities.TryGetValue(item,out int previous);
+        int current=ReferenceEquals(item.parentInventory,this)?item.unitCount:0;
+        used+=current-previous;
+        if(current==0) quantities.Remove(item); else quantities[item]=current;
+        if(current==0) variants.Remove(item);
+        if(!ReferenceEquals(typeRepresentative,First))
+        {
+            if(variants.Count>0) typeDirty=true;
+            typeRepresentative=First;
+        }
+        if(item is GameItemElement element) element.handler.gameObject.SetActive(ReferenceEquals(item,First));
+        if(current!=previous) QueueDisplay();
+    }
     internal GameItem Drawer { get; }
     private GameItem? representative;
     private readonly DrawerFace? face;
     private long displayCount;
     private bool displayQueued,displayDirty=true;
-    internal long Used => childItems.Sum(i => (long)i.unitCount);
+    internal long Used => used;
+    public override void Validate()
+    {
+        // The native implementation validates every hidden real instance on
+        // every insertion and window layout. Only one is rendered here.
+        if(Drawer==null) { base.Validate(); return; }
+        nativeWidth(this)=inventoryShape.width*UISettings.current.gridSize;
+        nativeHeight(this)=inventoryShape.height*UISettings.current.gridSize;
+        validateBackground(this); validateCells(this);
+        First?.Validate();
+        var color=new Color(1,1,1,1-transparency);
+        var border=imageProperty.GetValue(nativeBorder(this))!;
+        imageColor.SetValue(border,color); imageColor.SetValue(imageProperty.GetValue(nativeBackground(this)),color);
+        if(nativeHideBorder(this)) imageEnabled.SetValue(border,false);
+    }
     internal void FaceVisibility(bool fake,bool enabled,Color tint)=>face?.SetVisibility(fake,enabled,tint);
     internal void QueueDisplay()
     {
@@ -122,29 +173,34 @@ internal sealed class DrawerInventory : GameGridInventory
     {
         if(!displayDirty) return;
         displayDirty=false;
-        var stock=childItems;
-        var first = stock.FirstOrDefault(); representative = first;
+        var first = First;
+        var previous=representative; representative = first;
+        if(previous!=null && !ReferenceEquals(previous,first) && ReferenceEquals(previous.parentInventory,this)) RefreshVisibility(previous);
+        if(first!=null) RefreshVisibility(first);
         DrawerStorage.RememberType(Drawer,first);
         int width = first?.modifiedShape.globalWidth ?? 2, height = first?.modifiedShape.globalHeight ?? 2;
         if (inventoryShape.width != width || inventoryShape.height != height) SetShape(width, height);
-        displayCount=0;
-        foreach(var item in stock)
-        {
-            displayCount+=item.unitCount;
-            RefreshVisibility(item);
-        }
+        displayCount=Used;
         face?.Update(first,displayCount,DrawerStorage.LockedSprite(Drawer));
     }
     internal void HideOtherStock()
     {
-        foreach (var item in childItems) RefreshVisibility(item);
+        if(First!=null) RefreshVisibility(First);
     }
     private void RefreshVisibility(GameItem item)
     { if(item is GameItemElement element) element.handler.gameObject.SetActive(ReferenceEquals(representative,item)); }
     internal void RefreshItemDisplay(GameItem item)
     {
+        StockChanged(item);
         RefreshVisibility(item);
         if(ReferenceEquals(representative,item)) face?.Update(item,displayCount,DrawerStorage.LockedSprite(Drawer));
+    }
+    internal void StateChanged(GameItem item)
+    {
+        if(!ReferenceEquals(item.parentInventory,this)) return;
+        if(ReferenceEquals(item,First)) typeDirty=true;
+        else if(First!=null && !DrawerStorage.Same(First,item)) variants.Add(item);
+        else variants.Remove(item);
     }
     internal DrawerInventory(GameItem drawer) : base(1, 1)
     {
@@ -167,8 +223,18 @@ internal sealed class DrawerInventory : GameGridInventory
         && !IsInsertLocked() && item.child==null
         && (item.parentInventory==null || item.MayRemove())
         && GeneralHelper.IsItemEffectivelyOwned(Drawer) && GeneralHelper.IsItemEffectivelyOwned(item);
-    private bool Identical(GameItem item) => DrawerStorage.AcceptsType(Drawer,item)
-        && childItems.All(i => ReferenceEquals(i, item) || DrawerStorage.Same(i, item));
+    private bool Identical(GameItem item)
+    {
+        // Ordinary additions compare only the representative. Recheck the pile
+        // once if the representative itself changes state; preserve differing
+        // existing instances for withdrawal rather than erasing their state.
+        if(typeDirty)
+        {
+            typeDirty=false; variants.Clear();
+            if(First!=null) foreach(var stock in Stock) if(!DrawerStorage.Same(First,stock)) variants.Add(stock);
+        }
+        return DrawerStorage.AcceptsType(Drawer,item) && variants.Count==0 && (First==null || DrawerStorage.Same(First,item));
+    }
     public override bool MayHaveValidInventorySlot(GameItem item)
     {
         if (item == null || item.unitCount <= 0 || item.child != null || IsInsertLocked() || GraphUtils.FindParentEquals(this, item)
@@ -177,6 +243,9 @@ internal sealed class DrawerInventory : GameGridInventory
         return mayInventoryAddItemFunc == null || mayInventoryAddItemFunc.InvokeAllReduce(item, this, InvokeFuncExtensions.BoolReduceOR);
     }
     public override SlotMarker TryFindOneValidInventorySlot(GameItem item) => TryInventorySlot(item, item.unitCount, Vector2.zero, item.modifiedShape, item.modifiedState);
+    public override SlotMarker GetIncompleteItemInventorySlot(GameItem item)=>new()
+        { item=item,inventory=this,itemGridShape=item.modifiedShape };
+    public override SlotMarker GetItemInventorySlot(GameItem item)=>TryFindOneValidInventorySlot(item);
     public override SlotMarker TryInventorySlot(GameItem item, int amount, Vector2 position, GridShape shape, TagSystem state)
     {
         shape = new GridShapeBuilder(shape).SetTransform(0, 0, false, 0).Build();

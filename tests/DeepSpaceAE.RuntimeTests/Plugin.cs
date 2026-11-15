@@ -49,6 +49,7 @@ public sealed class PilotConfig
     public bool topologyProfile;
     public bool expansionProfile;
     public bool usabilityProfile;
+    public bool drawerProfile;
 }
 [Serializable]
 public sealed class CaseResult

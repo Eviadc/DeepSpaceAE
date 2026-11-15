@@ -26,7 +26,7 @@ keys += [f"{kind}-bus" for kind in ("import","export")]
 keys += [f"{kind}-face-{side}{suffix}" for kind in ("import","export") for side in range(4) for suffix in ("","-off")]
 keys += ["steve-portrait","steve-contact"]
 keys += ["energy-receiver","energy-receiver-off"]
-keys += ["drawer"]
+keys += ["drawer","drawer-controller","drawer-controller-off"]
 keys += ["item-interface","item-interface-off","fluid-interface","fluid-interface-off","disk-ghost","engineer-start"]
 keys += [f"device-port-{side}{suffix}" for side in range(4) for suffix in ("","-off")]
 keys += [f"device-port-{depth}-{side}{suffix}" for depth in (3,4) for side in range(4) for suffix in ("","-off")]
@@ -35,7 +35,7 @@ keys += [f"{kind}-bus" for kind in ("formation","annihilation")]
 keys += [f"{kind}-face-{side}{suffix}" for kind in ("formation","annihilation") for side in range(4) for suffix in ("","-off")]
 keys += ["fluid-item-storage-bus","fluid-import-bus","fluid-export-bus"]
 keys += [f"fluid-{kind}-face-{side}{suffix}" for kind in ("bus","import","export") for side in range(4) for suffix in ("","-off")]
-assert len(keys) == len(set(keys)) == 166
+assert len(keys) == len(set(keys)) == 168
 for key in keys:
     files[f"DeepSpaceAE/Textures/Items/{key}.png"] = root / f"assets/game/Textures/Items/{key}.png"
 files["DeepSpaceAE/THIRD-PARTY-NOTICES.md"] = root / "assets/THIRD-PARTY-NOTICES.md"
@@ -61,10 +61,10 @@ for name, path in files.items():
     if name.endswith(".png"):
         data = path.read_bytes()
         stem = Path(name).stem
-        dimensions = (288,211) if stem=="steve-portrait" else (19,19) if stem=="engineer-start" else (16,48) if stem=="wrench" else (48,48) if stem == "core" or stem.startswith("core-") else (32,32) if stem in ("drive","drive-off","energy-receiver","energy-receiver-off","drawer","terminal","terminal-off","item-interface","item-interface-off","fluid-interface","fluid-interface-off","wireless-connector","wireless-connector-off") else (32,16) if stem in ("disk-small","disk-large","disk-ghost","steve-contact") else (16,16)
+        dimensions = (288,211) if stem=="steve-portrait" else (19,19) if stem=="engineer-start" else (16,48) if stem=="wrench" else (48,48) if stem == "core" or stem.startswith("core-") else (32,32) if stem in ("drawer-controller","drawer-controller-off","drive","drive-off","energy-receiver","energy-receiver-off","drawer","terminal","terminal-off","item-interface","item-interface-off","fluid-interface","fluid-interface-off","wireless-connector","wireless-connector-off") else (32,16) if stem in ("disk-small","disk-large","disk-ghost","steve-contact") else (16,16)
         assert data[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", data[16:24]) == dimensions
 version = ET.parse(files["DeepSpaceAE/manifest.xml"]).getroot().findtext("ModVersion")
-assert version == "0.16.2-alpha"
+assert version == "0.17.0-alpha"
 audit_path = root / "artifacts/validation/game-patch-audit.json"
 if not audit_path.is_file():
     raise SystemExit("Missing game patch metadata audit; run scripts/build-game.ps1 (Windows) or scripts/build-game.sh first.")

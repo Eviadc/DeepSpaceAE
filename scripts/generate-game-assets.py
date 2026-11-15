@@ -9,7 +9,7 @@ import struct
 import zlib
 import math
 from PIL import Image, ImageDraw, ImageOps, ImageChops
-from device_pixel_art import assets as device_pixel_assets
+from device_pixel_art import assets as device_pixel_assets, casing, rect
 from bus_pixel_art import assets as bus_pixel_assets
 
 REPO = Path(__file__).resolve().parents[1]
@@ -264,6 +264,14 @@ def assets():
         assert hashlib.sha256(content).hexdigest()==entry['sha256'],entry['file']
     drawer=Image.open(drawer_source/'drawers_oak_front_1.png').convert('RGBA').resize((28,28),Image.Resampling.NEAREST)
     result['drawer.png']=Image.new('RGBA',(32,32)); result['drawer.png'].alpha_composite(drawer,(2,2))
+    controller=casing(32,2); pen=ImageDraw.Draw(controller)
+    rect(pen,(5,5,26,26),'recess')
+    for x,y in ((7,7),(17,7),(7,17),(17,17)):
+        rect(pen,(x,y,x+7,y+7),'metal_dark')
+        rect(pen,(x+1,y+1,x+6,y+6),'panel')
+        rect(pen,(x+2,y+3,x+5,y+3),'trace_light')
+    result['drawer-controller.png']=controller
+    result['drawer-controller-off.png']=inactive(controller)
     return {k:png(v) for k,v in result.items()}
 
 if __name__=='__main__':

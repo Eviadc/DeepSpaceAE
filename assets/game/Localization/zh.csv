@@ -251,3 +251,8 @@ ui_drawer_lock_help,"锁定后，取空也会保留物品种类。解锁并清�
 start_engineer_wireless,"2个无线连接器，可配对连接不同库存"
 ui_drawer_void,溢出销毁
 ui_drawer_void_help,默认关闭。开启后，符合种类但超出容量的新投入物品会永久销毁；已有库存不变。
+
+item_drawer_controller_name,抽屉控制器
+item_drawer_controller_desc,统一访问同一物品栏内上下左右相连的自有抽屉。只有控制器接入AE；抽屉不传输AE信号。向控制器投入物品即可存入抽屉，打开目录可取出。
+ui_drawer_controller_count,相连抽屉：{0}
+ui_drawer_controller_open,打开抽屉目录

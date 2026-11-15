@@ -1,0 +1,270 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+namespace DeepSpaceAE.RuntimeTests;
+
+public sealed partial class RuntimePilot
+{
+    private GameItem drawerController=null!,drawerPeer=null!,drawerMiddle=null!,drawerEnd=null!,drawerIsolated=null!;
+    private GameItem drawerMachine=null!,drawerImport=null!,drawerExport=null!,drawerFluid=null!;
+    private GameInventory drawerStock=null!;
+    private readonly List<GameItem> drawerInstances=new();
+    private int[] drawerSaved=Array.Empty<int>(),drawerStockIds=Array.Empty<int>();
+    private Dictionary<int,int> drawerPrices=new();
+    private double drawerSmallValidation;
+    private GameInventory DrawerData(GameItem item)=>(GameInventory)Adapter.Static("DrawerStorage","Data",item)!;
+    private long DrawerUsed(GameItem item)=>(long)Adapter.Property(DrawerData(item),"Used")!;
+    private GameItem[] DrawerMembers(GameItem controller)
+        =>((IEnumerable)Adapter.Call(Adapter.Field(Adapter.Board(),"Layout")!,"DrawerMembers",controller)!).Cast<GameItem>().ToArray();
+    private GameItem Put(GameInventory inventory,string id)
+    {
+        var item=Spawn(id); var slot=inventory.TryFindOneValidInventorySlot(item);
+        Check(slot!=null && slot.numTransfer>=item.unitCount,"Fixture destination rejected "+id);
+        Check(slot!.TryAcceptOnce(item.unitCount)>0,"Fixture insertion failed"); return item;
+    }
+    private void DrawerSetup()
+    {
+        TopologySetup();
+        root.SetShape(Math.Max(root.inventoryShape.width,x+28),Math.Max(root.inventoryShape.height,y+14));
+        drawerController=Spawn(Product+".drawer_controller"); At(drawerController,x+3,y);
+        terminal=Spawn(Product+".terminal"); At(terminal,x+5,y);
+        drive=Spawn(Product+".disk_drive"); At(drive,x+7,y);
+        small=Spawn(Product+".disk_large"); Add(small); Adapter.Move(small,Adapter.Slots("DiskStorage","Bays",drive)[0]);
+        drawer=Spawn(Product+".drawer"); At(drawer,x+3,y+2);
+        drawerMiddle=Spawn(Product+".drawer"); At(drawerMiddle,x+5,y+2);
+        drawerEnd=Spawn(Product+".drawer"); At(drawerEnd,x+7,y+2);
+        drawerPeer=Spawn(Product+".drawer_controller"); At(drawerPeer,x+9,y+2);
+        drawerIsolated=Spawn(Product+".drawer"); At(drawerIsolated,x+10,y+6);
+        drawerStock=DrawerData(drawer);
+        for(int i=0;i<5;i++) Put((GameInventory)Adapter.Static("DrawerStorage","Upgrades",drawer)!,Product+".capacity_upgrade");
+        for(int i=0;i<2;i++) Put((GameInventory)Adapter.Static("DrawerStorage","Upgrades",drawerEnd)!,Product+".capacity_upgrade");
+        Check(Status(drawerController)=="Online" && Status(terminal)=="Online" && Status(drawerPeer)=="NoCore","Drawers relayed AE or controller failed direct contact.");
+        Check(Status(drawer)=="Absent" && DrawerMembers(drawerController).Length==3,"Ordinary drawers entered the AE topology or adjacency membership differs.");
+        details="New 2x2 controller relays AE through real contact; three edge-connected drawers are accessible, a separated drawer is excluded, and a second controller across only drawers remains offline.";
+    }
+    private double DrawerValidateTime(int iterations)
+    {
+        var watch=Stopwatch.StartNew(); for(int i=0;i<iterations;i++) drawerStock.Validate(); return watch.Elapsed.TotalMilliseconds;
+    }
+    private void DrawerSmallLoad()
+    {
+        for(int i=0;i<512;i++)
+        {
+            var item=Spawn("toilet_paper"); item.ModifyTag(PlayerStore.BOUGHT_PRICE_TAG,t=>t.Enable().SetInt(i),true);
+            var slot=drawerStock.TryFindOneValidInventorySlot(item); Check(slot.numTransfer==1 && slot.TryAcceptOnce(1)==1,"Small drawer load rejected."); drawerInstances.Add(item);
+        }
+        Adapter.Call(drawerStock,"PrepareDisplay");
+        drawerSmallValidation=DrawerValidateTime(200);
+        Check(DrawerUsed(drawer)==512,"Small drawer counter differs.");
+        details="512 separate native paper instances retained their individual purchase prices; 200 visible-stock validations took "+drawerSmallValidation.ToString("F2")+" ms.";
+    }
+    private void DrawerLargeLoad()
+    {
+        var load=Stopwatch.StartNew();
+        for(int i=512;i<4096;i++)
+        {
+            var item=Spawn("toilet_paper"); item.ModifyTag(PlayerStore.BOUGHT_PRICE_TAG,t=>t.Enable().SetInt(i),true);
+            var slot=drawerStock.TryFindOneValidInventorySlot(item); Check(slot.numTransfer==1 && slot.TryAcceptOnce(1)==1,"Large drawer load rejected."); drawerInstances.Add(item);
+        }
+        double inserted=load.Elapsed.TotalMilliseconds;
+        Adapter.Call(drawerStock,"PrepareDisplay");
+        // Count calls at the native item's sprite callback instead of gating on
+        // wall-clock ratios, which are distorted by GC and other enabled mods.
+        long validations=0;
+        var callbacks=drawerStock.childItems.Select(item=>(Item:item,Original:item.getItemSpriteModifierForItemFunc)).ToArray();
+        double elapsed;
+        try
+        {
+            foreach(var pair in callbacks) pair.Item.getItemSpriteModifierForItemFunc=item=>{ validations++; return pair.Original?.Invoke(item); };
+            elapsed=DrawerValidateTime(200);
+        }
+        finally { foreach(var pair in callbacks) pair.Item.getItemSpriteModifierForItemFunc=pair.Original; }
+        Check(DrawerUsed(drawer)==4096 && drawerStock.childItems.Count==4096,"Large drawer lost real stock or quantity.");
+        Check(drawerStock.childItems.OfType<GameItemElement>().Count(i=>i.handler.gameObject.activeSelf)==1,"Hidden stock was reactivated by validation.");
+        Check(validations==200,"200 drawer layouts validated "+validations+" real items instead of only 200 visible representatives.");
+        for(int i=0;i<drawerInstances.Count;i++) Check(drawerInstances[i].GetTagReadonly(PlayerStore.BOUGHT_PRICE_TAG).GetInt()==i,"Distinct stored state was overwritten.");
+        details="4096 distinct real instances, exact count, one visible renderer and per-instance prices passed. 200 layouts invoked exactly 200 native item sprite callbacks. Additional 3584 insertions: "+inserted.ToString("F0")+" ms; 200 validations: "+elapsed.ToString("F2")+" ms (512-instance baseline "+drawerSmallValidation.ToString("F2")+" ms).";
+    }
+    private void DrawerControllerRoutes()
+    {
+        EditPriority(drawerController,2);
+        var incoming=Spawn("toilet_paper"); Add(incoming);
+        int accepted=(int)Adapter.Call(Adapter.Session,"DepositInterface",drawerController,incoming,1)!;
+        Check(accepted==1 && ReferenceEquals(incoming.parentInventory,drawerStock),"Direct controller deposit missed matching occupied drawer.");
+        var probe=Spawn("toilet_paper"); Add(probe);
+        var changed=drawerInstances.Last(); changed.ModifyTag("PILOT_DRAWER_MUTATION",t=>t.Enable().SetInt(1));
+        Check(drawerStock.TryFindOneValidInventorySlot(probe).numTransfer==0,"A changed hidden instance bypassed homogeneous admission.");
+        changed.state.dict.Remove("PILOT_DRAWER_MUTATION"); changed.ValidateShapeState();
+        Check(drawerStock.TryFindOneValidInventorySlot(probe).numTransfer==1,"Restoring hidden state did not restore admission.");
+        var view=Adapter.Call(Adapter.Session,"ReadInterface",terminal)!;
+        var slot=(SlotMarker)Adapter.Call(Adapter.Session,"InterfacePlacement",view,probe)!;
+        Check(ReferenceEquals(slot.inventory,drawerStock),"Controller network priority did not beat disk storage.");
+        Adapter.Move(incoming,root); incoming.Destroy(); probe.Destroy();
+        At(drawerMiddle,x+5,y+6);
+        Check(DrawerMembers(drawerController).SequenceEqual(new[]{drawer}),"A gap did not split drawer adjacency.");
+        Check(Status(drawerPeer)=="NoCore","Drawer adjacency accidentally carried AE signals.");
+        At(drawerMiddle,x+5,y+2);
+        GeneralHelper.SetItemOwned(drawerMiddle,false);
+        Check(DrawerMembers(drawerController).SequenceEqual(new[]{drawer}),"Unowned drawer bridged the adjacency graph.");
+        GeneralHelper.SetItemOwned(drawerMiddle,true);
+        Check(DrawerMembers(drawerController).Length==3,"Restored ownership did not restore adjacency.");
+        var isolatedBox=Spawn("storage_bay_large"); At(isolatedBox,x+20,y);
+        var localGrid=BayGrid(isolatedBox);
+        var localController=PlaceBay(localGrid,Product+".drawer_controller",0,0);
+        var localDrawer=PlaceBay(localGrid,Product+".drawer",2,0);
+        var localStock=Spawn("toothpaste"); Add(localStock);
+        Check(Status(localController)=="Absent" && (int)Adapter.Call(Adapter.Session,"DepositInterface",localController,localStock,1)! == 1
+            && ReferenceEquals(localStock.parentInventory,DrawerData(localDrawer)),"Local controller in an unnetworked box required AE connectivity.");
+        Adapter.Call(Adapter.Session,"Open",localController);
+        Check(Adapter.Field(Adapter.Session,"terminalGrid")!=null,"Unnetworked box controller catalog did not open.");
+        Adapter.Call(Adapter.Session,"Close");
+        Adapter.Call(Adapter.Session,"Open",drawerController);
+        Check(Adapter.Field(Adapter.Session,"terminalGrid")!=null,"Controller local catalog did not open.");
+        Adapter.Call(Adapter.Session,"Close");
+        Adapter.Call(Adapter.Session,"OpenPart",drawerController);
+        StartCoroutine(Screenshot("drawer-controller-priority"));
+        details="Direct controller deposit chose matching stock before empty drawers; +20 priority beat the disk. Gap and unowned bridge immediately split membership. Local controller catalog and priority panel opened.";
+    }
+    private void DrawerQuickActions()
+    {
+        Adapter.Call(Adapter.Session,"Close");
+        var counted=drawerStock.childItems.First(); counted.SetAmount(2);
+        Check(DrawerUsed(drawer)==4097,"Direct native quantity validation did not update the cache."); counted.SetAmount(1);
+        drawerStock.LockInv();
+        try { Check((int)Adapter.Static("DrawerQuickTransfer","Take",drawer,0)! == 0,"Quick withdrawal ignored the drawer remove lock."); }
+        finally { drawerStock.UnlockInv(); }
+        foreach(int mode in new[]{0,1,2})
+        {
+            var first=drawerStock.childItems.First(); long before=DrawerUsed(drawer);
+            int moved=(int)Adapter.Static("DrawerQuickTransfer","Take",drawer,mode)!;
+            Check(moved==1 && DrawerUsed(drawer)==before-1 && !ReferenceEquals(first.parentInventory,drawerStock),"Drawer quick transfer failed for destination "+mode);
+            if(mode==0) Check(ReferenceEquals(first.parentInventory,root),"Quick inventory destination differs.");
+            Adapter.Move(first,drawerStock);
+        }
+        Check(DrawerUsed(drawer)==4096,"Quick transfers lost or duplicated stock.");
+        details="Three quick-transfer routes moved the actual top item to main inventory, showcase and storage through native slots, preserving all 4096 instances on return; no catalog was built for these gestures.";
+    }
+    private void DrawerPinsDisconnect()
+    {
+        Check(ItemPinHelper.IsPinned(core) && ItemPinHelper.IsPinned(terminal) && ItemPinHelper.IsPinned(drawerController),"Online AE parts did not automatically pin.");
+        Check(!ItemPinHelper.IsPinned(drawerPeer),"Offline controller was automatically pinned.");
+        ItemPinHelper.SetPinned(terminal,true); StowTopology(core);
+        details="Online core, terminal and controller are pinned; offline controller is free. Added a manual terminal pin and removed the core for next-frame offline verification.";
+    }
+    private void DrawerPinsRestore()
+    {
+        Check(!ItemPinHelper.IsPinned(core) && !ItemPinHelper.IsPinned(drawerController),"Automatic pins survived going offline.");
+        Check(ItemPinHelper.IsPinned(terminal),"Going offline erased a player's manual pin.");
+        ItemPinHelper.SetPinned(terminal,false);
+        Check(!ItemPinHelper.IsPinned(terminal),"Native manual pin cannot be cleared while offline.");
+        // The second controller's local access must work without an AE core.
+        var item=Spawn("toothpaste"); Add(item);
+        Check((int)Adapter.Call(Adapter.Session,"DepositInterface",drawerPeer,item,1)! == 1,"Offline local drawer controller could not store.");
+        Adapter.Move(item,root); item.Destroy();
+        At(core,x,y);
+        details="Offline transition removed only automatic pins, preserved and then cleared the player's manual terminal pin, and retained standalone controller access. Core restored.";
+    }
+    private void DrawerManualIo()
+    {
+        for(int gx=9;gx<=12;gx++) At(Spawn(Product+".pipeline"),x+gx,y);
+        At(Spawn(Product+".pipeline"),x+12,y+1);
+        var importCable=Spawn(Product+".pipeline"); At(importCable,x+12,y+2);
+        var exportCable=Spawn(Product+".pipeline"); At(exportCable,x+12,y+3);
+        drawerMachine=Spawn("storage_bay_large"); At(drawerMachine,x+13,y+2);
+        var source=((List<GameInventory>)Adapter.Static("IoBus","TargetSlots",drawerMachine,true)!).OfType<GameGridInventory>().First();
+        source.SetShape(20,20);
+        drawerImport=Mount(importCable,"import_bus",1); drawerExport=Mount(exportCable,"export_bus",1);
+        for(int i=0;i<80;i++) Put(source,"toilet_paper");
+        long before=DrawerUsed(drawer); RunBus(drawerImport);
+        Check(source.childItems.Count==0 && DrawerUsed(drawer)==before+80,"Manual import stopped at 8/64 or failed to move all 80.");
+        var exportTime=Stopwatch.StartNew(); RunBus(drawerExport); exportTime.Stop();
+        int exported=(int)Adapter.Static("PartStorage","Int",drawerExport,"io_moved",0)!;
+        Check(exported>64 && source.childItems.Count>64,"Manual export retained the 8/64 limit.");
+        var probe=Spawn("toilet_paper");
+        Check((source.TryFindOneValidInventorySlot(probe)?.numTransfer ?? 0)==0,"Export stopped while a destination slot was available."); probe.Destroy();
+        Check(exportTime.Elapsed.TotalSeconds<20,"Manual export repeatedly scanned a full target: "+exportTime.Elapsed.TotalSeconds+" seconds.");
+        RunBus(drawerImport);
+        Check(source.childItems.Count==0 && DrawerUsed(drawer)==before+80,"Import did not drain the filled target back to drawers.");
+        details="Manual import moved all 80 independent objects; manual export exceeded 64 and filled every native slot in "+exportTime.Elapsed.TotalMilliseconds.ToString("F0")+" ms; second manual import drained the whole container. No arbitrary batch cap applied.";
+    }
+    private void DrawerManualPlanes()
+    {
+        Adapter.Call(Adapter.Session,"Close");
+        drawerStock.LockInv();
+        var end=DrawerData(drawerEnd); for(int i=0;i<80;i++) Put(end,"toilet_paper");
+        Adapter.Static("DrawerStorage","ToggleLock",drawerEnd);
+        // Keep ordinary drawer storage local; only the two connectors join AE.
+        var local=Spawn(Product+".wireless_connector"); At(local,x+13,y);
+        var remote=Spawn(Product+".wireless_connector"); Add(remote);
+        var grid=((List<GameInventory>)Adapter.Static("IoBus","TargetSlots",drawerMachine,true)!).OfType<GameGridInventory>().First();
+        GridAt(grid,remote,0,0); Pair(local,remote);
+        var cable=Spawn(Product+".pipeline"); Add(cable); GridAt(grid,cable,2,0);
+        var plane=Mount(cable,"formation_bus",2);
+        Adapter.Call(Adapter.Session,"ConfigureNumber",plane,"plane_whole",1);
+        RunBus(plane);
+        int placed=(int)Adapter.Static("PartStorage","Int",plane,"io_moved",0)!;
+        Check(placed>64,"Manual whole-space formation stopped at 8/64.");
+        Adapter.Static("PartStorage","WithUpgradeRemoval",cable,(Action)(()=>Adapter.Move(plane,root))); plane.Destroy();
+        var absorb=Mount(cable,"annihilation_bus",2);
+        Adapter.Call(Adapter.Session,"ConfigureNumber",absorb,"plane_whole",1); RunBus(absorb);
+        Check(grid.childItems.All(i=>i.identifier.StartsWith(Product+".",StringComparison.Ordinal)) && DrawerUsed(drawerEnd)==80,
+            "Manual absorption stopped early or consumed an AE component: remaining="+string.Join(",",grid.childItems.Select(i=>i.identifier))+"; end="+DrawerUsed(drawerEnd)+"; middle="+DrawerUsed(drawerMiddle));
+        drawerStock.UnlockInv();
+        details="Manual whole-space formation moved more than 64 real objects and absorption recovered every movable object. Wireless connector and cable remained intact; source drawer locks were honored.";
+    }
+    private void DrawerManualFluids()
+    {
+        // Remove the remote plane before fluid fixtures are put into its space.
+        var grid=((List<GameInventory>)Adapter.Static("IoBus","TargetSlots",drawerMachine,true)!).OfType<GameGridInventory>().First();
+        var cable=grid.childItems.Single(i=>i.identifier==Product+".pipeline");
+        foreach(var bus in ((GameInventory)Adapter.Static("PartStorage","Inventory",cable)!).childItems.ToArray())
+        { Adapter.Static("PartStorage","WithUpgradeRemoval",cable,(Action)(()=>Adapter.Move(bus,root))); bus.Destroy(); }
+        for(int gx=2;gx<=4;gx++) At(Spawn(Product+".pipeline"),x+gx,y+4);
+        At(Spawn(Product+".pipeline"),x+2,y+3);
+        drawerFluid=Spawn("small_bottled_water"); At(drawerFluid,x+5,y+4); WaterHelper.EmptyContainer(drawerFluid);
+        var fluidCable=root.childItems.Single(i=>i.identifier==Product+".pipeline" && i.modifiedShape.minX==x+4 && i.modifiedShape.minY==y+4);
+        var fluidStorage=Mount(fluidCable,"item_storage_bus",1); fluidStorage.ToggleSlotItem();
+        var bottles=new List<GameItem>();
+        for(int i=0;i<10;i++)
+        {
+            var bottle=Put(grid,"small_bottled_water"); WaterHelper.EmptyContainer(bottle); WaterHelper.AddLiquid(bottle,Liquid.LIQUID_WATER,1000); bottles.Add(bottle);
+        }
+        drawerImport.ToggleSlotItem(); drawerExport.ToggleSlotItem();
+        long volume=bottles.Sum(b=>(long)WaterHelper.GetTotalVolume(b));
+        Check(volume==10000,"Fluid fixture was not filled."); RunBus(drawerImport);
+        Check(bottles.All(b=>WaterHelper.GetTotalVolume(b)==0) && WaterHelper.GetTotalVolume(drawerFluid)==volume,"Manual fluid import stopped at one sink or 8 transfers.");
+        RunBus(drawerExport);
+        Check(WaterHelper.GetTotalVolume(drawerFluid)==0 && bottles.Sum(b=>(long)WaterHelper.GetTotalVolume(b))==volume,"Manual fluid export did not exhaust available source volume.");
+        details="Manual fluid import emptied ten native bottles into one shared container through its fluid storage bus; export exhausted that source into available bottles. Both preserved native composition and total volume beyond eight transfers.";
+    }
+    private void DrawerSave()
+    {
+        drawerSaved=new[]{core,drawerController,drawerPeer,drawer,drawerMiddle,drawerEnd,terminal,drawerFluid}.Select(i=>i.GetUniqueID()).ToArray();
+        drawerStockIds=drawerStock.childItems.Select(i=>i.GetUniqueID()).ToArray();
+        drawerPrices=drawerStock.childItems.ToDictionary(i=>i.GetUniqueID(),i=>i.GetTagReadonly(PlayerStore.BOUGHT_PRICE_TAG).GetInt());
+        PlayerStore.Instance.SaveGame();
+        interfaceReloadWaiting=true; interfaceReloadReady=false; deadline=Time.realtimeSinceStartup+180;
+        NewGameData.Instance.saveSlot=report.saveSlot; NewGameData.Instance.saveFile=null!; NewGameData.Instance.isLoadFromMainMenu=true;
+        SceneManager.LoadScene("InventoryScene",LoadSceneMode.Single);
+        details="Saved populated drawer instances, controller priority and all new devices to this fresh test slot; requested native reload.";
+    }
+    private void DrawerReload()
+    {
+        var all=MainItems(); foreach(int id in drawerSaved) Check(all.Count(i=>i.GetUniqueID()==id)==1,"Saved device missing or duplicated.");
+        core=all.Single(i=>i.GetUniqueID()==drawerSaved[0]); drawerController=all.Single(i=>i.GetUniqueID()==drawerSaved[1]);
+        drawerPeer=all.Single(i=>i.GetUniqueID()==drawerSaved[2]); drawer=all.Single(i=>i.GetUniqueID()==drawerSaved[3]);
+        terminal=all.Single(i=>i.GetUniqueID()==drawerSaved[6]); drawerStock=DrawerData(drawer);
+        Check(drawerStock.childItems.Select(i=>i.GetUniqueID()).OrderBy(i=>i).SequenceEqual(drawerStockIds.OrderBy(i=>i)),"Reload lost or duplicated stored real instances.");
+        foreach(var item in drawerStock.childItems) Check(item.GetTagReadonly(PlayerStore.BOUGHT_PRICE_TAG).GetInt()==drawerPrices[item.GetUniqueID()],"Native reload changed a stored instance's purchase price.");
+        Check(DrawerUsed(drawer)==drawerStock.childItems.Sum(i=>(long)i.unitCount) && Priority(drawerController)==20 && DrawerMembers(drawerController).Length==3,"Reload lost cached quantity, priority or adjacency.");
+        Check(Status(drawerController)=="Online" && Status(drawerPeer)=="NoCore","Reload changed the independent AE/adjacency graphs.");
+        Adapter.Call(Adapter.Session,"OpenPart",drawer); StartCoroutine(Screenshot("drawer-large-reloaded"));
+        report.saveReloadTested=true;
+        details="Native reload retained every stored identity, exact cached count, +20 controller priority and three-drawer membership. Drawer-only peer stayed AE-offline; populated drawer UI reopened.";
+    }
+}

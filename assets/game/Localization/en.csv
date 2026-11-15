@@ -251,3 +251,8 @@ ui_drawer_lock_help,"The drawer remembers its item type even when empty. Unlock 
 start_engineer_wireless,"2 wireless connectors to link separate inventories"
 ui_drawer_void,Destroy overflow
 ui_drawer_void_help,"Off by default. Incoming matching items beyond capacity are permanently destroyed. Existing stock is kept."
+
+item_drawer_controller_name,Drawer Controller
+item_drawer_controller_desc,"Accesses owned drawers connected by edge contact in this inventory. Only the controller connects to AE; drawers do not carry AE signals. Drop items here to store them, or open the drawer catalog to withdraw."
+ui_drawer_controller_count,Connected drawers: {0}
+ui_drawer_controller_open,Open drawers
