@@ -1,6 +1,6 @@
 # DeepSpaceAE玩家指南
 
-适用：0.17.1-alpha，Probably Stolen 100-Rev13（0.46D），Windows x64。
+适用：0.18.0-alpha，Probably Stolen 100-Rev13（0.46D），Windows x64。
 
 ## 安装
 

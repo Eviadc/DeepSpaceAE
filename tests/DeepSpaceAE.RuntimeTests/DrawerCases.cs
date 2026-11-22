@@ -306,6 +306,35 @@ public sealed partial class RuntimePilot
         CheckFluidDrawer(grid,bottles,fluidStorage);
         details="Native fluid drawer passed bus, interface, controller and terminal pours, exact partial fill, manual mixing, all five capacity tiers and downgrade protection. Both preserved native composition and total volume beyond eight transfers.";
     }
+    private void CheckFluidDrawerColors(GameItem drawer,GameItem reference,GameItem source)
+    {
+        var colors=new HashSet<Color32>();
+        void Pour(GameItem target,string liquid,int volume)
+        {
+            WaterHelper.EmptyContainer(source);
+            WaterHelper.AddLiquid(source,liquid,volume);
+            source.Target(target);
+            Check(WaterHelper.IsEmpty(source),"Color comparison pour failed.");
+        }
+        void AddAndCompare(string liquid,int volume)
+        {
+            Pour(reference,liquid,volume); Pour(drawer,liquid,volume);
+            Color32 expected=MetaHelper.HexToColor(WaterHelper.GetLiquidContainerColor(reference));
+            var glass=drawer.getItemSpriteModifierForItemFunc(drawer).Single().sprite;
+            var images=((GameItemElement)drawer).handler.GetComponentsInChildren<Component>(false)
+                .Where(i=>i.GetType().FullName=="UnityEngine.UI.Image" && Equals(Adapter.Property(i,"sprite"),glass)).ToArray();
+            Check(images.Length>0 && images.All(i=>expected.Equals((Color32)(Color)Adapter.Property(i,"color")!)),
+                "Drawer tint differs from the native bottle for "+liquid+" at "+WaterHelper.GetTotalVolume(reference)+" uL.");
+            colors.Add(expected);
+        }
+        AddAndCompare(Liquid.LIQUID_WATER,6000);
+        AddAndCompare(Liquid.LIQUID_FANTA,3000);
+        AddAndCompare(Liquid.LIQUID_FANTA,9000);
+        WaterHelper.EmptyContainer(drawer); WaterHelper.EmptyContainer(reference);
+        AddAndCompare(Liquid.LIQUID_FANTA,6000);
+        Check(colors.Count==4,"Expected distinct native colors for water, soda and two mixing ratios.");
+        WaterHelper.EmptyContainer(drawer); WaterHelper.EmptyContainer(reference);
+    }
     private void CheckFluidDrawer(GameGridInventory grid,List<GameItem> bottles,GameItem storageBus)
     {
         const string water="water", other="physical_contaminant";
@@ -318,6 +347,7 @@ public sealed partial class RuntimePilot
         foreach(var bottle in bottles) WaterHelper.EmptyContainer(bottle);
         var source=bottles[0];
         var tank=drawerFluid;
+        CheckFluidDrawerColors(tank,bottles[1],source);
         Check(WaterHelper.GetTotalCapacityML(tank)==1000 && WaterHelper.CanUseWaterContainer(tank)
             && tank.MaySelectSlotItem() && Cells(tank)==4,"Fluid drawer did not initialize as a native 1 L container.");
         Check(DrawerMembers(drawerController).Contains(tank),"The controller did not discover its adjacent fluid drawer.");
