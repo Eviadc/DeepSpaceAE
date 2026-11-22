@@ -15,7 +15,7 @@ internal static class ItemStackState
 
     internal static bool IncludeTag(string key,TagState tag,bool storageGrouping)
     {
-        if(!storageGrouping) return true; // IO exact samples keep their full raw state.
+        if(!storageGrouping) return true; // Preserve the historical binary snapshot layout for IO sample decoding.
         if(key==PlayerStore.BOUGHT_PRICE_TAG) return false;
         // Native GetTagReadonly calls GetTag, which inserts a disabled, default
         // record when absent. Reading a tag must not create a new storage kind.

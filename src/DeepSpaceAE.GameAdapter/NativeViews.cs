@@ -299,6 +299,9 @@ internal sealed partial class GameSession
             MachineryStack.Vertical(NativeWidgets.Text(UiText.Get("ui_access_mode")), access!,
             NativeWidgets.Text(UiText.Get("ui_filter_matching")), matching, extraction!,
             PriorityControl(bus));
+        if(bus.identifier==IoBus.Import && !PartModes.IsFluid(bus))
+            options=MachineryStack.Vertical(options,NativeWidgets.Toggle(UiText.Get("ui_io_overflow"),IoBus.CollectOverflow(bus),
+                v=>ConfigureNumber(bus,"io_overflow",v?1:0)));
         if(PartModes.Supports(bus))
             options=MachineryStack.Vertical(options,NativeWidgets.Text(UiText.Get(PartModes.IsFluid(bus)?"ui_form_fluid":"ui_form_item")),
                 new MachineryButton(UiText.Get("ui_form_toggle"),()=>ToggleForm(bus),110,18));
@@ -347,6 +350,10 @@ internal sealed partial class GameSession
                 if(IoBus.Exact(bus) && PartStorage.Text(bus,"filter_state_"+i).Length==0) help="ui_match_recapture";
                 if(PartModes.IsFluid(bus)) help=PartStorage.Text(bus,"filter_liquid_"+i).Length==0?"ui_fluid_filter_recapture":"ui_fluid_filter_hint";
                 name+="\n"+UiText.Get(help);
+                if(IoBus.Exact(bus) && !PartModes.IsFluid(bus) && help!="ui_match_recapture")
+                    name+="\n"+ExactItemFilter.Describe(PartStorage.Text(bus,"filter_state_"+i));
+                if(IoBus.Exact(bus) && PartModes.IsFluid(bus))
+                    name+="\n"+PartStorage.Text(bus,"filter_liquid_"+i);
             }
             filterGrid.GhostTile(i, string.IsNullOrEmpty(key) ? null : sprite, name + UiText.Get("ui_click_clear"), () => { SetFilter(bus, slot, ""); RenderFilters(); });
         }
@@ -374,7 +381,7 @@ internal sealed partial class GameSession
             { PartStorage.String(bus,"filter_liquid_"+slot,""); PartStorage.String(bus,"filter_liquid_kinds_"+slot,""); PartStorage.String(bus,"filter_liquid_name_"+slot,""); }
             if(IoBus.IsAutomation(bus))
             {
-                var state=TerminalStackKey.Read(item);
+                var state=ExactItemFilter.Read(item);
                 if(state==null && IoBus.Exact(bus) && !PartModes.IsFluid(bus)) { ShowNotice(UiText.Get("ui_match_unsupported")); return; }
                 PartStorage.String(bus,"filter_state_"+slot,state??"");
             }
@@ -399,7 +406,7 @@ internal sealed partial class GameSession
             new MachineryButton(UiText.Get("ui_confirm"), () => { SetFilter(bus, slot, tags[chosen]); CloseEditor(); RenderFilters(); })), "tag", false));
         editorWindow.closeCallback = CloseEditor; editorWindow.Show().Center();
     }
-    private static string TagChoiceName(string key)=>NativeWidgets.HasTagLabel(key)?NativeWidgets.TagName(key)+" (#"+key+")":"#"+key;
+    private static string TagChoiceName(string key)=>NativeWidgets.HasTagLabel(key)?NativeWidgets.TagName(key)+" (#"+key+")":NativeWidgets.TagName(key);
     private void CloseEditor()
     { if (editorWindow != null) { var w = editorWindow; editorWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); } }
     private MachineryButton PriorityControl(GameItem part)

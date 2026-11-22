@@ -120,6 +120,11 @@ public sealed partial class RuntimePilot
     }
     private void UsabilityMachineProduction()
     {
+        var waterBottle=Spawn("small_bottled_water"); Add(waterBottle);
+        Adapter.Move(waterBottle,MachineHydroponic.GetWaterSlot(productionMachine));
+        Check(((IEnumerable<GameItem>)Adapter.Static("IoBus","LiquidTargets",productionMachine,false)!).SequenceEqual(new[]{waterBottle}),
+            "Hydroponic fluid export did not find its mounted water bottle.");
+        Adapter.Move(waterBottle,root); StowTopology(waterBottle);
         var output=MachineHydroponic.GetOutputSlot(productionMachine); var old=output.mayInventoryAddItemFunc;
         output.mayInventoryAddItemFunc=(_,_)=>true; // Same output gate used during native harvest.
         var ctx=new PlantHarvestContext{seed=productionSeed,hydroponic=productionMachine,output=output,
@@ -127,41 +132,154 @@ public sealed partial class RuntimePilot
         var disk=Adapter.Data(productionDisk);
         try
         {
-            var before=new HashSet<int>(MainItems().Select(i=>i.GetUniqueID()));
             PlantHarvest.DefaultHarvest(ctx);
-            var harvest=MainItems().Where(i=>!before.Contains(i.GetUniqueID())).ToArray();
-            Check(harvest.Length>0 && harvest.All(i=>ReferenceEquals(i.parentInventory,disk)),"Native hydroponic produce bypassed the pointed import bus.");
-            Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"exclude",0);
-            var denied=Spawn("toilet_paper"); PlantHarvest.Output(ctx,denied);
-            Check(ReferenceEquals(denied.parentInventory,output),"Rejected production failed to retain the native output fallback.");
-            Adapter.Move(denied,root); StowTopology(denied);
-            Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"exclude",1);
-            disk.LockInv();
-            var full=Spawn("toilet_paper"); PlantHarvest.Output(ctx,full);
-            Check(ReferenceEquals(full.parentInventory,output),"Unavailable network lost a machine's new output.");
-            Adapter.Move(full,root); StowTopology(full); disk.UnlockInv();
-            var drawer=(GameInventory)Adapter.Static("DrawerStorage","Data",productionDrawer)!;
-            var prior=StockDrawer(drawer,15);
-            disk.LockInv(); Adapter.Call(Adapter.Session,"ConfigureNumber",productionStorageBus,"exclude",1);
-            var partial=Spawn("toilet_paper"); partial.SetAmount(4);
-            Check(GraphUtils.TryAcceptAll(output,partial)==0,"Native batch output retained unplaced units despite available fallback space.");
-            Check(prior.All(i=>i.unitCount==1 && ReferenceEquals(i.parentInventory,drawer)) && drawer.childItems.Sum(i=>i.unitCount)==16
-                && output.childItems.Sum(i=>i.unitCount)==3 && output.childItems.All(i=>i.identifier==partial.identifier),"Partially accepted output lost or duplicated the native remainder.");
-            foreach(var item in drawer.childItems.ToArray()) { Adapter.Move(item,root); StowTopology(item); }
-            foreach(var item in output.childItems.ToArray()) { Adapter.Move(item,root); StowTopology(item); }
-            disk.UnlockInv(); Adapter.Call(Adapter.Session,"ConfigureNumber",productionStorageBus,"exclude",0);
-            var spilled=Spawn("toothpaste"); output.overrideLockInsert=true;
-            GraphUtils.EmporiumTryAdd(output,spilled);
-            Check(ReferenceEquals(spilled.parentInventory,disk),"A full output grid spilled into main inventory before the AE network.");
-            output.UnlockInv();
+            Check(output.childItems.Sum(i=>i.unitCount)==2 && disk.childItems.Count==0,"Fresh harvest did not stay in the output grid.");
+            output.overrideLockInsert=true;
             Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"io_enabled",0);
-            var disabled=Spawn("toilet_paper"); PlantHarvest.Output(ctx,disabled);
-            Check(ReferenceEquals(disabled.parentInventory,output),"Disabled input bus intercepted production.");
-            Adapter.Move(disabled,root); StowTopology(disabled);
+            PlantHarvest.DefaultHarvest(ctx);
+            Check(output.childItems.Sum(i=>i.unitCount)==2 && disk.childItems.Sum(i=>i.unitCount)==2,"Overflow harvest failed with scheduled collection disabled.");
+            Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"io_overflow",0);
+            var spill=Spawn("toilet_paper"); PlantHarvest.Output(ctx,spill);
+            Check(spill.parentInventory!=null && spill.parentInventory.GetParentItem()==null,"Disabled overflow did not spill to ship storage.");
+            output.UnlockInv();
+            RunBus(productionImport);
+            Check(output.childItems.Count==0 && disk.childItems.Sum(i=>i.unitCount)==4,"Disabling overflow blocked manual collection.");
             Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"io_enabled",1);
+            Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"io_overflow",1);
+            output.mayInventoryAddItemFunc=(_,inv)=>inv.childItems.Sum(i=>i.unitCount)<3;
+            var partial=Spawn("toilet_paper"); partial.SetAmount(4);
+            Check(GraphUtils.TryAcceptAll(output,partial)==0 && output.childItems.Sum(i=>i.unitCount)==3
+                && disk.childItems.Where(i=>i.identifier==partial.identifier).Sum(i=>i.unitCount)==1,"Partial output did not split three local units and one overflow unit.");
+            foreach(var item in output.childItems.Concat(disk.childItems).ToArray()) { Adapter.Move(item,root); StowTopology(item); }
         }
         finally { output.UnlockInv(); disk.UnlockInv(); output.mayInventoryAddItemFunc=old; }
-        details="Actual PlantHarvest production enters the local disk before machine output/main storage. Empty whitelist, locked network and disabled input use native fallback; partial acceptance preserves the exact remainder and prior stock; a full output still routes to AE through native overflow.";
+        var grid=BayGrid(productionBay);
+        Adapter.Move(productionMachine,root);
+        foreach(var pair in new[]{("furnace","metal_ingot"),("chem_finisher","caffeine_pill")})
+        {
+            var machine=PlaceBay(grid,pair.Item1,0,5);
+            var machineOutput=((List<GameInventory>)Adapter.Static("IoBus","MachineSlots",machine,true)!).Single();
+            var gate=machineOutput.mayInventoryAddItemFunc;
+            machineOutput.mayInventoryAddItemFunc=(_,_)=>true;
+            var items=new[]{Spawn(pair.Item2),Spawn(pair.Item2),Spawn(pair.Item2)};
+            foreach(var item in items)
+            {
+                if(pair.Item2=="metal_ingot") IngotPurityHelper.SetPurity(item,IngotPurityHelper.INGOT_PURITY_FAIR);
+                else
+                {
+                    ChemicalHelper.RemoveAllLiquid(item);
+                    ChemicalHelper.SetChemContentUL(item,"caffeine",5000);
+                    ChemicalProductHelper.GradeProduct(item);
+                }
+                Add(item); Adapter.Move(item,machineOutput);
+            }
+            Adapter.Call(Adapter.Session,"CaptureGhost",productionImport,0,items[0]);
+            Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"exclude",0);
+            Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"io_exact",1);
+            // The first two inputs are identical. Only the third differs in incidental state.
+            GeneralHelper.TrackBuyPrice(items[2],27);
+            items[2].GetTagReadonly("AE_TEST_ABSENT");
+            Check(items.All(i=>(bool)Adapter.Static("IoBus","Matches",productionImport,i)!),"Exact whitelist rejected a matching item: "+pair.Item2);
+            string legacy=(string)Adapter.Static("TerminalStackKey","Read",items[0],null,false,false)!;
+            Check(Equals(Adapter.Static("ExactItemFilter","Normalize",legacy),Adapter.Static("ExactItemFilter","Read",items[0])),
+                "Legacy exact sample did not produce the current matching fields.");
+            Adapter.Static("PartStorage","String",productionImport,"filter_state_0",legacy);
+            Adapter.Call(Adapter.Session,"OpenPart",productionImport);
+            var window=(PixelWindow)Adapter.Field(Adapter.Session,"partWindow")!;
+            var tile=window.handler.GetComponentsInChildren<TreeNodeRender>(true).Select(n=>n.element)
+                .OfType<MachineryButton>().First(b=>b.description?.Contains(pair.Item2)==true);
+            string qualityTag=pair.Item2=="metal_ingot"?"INGOT_PURITY_TAG":"CHEMICAL_PRODUCT_PURITY_TAG";
+            Check(tile.HasTooltip() && tile.description.Contains(qualityTag)
+                && tile.description.Contains(ModHelper.GetLocalized(Product,"ui_internal_tag",
+                    ModHelper.GetLocalized(Product,"tag_"+qualityTag.ToLowerInvariant()))) && !tile.description.Contains("BOUGHT_PRICE_TAG"),
+                "Filter tile did not expose its exact properties on hover.");
+            Press(FindButton(window,ModHelper.GetLocalized(Product,"ui_io_run")));
+            Check(items.All(i=>ReferenceEquals(i.parentInventory,disk)),"One manual click left an identical item in "+pair.Item1);
+            Adapter.Call(Adapter.Session,"ClosePart");
+            machineOutput.mayInventoryAddItemFunc=gate;
+            if(pair.Item1=="furnace") CheckFurnaceOverflow(machine,(GameGridInventory)machineOutput,disk,items[0]);
+            else CheckFinisherProduction(machine,(GameGridInventory)machineOutput,disk);
+            foreach(var item in disk.childItems.ToArray()) { Adapter.Move(item,root); StowTopology(item); }
+            machine.Destroy();
+        }
+        GridAt(grid,productionMachine,0,5);
+        Adapter.Call(Adapter.Session,"SetFilter",productionImport,0,"");
+        Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"exclude",1);
+        Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"io_exact",0);
+        details="Native harvest stays in available output space and spills only its remainder. One native button click collects identical ingots and pills, including a third instance with a different purchase price. Turbo furnace output and finisher output use the finished grade; the finisher takes liquid in place.";
+    }
+
+    private void CheckFurnaceOverflow(GameItem furnace,GameGridInventory output,GameInventory disk,GameItem sample)
+    {
+        var input=((List<GameInventory>)Adapter.Static("IoBus","MachineSlots",furnace,false)!).Single();
+        var power=MachineHelper.GetBatterySlot(furnace);
+        var battery=Spawn("energy_credit"); Add(battery); Adapter.Move(battery,power);
+        var shape=output.inventoryShape;
+        output.SetShape("1",1); // No usable cells, as in a fully occupied grid.
+        foreach(var ore in new[]{Spawn("scrap_metal"),Spawn("scrap_metal")}) { Add(ore); Adapter.Move(ore,input); }
+        Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"io_overflow",0);
+        MachineTurboBoosterAdv.BoostMachine(furnace);
+        Check(input.childItems.Count==2,"Disabled overflow let a full furnace consume its inputs.");
+        var before=new HashSet<int>(MainItems().Select(i=>i.GetUniqueID()));
+        Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"io_overflow",1);
+        MachineTurboBoosterAdv.BoostMachine(furnace);
+        var ingot=MainItems().Single(i=>i.identifier=="metal_ingot" && !before.Contains(i.GetUniqueID()));
+        Check(input.childItems.Count==0 && ingot.parentInventory!=null && ingot.parentInventory.GetParentItem()==null
+            && IngotPurityHelper.GetPurity(ingot)!=IngotPurityHelper.GetPurity(sample),"Wrong-grade ingot failed to spill after the furnace ran.");
+        Adapter.Call(Adapter.Session,"CaptureGhost",productionImport,0,ingot);
+        foreach(var ore in new[]{Spawn("scrap_metal"),Spawn("scrap_metal")}) { Add(ore); Adapter.Move(ore,input); }
+        MachineTurboBoosterAdv.BoostMachine(furnace);
+        Check(input.childItems.Count==0 && disk.childItems.Any(i=>i.identifier=="metal_ingot" &&
+            IngotPurityHelper.GetPurity(i)==IngotPurityHelper.GetPurity(ingot)),"Matching finished ingot missed overflow collection.");
+        output.SetShape(shape.width,shape.height);
+    }
+    private void CheckFinisherProduction(GameItem machine,GameGridInventory output,GameInventory disk)
+    {
+        var grid=BayGrid(productionBay);
+        var intakeCable=productionImport.parentInventory.GetParentItem();
+        Unmount(productionImport);
+        var export=Mount(intakeCable,"export_bus",2);
+        export.ToggleSlotItem();
+        Adapter.Call(Adapter.Session,"ConfigureNumber",productionStorageBus,"cable_face",1);
+        var source=Spawn("small_bottled_water"); Add(source);
+        GridAt(grid,source,6,4);
+        WaterHelper.EmptyContainer(source);
+        WaterHelper.AddLiquid(source,"dream_cap_extract",8000);
+        productionStorageBus.ToggleSlotItem();
+        Adapter.Call(Adapter.Session,"ConfigureNumber",productionStorageBus,"exclude",1);
+        var receptacle=((List<GameInventory>)Adapter.Static("GameSession","Contents",machine)!).OfType<GameSlotInventory>().Single();
+        var reagent=Spawn("small_bottled_water"); Add(reagent); WaterHelper.EmptyContainer(reagent);
+        RunBus(export);
+        Check(WaterHelper.GetTotalVolume(source)==8000,"Fluid export consumed liquid with no bottle mounted.");
+        Adapter.Move(reagent,receptacle);
+        RunBus(export);
+        Check(WaterHelper.GetTotalVolume(source)==0 && WaterHelper.GetTotalVolume(reagent)==8000 &&
+            ReferenceEquals(reagent.parentInventory,receptacle),"Finisher did not receive liquid in its mounted bottle.");
+
+        Unmount(export);
+        Adapter.Move(productionImport,(GameInventory)Adapter.Static("PartStorage","Inventory",intakeCable)!);
+        Adapter.Static("PartStorage","Number",productionImport,"cable_face",2);
+        productionStorageBus.ToggleSlotItem();
+        Adapter.Call(Adapter.Session,"ConfigureNumber",productionStorageBus,"exclude",0);
+        Adapter.Move(source,root); StowTopology(source);
+        Adapter.Call(Adapter.Session,"ConfigureNumber",productionStorageBus,"cable_face",0);
+
+        machine.ModifyTag("SELECTED_CHEM_ID_TAG",tag=>tag.Enable().SetString("dream_dust"));
+        var panel=((MachineryPanelRow)machine.contentWindow.childElement).Panels.Single(p=>p.role=="control");
+        var button=((MachineryStack)panel.content).elements.OfType<MachineryButton>().Last();
+        Press(button);
+        var sample=output.childItems.Single();
+        Adapter.Call(Adapter.Session,"CaptureGhost",productionImport,0,sample);
+        output.overrideLockInsert=true;
+        Press(button);
+        var captured=disk.childItems.Single(i=>i.identifier=="dream_dust");
+        Check((bool)Adapter.Static("IoBus","Matches",productionImport,captured)!,"Finisher overflow did not match the final graded sample.");
+        Adapter.Call(Adapter.Session,"CaptureGhost",productionImport,0,disk.childItems.First(i=>i.identifier=="caffeine_pill"));
+        var before=new HashSet<int>(MainItems().Select(i=>i.GetUniqueID()));
+        Press(button);
+        Check(MainItems().Any(i=>i.identifier=="dream_dust" && !before.Contains(i.GetUniqueID()) && i.parentInventory?.GetParentItem()==null),
+            "Rejected finisher product failed to spill into ship storage.");
+        output.UnlockInv();
     }
     private void UsabilityVoidOverflow()
     {

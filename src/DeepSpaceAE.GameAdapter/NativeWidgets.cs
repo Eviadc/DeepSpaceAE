@@ -52,8 +52,32 @@ internal static class NativeWidgets
             if (current != locale) { locale = current; tagNames.Clear(); }
         }
         if (tagNames.TryGetValue(tag, out var name)) return name;
-        name = HasTagLabel(tag) ? LocHelper.GetLocalizedMechanicOrDefault("type_"+tag.ToLowerInvariant(),tag) : "#"+tag;
+        name = HasTagLabel(tag) ? LocHelper.GetLocalizedMechanicOrDefault("type_"+tag.ToLowerInvariant(),tag) : InternalTagName(tag);
         tagNames.Add(tag, name); return name;
+    }
+    internal static string InternalTagName(string tag)
+    {
+        string label;
+        if(tag.StartsWith("CURRENT_PART_",StringComparison.Ordinal)
+            && Liquid.LiquidDict.TryGetValue(tag.Substring("CURRENT_PART_".Length).ToLowerInvariant(),out var liquid))
+        {
+            string id=liquid.identifier switch
+            {
+                "microbe"=>"microbes", "fat"=>"fat_oil", "coffee_mush"=>"coffee_bean_mush",
+                "contraceptive"=>"contraceptive_hormones", "methylol"=>"n_methylol_base", "debris"=>"insoluble_debris",
+                _=>liquid.identifier
+            };
+            label=LocHelper.GetLocalizedMechanicOrDefault("liquid_"+id,liquid.displayName);
+        }
+        else
+        {
+            string key="tag_"+tag.ToLowerInvariant().Replace(' ','_');
+            var mod=ModLoader.Mods.FirstOrDefault(m=>m.Manifest.ID==ModEntry.ModId);
+            if(mod==null || !mod.Localization.TryGetValue("en",out var english) || !english.ContainsKey(key))
+                return UiText.Get("ui_internal_tag",tag);
+            label=UiText.Get(key);
+        }
+        return UiText.Get("ui_internal_tag",label)+" (#"+tag+")";
     }
     internal static Sprite? Sprite(string name) => ModLoader.Mods.FirstOrDefault(m => m.Manifest.ID == ModEntry.ModId)?.Sprites.TryGetValue(name, out var image) == true ? image : null;
     // CustomUI machinery controls use twice the design-pixel scale of PixelWindow.

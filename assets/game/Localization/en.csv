@@ -99,7 +99,7 @@ ui_filter_matching,Filter matching
 ui_match_fuzzy,Fuzzy (item type)
 ui_match_exact,Exact (item state)
 ui_match_fuzzy_help,Compare item type only; ignore quality and other state. A tag card switches to tag matching.
-ui_match_exact_help,Match the full captured state; ignore quantity and placement. A tag card switches to tag matching.
+ui_match_exact_help,Match the properties below. Price and inventory pins are ignored.
 ui_match_recapture,No captured state; drag a sample here again for exact matching.
 ui_match_unsupported,This item's extended state or container contents cannot be matched exactly. Use fuzzy matching.
 item_contact_name,ME Engineering contact slip
@@ -260,3 +260,757 @@ setting_native_inventory_name,Use native inventory reads (compatibility)
 setting_native_inventory_desc,Off by default. Enable to use the public childItems getter for drawer access and terminal container-empty checks so other mods can intercept those reads. The native getter allocates and copies the full inventory each time; large drawers may slow down considerably. Applies on the next read. Transfers and ownership checks always use native APIs.
 setting_native_drawer_name,Use native drawer layout validation (compatibility)
 setting_native_drawer_desc,Off by default. Enable to run the complete native inventory layout validator including every hidden stored item and patches from other mods. Large drawers may stutter. When off only the visible representative is validated; native background and cell layout methods are retained. Applies on the next layout refresh; stored items and capacity are unchanged.
+ui_internal_tag,[Internal] {0}
+ui_io_overflow,Collect machine overflow
+tag_chemical_product_purity_tag,Chemical purity
+tag_activate_ingredient_tag,Active ingredient
+tag_chemical_product_tag,Chemical product
+tag_chem_item_tag,Chemical item
+tag_blendable_tag,Blendable
+tag_soluble_tag,Soluble
+tag_ingot_purity_tag,Actual ingot purity
+tag_ingot_purity_fake_tag,Labeled ingot purity
+tag_ore_tag,Ore
+tag_scrap_metal,Scrap metal
+tag_is_owned_tag,Player owned
+tag_pinned_tag,Pinned
+tag_bought_price_tag,Purchase price
+tag_liquid_container_tag,Liquid container
+tag_container_temp_tag,Container temperature
+tag_item_medical_tag,Medical item
+tag_medical_proficiency,Medical proficiency
+tag_material_tag,Material
+tag_chemical_intent_tag,Chemical intent
+ui_exact_id,Item ID
+ui_exact_atlas,Sprite atlas
+ui_exact_sprite,Sprite
+ui_exact_text,Custom text
+ui_exact_sprite_source,Sprite source
+ui_exact_type,Category
+ui_exact_shape,Footprint
+ui_exact_inventory,Inventory
+ui_exact_feature,Feature
+tag_type_tag,Item type
+tag_contraband_item_tag,Contraband
+tag_contraband_level,Contraband level
+tag_narcotic_value,Narcotic strength
+tag_alcohol_value,Alcohol strength
+tag_nicotine_value,Nicotine strength
+tag_liquid_container_capacity,Liquid capacity
+tag_liquid_container_base_price_tag,Empty container price
+tag_manufacturer,Manufacturer
+tag_proficiency,Proficiency
+tag_custom_name_tag,Custom name
+tag_custom_name_mode_tag,Name display mode
+tag_locked_tag,Locked
+tag_weight_tag,Weight
+tag_seed_item_tag,Seed
+tag_parent_item_id,Parent item ID
+tag_container_tag,Container
+tag_backpack_tag,Backpack
+tag_machinery_tag,Machine
+tag_strip_tested_tag,Test strip used
+tag_graduated_container_tag,Graduated container
+tag_filter_container_tag,Filter container
+tag_last_scan_result_tag,Last scan result
+tag_liquid_container_dropper_tag,Dropper
+tag_ingot_purity_inconclusive,Inconclusive purity
+tag_selected_chem_id_tag,Selected product
+tag_additional_effect_string,Additional effect
+tag_adv_gun_tag,Advanced gun
+tag_age_int,Age
+tag_age_value_mod_per_day_int,Age value mod per day
+tag_allowed_in_cage_tag,Allowed in cage
+tag_already_confronted_tag,Already confronted
+tag_ammo_box_content_caliber_tag,Ammo box content caliber
+tag_ammo_box_content_tag,Ammo box content
+tag_ammo_box_content_unit_value_tag,Ammo box content unit value
+tag_ammo_box_expose_reason_tag,Ammo box expose reason
+tag_ammo_box_packaged_tag,Ammo box packaged
+tag_ammo_box_tag,Ammo box
+tag_ammo_type_tag,Ammo type
+tag_animal_age_tag,Animal age
+tag_animal_current_fertility_tag,Animal current fertility
+tag_animal_current_mating_count_tag,Animal current mating count
+tag_animal_diseased_tag,Animal diseased
+tag_animal_feces_tag,Animal feces
+tag_animal_health_tag,Animal health
+tag_animal_hunger_tag,Animal hunger
+tag_animal_is_dead_tag,Animal is dead
+tag_animal_is_starving_tag,Animal is starving
+tag_animal_item_tag,Animal item
+tag_animal_mark_string,Animal mark
+tag_animal_miscarried_tag,Animal miscarried
+tag_animal_neutered_tag,Animal neutered
+tag_animal_pregnant_progress_tag,Animal pregnant progress
+tag_animal_pregnant_tag,Animal pregnant
+tag_animal_prion_tag,Animal prion
+tag_animal_scrach_mark_tag,Animal scratch mark
+tag_animal_sexe_tag,Animal sex
+tag_animal_species_tag,Animal species
+tag_animal_weight_tag,Animal weight
+tag_appraisal_client_value,Appraisal client value
+tag_appraisal_default_value,Appraisal default value
+tag_appraisal_item,Appraisal item
+tag_armor_conditioner_repair_rate_int,Armor conditioner repair rate
+tag_armor_conditioner_system_tag,Armor conditioner system
+tag_associated_hydroponic_id,Associated hydroponic ID
+tag_associated_item_id,Associated item ID
+tag_aug_scanner_tag,Aug scanner
+tag_autonomous_medical_system_tag,Autonomous medical system
+tag_auto_butcher_drop_to_butcher_bool,Auto butcher drop to butcher
+tag_auto_butcher_kill_store_only_bool,Auto butcher kill store only
+tag_auto_butcher_last_count_int,Auto butcher last count
+tag_auto_butcher_last_roe_int,Auto butcher last roe
+tag_auto_butcher_tag,Auto butcher
+tag_base_processing_speed_tag,Base processing speed
+tag_base_propulsion_fuel_drain_int,Base propulsion fuel drain
+tag_base_propulsion_speed_int,Base propulsion speed
+tag_berry_condition_int,Berry condition
+tag_berry_tag,Berry
+tag_berry_visual_variant_int,Berry visual variant
+tag_bio_printable_tag,Bio printable
+tag_bio_printing_required_work_int,Bio printing required work
+tag_blade_item_tag,Blade item
+tag_bonus_percentage_efficiency_int,Bonus percentage efficiency
+tag_bonus_percentage_performance_int,Bonus percentage performance
+tag_bonus_percentage_quality_int,Bonus percentage quality
+tag_book_id,Book ID
+tag_book_tag,Book
+tag_bottle_printer_upgrade_count_tag,Bottle printer upgrade count
+tag_breeder_power_source_item_tag,Breeder power source item
+tag_broken_machine_screw_count,Broken machine screw count
+tag_broken_machine_tag,Broken machine
+tag_broken_machine_weld_count,Broken machine weld count
+tag_broken_machine_wire_count,Broken machine wire count
+tag_butcher_tally_tag,Butcher tally
+tag_cage_health_tag,Cage health
+tag_cage_max_health_tag,Cage max health
+tag_cage_size_tag,Cage size
+tag_cage_tag,Cage
+tag_calorie_value_tag,Calorie value
+tag_canned_food_tag,Canned food
+tag_can_use_on_non_owned_tag,Can use on non owned
+tag_casette_player_state_int,Cassette player state
+tag_cassette_content,Cassette content
+tag_cassette_tag,Cassette
+tag_charge_rate_int,Charge rate
+tag_charge_rate_modifier_int,Charge rate modifier
+tag_chemical_machine_upgrade_count,Chemical machine upgrade count
+tag_chilled_kept_cold_tag,Chilled kept cold
+tag_choice_preview_tag,Choice preview
+tag_cigarette_box,Cigarette box
+tag_cigarette_box_issue,Cigarette box issue
+tag_cigarette_color_issue,Cigarette color issue
+tag_cigarette_lettering,Cigarette lettering
+tag_cigarette_lettering_issue,Cigarette lettering issue
+tag_cigarette_logo,Cigarette logo
+tag_cigarette_logo_issue,Cigarette logo issue
+tag_cigarette_seal,Cigarette seal
+tag_cigarette_seal_issue,Cigarette seal issue
+tag_cigarette_tag,Cigarette
+tag_cnc_module,CNC module
+tag_complexe_equipment_tag,Complex equipment
+tag_complexe_module_adjacency_tag,Complex module adjacency
+tag_complexe_module_effectiveness_amount_int,Complex module effectiveness amount
+tag_complexe_module_power_eco_amount_int,Complex module power eco amount
+tag_complexe_module_tag,Complex module
+tag_complexe_system_tag,Complex system
+tag_configure_tag,Configure
+tag_container_tooltip_tag,Container tooltip
+tag_contaminant_effect_mult,Contaminant effect multiplier
+tag_current_book_page,Current book page
+tag_current_charge_int,Current charge
+tag_current_charge_tag,Current charge
+tag_current_converter_on_bool,Current converter on
+tag_current_converter_rate_float,Current converter rate
+tag_current_converter_tag,Current converter
+tag_current_converter_upgrade_count_int,Current converter upgrade count
+tag_current_mining_power_int,Current mining power
+tag_current_playing_cassette_index_tag,Current playing cassette index
+tag_current_playing_track_id_tag,Current playing track ID
+tag_current_processing_speed_tag,Current processing speed
+tag_current_salvage_power_int,Current salvage power
+tag_current_target_temp,Current target temp
+tag_current_use_count_int,Current use count
+tag_debris_pile_tag,Debris pile
+tag_debris_progress_int,Debris progress
+tag_debris_tools_used_string,Debris tools used
+tag_default_durability_tag,Default durability
+tag_desequencer_state_tag,Desequencer state
+tag_desequencer_target_id_tag,Desequencer target ID
+tag_deseququencer_progress_tag,Desequencer progress
+tag_destination_string,Destination
+tag_destroy_after_salvage_bool,Destroy after salvage
+tag_detection_encounter_name,Detection encounter name
+tag_detection_encounter_value_int,Detection encounter value
+tag_display_only_tag,Display only
+tag_dna_disk_rank_int,DNA disk rank
+tag_dna_disk_tag,DNA disk
+tag_dna_disk_trait_string,DNA disk trait
+tag_dna_disk_uses_int,DNA disk uses
+tag_dna_manipulator_keep_disk_bool,DNA manipulator keep disk
+tag_dna_manipulator_tag,DNA manipulator
+tag_dna_operation_stacking_bool,DNA operation stacking
+tag_dna_operation_string,DNA operation
+tag_dna_operation_success_int,DNA operation success
+tag_dna_operation_trait_string,DNA operation trait
+tag_dna_precision_trait_string,DNA precision trait
+tag_door_tag,Door
+tag_draw_consumption_backup_int,Draw consumption backup
+tag_draw_current_int,Draw current
+tag_draw_target_int,Draw target
+tag_durability_fake_tag,Durability fake
+tag_durability_pricing_mode_tag,Durability pricing mode
+tag_durability_tag,Durability
+tag_durability_zero_value_tag,Durability zero value
+tag_endangerment_item_tag,Endangerment item
+tag_equipment_module_tag,Equipment module
+tag_exotic_fuel_tag,Exotic fuel
+tag_feed_dispenser_auto_blend_bool,Feed dispenser auto blend
+tag_feed_dispenser_tag,Feed dispenser
+tag_feed_dispenser_target_percent_int,Feed dispenser target percent
+tag_fermentation_time_remaining_int,Fermentation time remaining
+tag_filter_size_tag,Filter size
+tag_fish_age_tag,Fish age
+tag_fish_belly_up_tag,Fish belly up
+tag_fish_carcass_kcal_tag,Fish carcass kcal
+tag_fish_carcass_max_kcal_tag,Fish carcass max kcal
+tag_fish_egg_grams_tag,Fish egg grams
+tag_fish_fertilized_tag,Fish fertilized
+tag_fish_fry_tag,Fish fry
+tag_fish_group_count_tag,Fish group count
+tag_fish_group_tag,Fish group
+tag_fish_growth_progress_tag,Fish growth progress
+tag_fish_health_tag,Fish health
+tag_fish_hunger_tag,Fish hunger
+tag_fish_industrial_diet_tag,Fish industrial diet
+tag_fish_is_dead_tag,Fish is dead
+tag_fish_is_starving_tag,Fish is starving
+tag_fish_item_tag,Fish item
+tag_fish_kcal_eaten_tag,Fish kcal eaten
+tag_fish_kcal_grown_tag,Fish kcal grown
+tag_fish_kcal_industrial_tag,Fish kcal industrial
+tag_fish_kcal_pellet_tag,Fish kcal pellet
+tag_fish_meat_diet_tag,Fish meat diet
+tag_fish_recent_industrial_tag,Fish recent industrial
+tag_fish_recent_kcal_tag,Fish recent kcal
+tag_fish_recent_meat_tag,Fish recent meat
+tag_fish_roe_tag,Fish roe
+tag_fish_sex_tag,Fish sex
+tag_fish_species_tag,Fish species
+tag_fish_surgery_jars_tag,Fish surgery jars
+tag_food_stamp_tag,Food stamp
+tag_freshness_tag,Freshness
+tag_fresh_food_tag,Fresh food
+tag_fridge_power_upgrade_count_tag,Fridge power upgrade count
+tag_fridge_storage_upgrade_count_tag,Fridge storage upgrade count
+tag_fridge_tag,Fridge
+tag_frozen_kept_frozen_tag,Frozen kept frozen
+tag_fuel_tanker_visited,Fuel tanker visited
+tag_gamblers_coin_tag,Gamblers coin
+tag_gci_seated_in_ship_tag,GCI seated in ship
+tag_gemstone_tag,Gemstone
+tag_genetic_heat_int,Genetic heat
+tag_growing_progress,Growing progress
+tag_growing_tag,Growing
+tag_guide_paper_tag,Guide paper
+tag_gun_accuracy_tag,Gun accuracy
+tag_gun_caliber_tag,Gun caliber
+tag_gun_current_accuracy_tag,Gun current accuracy
+tag_gun_current_ergonomics_tag,Gun current ergonomics
+tag_gun_current_firepower_tag,Gun current firepower
+tag_gun_current_recoil_tag,Gun current recoil
+tag_gun_current_reliability_tag,Gun current reliability
+tag_gun_current_repairbility_tag,Gun current repairability
+tag_gun_current_style_tag,Gun current style
+tag_gun_ergonomics_tag,Gun ergonomics
+tag_gun_firepower_tag,Gun firepower
+tag_gun_frame_gun_id_string,Gun frame gun ID
+tag_gun_frame_print_quality_int,Gun frame print quality
+tag_gun_frame_tag,Gun frame
+tag_gun_recoil_tag,Gun recoil
+tag_gun_reliability_tag,Gun reliability
+tag_gun_repairbility_tag,Gun repairability
+tag_gun_size_tag,Gun size
+tag_gun_style_tag,Gun style
+tag_gun_suppressed_tag,Gun suppressed
+tag_gutterflow_pellet_tag,Gutterflow pellet
+tag_gutterflow_tainted_tag,Gutterflow tainted
+tag_handnote_body,Handnote body
+tag_handnote_font,Handnote font
+tag_handnote_sign,Handnote sign
+tag_handnote_title,Handnote title
+tag_hand_addon_armored,Hand addon armored
+tag_hand_addon_bladed,Hand addon bladed
+tag_hand_condition,Hand condition
+tag_hand_interface,Hand interface
+tag_hand_interface_marking,Hand interface marking
+tag_hand_material,Hand material
+tag_hand_tag,Hand
+tag_harvest_item_id,Harvest item ID
+tag_harvest_quantity,Harvest quantity
+tag_hazardous_waste_tag,Hazardous waste
+tag_heart_slot_item,Heart slot item
+tag_heating_plate_state,Heating plate state
+tag_heating_tag,Heating
+tag_hireling_equipment_owner,Hireling equipment owner
+tag_hopper_color_int,Hopper color
+tag_hopper_filter_mode_int,Hopper filter mode
+tag_hopper_filter_string,Hopper filter
+tag_hopper_intake_tag,Hopper intake
+tag_hopper_keep_int,Hopper keep
+tag_hopper_link_int,Hopper link
+tag_hopper_on_add_bool,Hopper on add
+tag_hopper_on_move_bool,Hopper on move
+tag_hopper_order_int,Hopper order
+tag_hopper_outlet_tag,Hopper outlet
+tag_hull_armor_int,Hull armor
+tag_hull_integrity_int,Hull integrity
+tag_hull_integrity_max_int,Hull integrity max
+tag_hull_maintnance_rate_int,Hull maintenance rate
+tag_hull_repair_rate_int,Hull repair rate
+tag_hull_repair_system_tag,Hull repair system
+tag_human_organ_tag,Human organ
+tag_hydroponic_machine_tag,Hydroponic machine
+tag_hypertech_battery_output_int,Hypertech battery output
+tag_hypertech_battery_tag,Hypertech battery
+tag_hypertech_battery_upgrade_count_int,Hypertech battery upgrade count
+tag_hypertech_charge_rate_tag,Hypertech charge rate
+tag_ice_cold_kept_tag,Ice cold kept
+tag_ignore_child_value,Ignore child value
+tag_important_tag,Important
+tag_industrial_fish_feed_tag,Industrial fish feed
+tag_ingester,Ingester
+tag_injector_body,Injector body
+tag_injector_color,Injector color
+tag_injector_company,Injector company
+tag_injector_indicator,Injector indicator
+tag_injector_label,Injector label
+tag_injector_model,Injector model
+tag_injector_serial,Injector serial
+tag_inspectable_tag,Inspectable
+tag_ins_injector_tag,INS injector
+tag_intel_author,Intel author
+tag_intel_content,Intel content
+tag_intel_id_int,Intel ID
+tag_intel_subject,Intel subject
+tag_intel_title,Intel title
+tag_in_slot_bool,In slot
+tag_issue_body,Issue body
+tag_issue_color,Issue color
+tag_issue_indicator,Issue indicator
+tag_issue_label,Issue label
+tag_issue_serial,Issue serial
+tag_is_active_processing_bool,Is active processing
+tag_is_battery_powered_tag,Is battery powered
+tag_is_crisis_tag,Is crisis
+tag_is_draw_type_machine,Is draw type machine
+tag_is_item_toggle_on_tag,Is item toggle on
+tag_is_organ_store_in_transport_container,Is organ store in transport container
+tag_is_processing_type_machine,Is processing type machine
+tag_is_projector_active,Is projector active
+tag_is_receiving_bonus_from_module_bool,Is receiving bonus from module
+tag_is_spent,Is spent
+tag_is_tooltip_disabled_tag,Is tooltip disabled
+tag_item_behind_lock_tag,Item behind lock
+tag_item_hidden_tag,Item hidden
+tag_kidney_slot_item,Kidney slot item
+tag_labeler_blue,Labeler blue
+tag_labeler_tag,Labeler
+tag_lamp_target_tag,Lamp target
+tag_learning_algo_max_efficiency_int,Learning algo max efficiency
+tag_learning_algo_max_performance_int,Learning algo max performance
+tag_learning_algo_max_quality_int,Learning algo max quality
+tag_liquid_container_current,Liquid container current
+tag_liquid_container_max,Liquid container max
+tag_liquid_container_sipping,Liquid container sipping
+tag_liquid_luck_tag,Liquid luck
+tag_liver_slot_item,Liver slot item
+tag_locked_container_tag,Locked container
+tag_locked_working_tag,Locked working
+tag_lock_company_access,Lock company access
+tag_lock_difficulty,Lock difficulty
+tag_lock_id,Lock ID
+tag_lock_status,Lock status
+tag_lock_type,Lock type
+tag_log_content_tag,Log content
+tag_loot_crate_id_string,Loot crate ID
+tag_loot_crate_scanned_tag,Loot crate scanned
+tag_lottery_edition_tag,Lottery edition
+tag_lottery_is_winning_tag,Lottery is winning
+tag_lottery_match_count_tag,Lottery match count
+tag_lottery_number_tag,Lottery number
+tag_lottery_paper_tag,Lottery paper
+tag_lottery_spawn_luck_int,Lottery spawn luck
+tag_lottery_ticket_tag,Lottery ticket
+tag_lottery_winning_number_tag,Lottery winning number
+tag_lou_bomb_armed_tag,Lou bomb armed
+tag_lou_locker_tag,Lou locker
+tag_lou_toy_box_tag,Lou toy box
+tag_lou_toy_count_int,Lou toy count
+tag_lou_toy_tag,Lou toy
+tag_low_power_mode_bool,Low power mode
+tag_lung_slot_item,Lung slot item
+tag_machinery_drawn_power_base,Machinery drawn power base
+tag_machine_efficiency_ratio_int,Machine efficiency ratio
+tag_machine_manual_tag,Machine manual
+tag_machine_performance_ratio_int,Machine performance ratio
+tag_machine_performance_reduces_power_tag,Machine performance reduces power
+tag_machine_progress_current_tag,Machine progress current
+tag_machine_progress_target_tag,Machine progress target
+tag_machine_quality_ratio_int,Machine quality ratio
+tag_machine_rechargable_tag,Machine rechargeable
+tag_machine_state_tag,Machine state
+tag_magnifying_glass,Magnifying glass
+tag_makeshift_reactor_tag,Makeshift reactor
+tag_marking_pen_mode_int,Marking pen mode
+tag_marking_pen_tag,Marking pen
+tag_max_charge_int,Max charge
+tag_max_charge_modifier_int,Max charge modifier
+tag_max_durability_tag,Max durability
+tag_max_use_count_int,Max use count
+tag_meat_food_tag,Meat food
+tag_meat_type_tag,Meat type
+tag_medical_proficiency_current,Medical proficiency current
+tag_mind_reprogrammer_charge_int,Mind reprogrammer charge
+tag_mind_reprogrammer_cooldown_days_int,Mind reprogrammer cooldown days
+tag_mind_reprogrammer_tag,Mind reprogrammer
+tag_mining_drill_system,Mining drill system
+tag_module_effect1_tag,Module effect1
+tag_module_effect2_tag,Module effect2
+tag_module_stuck_tag,Module stuck
+tag_module_tag,Module
+tag_module_tier_int,Module tier
+tag_module_type,Module type
+tag_module_upgrade_stage_int,Module upgrade stage
+tag_mod_barrel_tag,Mod barrel
+tag_mod_base_accuracy_tag,Mod base accuracy
+tag_mod_base_ergonomics_tag,Mod base ergonomics
+tag_mod_base_firepower_tag,Mod base firepower
+tag_mod_base_recoil_tag,Mod base recoil
+tag_mod_base_reliability_tag,Mod base reliability
+tag_mod_base_style_tag,Mod base style
+tag_mod_id_tag,Mod ID
+tag_mod_magazine_tag,Mod magazine
+tag_mod_name_tag,Mod name
+tag_mod_rail_tag,Mod rail
+tag_mod_special_tag,Mod special
+tag_mod_stock_tag,Mod stock
+tag_mod_suppressor_tag,Mod suppressor
+tag_mod_under_rail_tag,Mod under rail
+tag_mouse_trap_tag,Mouse trap
+tag_metal_printing_module,Metal printing module
+tag_navigation_alternatif_int,Navigation alternative
+tag_navigation_processing_unit_tag,Navigation processing unit
+tag_nav_disk_mining_tag,Nav disk mining
+tag_nav_disk_salvage_tag,Nav disk salvage
+tag_nav_disk_shelf_life_int,Nav disk shelf life
+tag_nav_disk_tag,Nav disk
+tag_nestable_device_tag,Nestable device
+tag_no_hopper_inventory_tag,No hopper inventory
+tag_npu_brand_tag,NPU brand
+tag_npu_casing_tag,NPU casing
+tag_npu_cpu_tag,NPU CPU
+tag_npu_lettering_tag,NPU lettering
+tag_npu_operational_tag,NPU operational
+tag_npu_serial_tag,NPU serial
+tag_npu_spu1_tag,NPU SPU 1
+tag_npu_spu2_tag,NPU SPU 2
+tag_nutrient_tablet,Nutrient tablet
+tag_nutriment_use_rate,Nutrient use rate
+tag_only_accept_as_payment_tag,Only accept as payment
+tag_opened_tag,Opened
+tag_organic_organ_tag,Organic organ
+tag_organ_health_int,Organ health
+tag_organ_health_max_int,Organ health max
+tag_organ_item_tag,Organ item
+tag_organ_slot_info_left_tag,Organ slot info left
+tag_organ_slot_info_right_tag,Organ slot info right
+tag_organ_slot_tag,Organ slot
+tag_organ_transport_container_tag,Organ transport container
+tag_perennial_established_int,Perennial established
+tag_permit_item_count,Permit item count
+tag_permit_item_level,Permit item level
+tag_permit_item_tag,Permit item
+tag_pile_searched_today,Pile searched today
+tag_plant_edible_produce_tag,Plant edible produce
+tag_plant_health_int,Plant health
+tag_plant_id_string,Plant ID
+tag_plant_taste_display_string,Plant taste display
+tag_plant_taste_percent_int,Plant taste percent
+tag_plasma_casing,Plasma casing
+tag_plasma_casing_condition_crack,Plasma casing condition crack
+tag_plasma_casing_condition_reinforced,Plasma casing condition reinforced
+tag_plasma_casing_condition_uncovered,Plasma casing condition uncovered
+tag_plasma_casing_condition_wear,Plasma casing condition wear
+tag_plasma_cell_tag,Plasma cell
+tag_plasma_color,Plasma color
+tag_plasma_seal,Plasma seal
+tag_post_salvage_item_id_string,Post salvage item ID
+tag_pouch_tag,Pouch
+tag_powered,Powered
+tag_power_source_item_disposable_tag,Power source item disposable
+tag_power_source_item_value_percent_int,Power source item value percent
+tag_power_switch_bool,Power switch
+tag_power_use_base_int,Power use base
+tag_power_use_int,Power use
+tag_pre_container_tag,Pre container
+tag_printer_chip_tag,Printer chip
+tag_printer_frame_chip_tag,Printer frame chip
+tag_printer_gun_part_chip_tag,Printer gun part chip
+tag_printer_gun_part_count_int,Printer gun part count
+tag_printer_ingot_quality_bonus_int,Printer ingot quality bonus
+tag_printer_material_tag,Printer material
+tag_printer_melee_batch_module_tag,Printer melee batch module
+tag_printer_melee_chip_tag,Printer melee chip
+tag_printer_tag,Printer
+tag_processing_current_progress_int,Processing current progress
+tag_processing_max_progress_int,Processing max progress
+tag_processing_progress_speed_base_int,Processing progress speed base
+tag_processing_progress_speed_int,Processing progress speed
+tag_procurement_client_name,Procurement client name
+tag_procurement_day,Procurement day
+tag_procurement_final_reward,Procurement final reward
+tag_procurement_header,Procurement header
+tag_procurement_order_body,Procurement order body
+tag_progress_item_required_machine_tag,Progress item required machine
+tag_progress_item_required_machine_tag_count,Progress item required machine tag count
+tag_progress_item_show_default_tooltip,Progress item show default tooltip
+tag_progress_item_tag,Progress item
+tag_progress_item_target_item_count_tag,Progress item target item count
+tag_progress_item_target_item_id_tag,Progress item target item ID
+tag_progress_item_target_tag,Progress item target
+tag_progress_item_use_additional_items,Progress item use additional items
+tag_progress_type_default_tooltip,Progress type default tooltip
+tag_progress_type_machine_tag,Progress type machine
+tag_propulsion_distance_int,Propulsion distance
+tag_propulsion_fuel_drain_int,Propulsion fuel drain
+tag_propulsion_progress_current_int,Propulsion progress current
+tag_propulsion_speed_int,Propulsion speed
+tag_ras_filter_slot_tag,RAS filter slot
+tag_ras_height_upgrade_count_tag,RAS height upgrade count
+tag_ras_power_upgrade_count_tag,RAS power upgrade count
+tag_ras_tag,RAS
+tag_ras_tank_grid_tag,RAS tank grid
+tag_ras_water_tank_tag,RAS water tank
+tag_ras_width_upgrade_count_tag,RAS width upgrade count
+tag_reactor_integrity_int,Reactor integrity
+tag_reactor_max_integrity_int,Reactor max integrity
+tag_reactor_upgrades_int,Reactor upgrades
+tag_reactor_waste_progress_int,Reactor waste progress
+tag_red_imp_beer_tag,Red imp beer
+tag_repo_eligible_override_tag,Repo eligible override
+tag_required_item_count_0,Required item count 0
+tag_required_item_count_1,Required item count 1
+tag_required_item_id_0,Required item ID 0
+tag_required_item_id_1,Required item ID 1
+tag_required_item_type_count_tag,Required item type count
+tag_required_nutriment_level_tag,Required nutrient level
+tag_required_nutriment_range_tag,Required nutrient range
+tag_required_progress,Required progress
+tag_ribwich_bun_tag,Ribwich bun
+tag_ribwich_davre_logo_tag,Ribwich davre logo
+tag_ribwich_facility_number_tag,Ribwich facility number
+tag_ribwich_facility_tag,Ribwich facility
+tag_ribwich_meat_tag,Ribwich meat
+tag_ribwich_pickles_tag,Ribwich pickles
+tag_ribwich_production_month_tag,Ribwich production month
+tag_ribwich_production_tag,Ribwich production
+tag_ribwich_production_year_tag,Ribwich production year
+tag_ribwich_ribwich_logo_tag,Ribwich ribwich logo
+tag_ribwich_tag,Ribwich
+tag_ribwich_wrap_tag,Ribwich wrap
+tag_room_id_int,Room ID
+tag_safe_tag,Safe
+tag_salvagable_item_tag,Salvageable item
+tag_salvage_gantry_system,Salvage gantry system
+tag_salvage_tool_tag,Salvage tool
+tag_scav_scanner_double_chance,Scav scanner double chance
+tag_scav_token_tag,Scav token
+tag_scratcher_luck_int,Scratcher luck
+tag_scratcher_new_tag,Scratcher new
+tag_scratcher_state,Scratcher state
+tag_scratcher_symbol,Scratcher symbol
+tag_scratcher_tag,Scratcher
+tag_scratcher_winnings_counted_tag,Scratcher winnings counted
+tag_service_gun_parts_used_int,Service gun parts used
+tag_service_gun_repair_value_int,Service gun repair value
+tag_service_gun_tag,Service gun
+tag_ship_module_tag,Ship module
+tag_showcase_special_item_tag,Showcase special item
+tag_slip_body,Slip body
+tag_slip_data,Slip data
+tag_slip_title,Slip title
+tag_space_fuel_tanker_event_started_stage_1,Space fuel tanker event started stage 1
+tag_spawn_cargo_pod_world_tag,Spawn cargo pod world
+tag_sprite_animation_frames_string,Sprite animation frames
+tag_sprite_animation_frame_count_int,Sprite animation frame count
+tag_sprite_animation_frame_ms_int,Sprite animation frame ms
+tag_sprite_animation_playing_bool,Sprite animation playing
+tag_sprite_animation_tag,Sprite animation
+tag_stamp_amount,Stamp amount
+tag_stamp_amount_issue,Stamp amount issue
+tag_stamp_chip,Stamp chip
+tag_stamp_chip_issue,Stamp chip issue
+tag_stamp_lettering,Stamp lettering
+tag_stamp_lettering_issue,Stamp lettering issue
+tag_stamp_logo,Stamp logo
+tag_stamp_logo_issue,Stamp logo issue
+tag_stamp_seal,Stamp seal
+tag_stamp_seal_issue,Stamp seal issue
+tag_standard_machine_tag,Standard machine
+tag_stolen_tag,Stolen
+tag_stolen_value_int,Stolen value
+tag_storable_package_tag,Storable package
+tag_storage_coordinator_presets_string,Storage coordinator presets
+tag_storage_coordinator_tag,Storage coordinator
+tag_storage_expansion_kit_tag,Storage expansion kit
+tag_storage_expansion_tabs_int,Storage expansion tabs
+tag_storage_tab_names_string,Storage tab names
+tag_stored_gutterflow_pellet,Stored gutterflow pellet
+tag_stored_industrial_fish_feed,Stored industrial fish feed
+tag_stored_kcal_tag,Stored kcal
+tag_stored_meat,Stored meat
+tag_stored_other,Stored other
+tag_surgery_add_tag,Surgery add
+tag_system_tag,System
+tag_system_tag_external,System tag external
+tag_system_tag_hull,System tag hull
+tag_system_tag_industrial,System tag industrial
+tag_system_tag_navigation,System tag navigation
+tag_system_tag_power,System tag power
+tag_system_tag_propulsion,System tag propulsion
+tag_system_tag_service,System tag service
+tag_system_tag_utility,System tag utility
+tag_temp_percentage_efficiency_int,Temp percentage efficiency
+tag_temp_percentage_performance_int,Temp percentage performance
+tag_temp_percentage_quality_int,Temp percentage quality
+tag_test_water_quality,Test water quality
+tag_toggle_appearance_tag,Toggle appearance
+tag_toolbox_item_tag,Toolbox item
+tag_toolbox_slot_tag,Toolbox slot
+tag_toolbox_tag,Toolbox
+tag_toolbox_unlocked_slots_int,Toolbox unlocked slots
+tag_total_contaminant_removed_tag,Total contaminant removed
+tag_total_percentage_performance_bonus_int,Total percentage performance bonus
+tag_total_percentage_power_bonus_int,Total percentage power bonus
+tag_total_percentage_quality_bonus_int,Total percentage quality bonus
+tag_track_opened_tag,Track opened
+tag_trader_price_buy_multiplier_double,Trader price buy multiplier
+tag_trader_price_buy_multiplier_tag,Trader price buy multiplier
+tag_trader_price_sell_multiplier_double,Trader price sell multiplier
+tag_trader_price_sell_multiplier_tag,Trader price sell multiplier
+tag_transmitter_target_tag,Transmitter target
+tag_turbo_boost_adv,Turbo boost advanced
+tag_turbo_boost_eligible_tag,Turbo boost eligible
+tag_turbo_boost_hypertech,Turbo boost hypertech
+tag_turbo_ready_tag,Turbo ready
+tag_tutorial_page_body,Tutorial page body
+tag_tutorial_page_signature,Tutorial page signature
+tag_tutorial_page_title,Tutorial page title
+tag_tutorial_paper_tag,Tutorial paper
+tag_unique_item_id,Unique item ID
+tag_unlock_breaching,Unlock breaching
+tag_unlock_durability,Unlock durability
+tag_unlock_type,Unlock type
+tag_use_count_auto_value_bool,Use count auto value
+tag_use_count_base_value_int,Use count base value
+tag_use_count_destroy_on_empty_bool,Use count destroy on empty
+tag_use_count_item_tag,Use count item
+tag_use_count_refill_days_int,Use count refill days
+tag_use_count_refill_progress_int,Use count refill progress
+tag_use_count_transferable_bool,Use count transferable
+tag_use_count_value_per_use_int,Use count value per use
+tag_vacuum_incinerator_on_tag,Vacuum incinerator on
+tag_vacuum_incinerator_upgraded_tag,Vacuum incinerator upgraded
+tag_vending_attractiveness,Vending attractiveness
+tag_vending_blacklisted_tag,Vending blacklisted
+tag_vending_capacity,Vending capacity
+tag_vending_cash,Vending cash
+tag_water_filter,Water filter
+tag_water_purification_tablet,Water purification tablet
+tag_water_recycler_current_efficiency_int,Water recycler current efficiency
+tag_water_recycler_system_tag,Water recycler system
+tag_water_tank_tag,Water tank
+tag_water_testing_strip_tag,Water testing strip
+tag_water_use_rate,Water use rate
+tag_weapon_mod_tag,Weapon mod
+tag_welding_quality_int,Welding quality
+tag_will_machinery_received_power,Will machinery received power
+tag_wine_container_state,Wine container state
+tag_wine_container_tag,Wine container
+tag_wine_counterfeit_tag,Wine counterfeit
+tag_wine_ingredient_tag,Wine ingredient
+tag_wine_score_int,Wine score
+tag_wine_yeast_illegal_tag,Wine yeast illegal
+tag_wine_yeast_power_int,Wine yeast power
+tag_wine_yeast_reusable_tag,Wine yeast reusable
+tag_wine_yeast_tag,Wine yeast
+tag_ability,Ability
+tag_action_free_mode,Action free mode
+tag_add_thirst,Add thirst
+tag_ai_stage,AI stage
+tag_amenities_storage,Amenities storage
+tag_antibleed,Antibleed
+tag_antitoxin,Antitoxin
+tag_armor_accuracy_modifier,Armor accuracy modifier
+tag_armor_dodge_modifier,Armor dodge modifier
+tag_armor_efficiency,Armor efficiency
+tag_armor_item,Armor item
+tag_armor_mitigation,Armor mitigation
+tag_armor_protection,Armor protection
+tag_armor_resilience,Armor resilience
+tag_backpack,Backpack
+tag_body,Body
+tag_butchering,Butchering
+tag_canteen,Canteen
+tag_character,Character
+tag_class_name,Class name
+tag_cooked,Cooked
+tag_current_armor_value,Current armor value
+tag_current_max_armor_value,Current max armor value
+tag_current_storage,Current storage
+tag_default_armor_value,Default armor value
+tag_dispenser,Dispenser
+tag_editable_item,Editable item
+tag_enemy,Enemy
+tag_equippable,Equippable
+tag_folded,Folded
+tag_friendly,Friendly
+tag_injector,Injector
+tag_is_canteen_sip,Is canteen sip
+tag_is_machinery_powered,Is machinery powered
+tag_m16,M16
+tag_machinery,Machinery
+tag_machinery_drawn_power,Machinery drawn power
+tag_machinery_received_power,Machinery received power
+tag_magazine,Magazine
+tag_manufacture,Manufacture
+tag_max_storage,Max storage
+tag_player,Player
+tag_power_analyser,Power analyser
+tag_power_source_furniture,Power source furniture
+tag_power_source_item,Power source item
+tag_power_source_item_bandwidth,Power source item bandwidth
+tag_power_source_item_energy,Power source item energy
+tag_power_source_item_max_energy,Power source item max energy
+tag_power_source_item_recharge,Power source item recharge
+tag_stanag,STANAG
+tag_systems,Systems
+tag_title,Title
+ui_feature_category,Category
+ui_feature_identifier,ID
+ui_feature_isfeaturematch,Shown condition matches actual
+ui_feature_featuretype,Feature type
+ui_feature_removedbytool,Removal tool
+ui_feature_initiallyshown,Initially visible
+ui_feature_isfeatureexposed,Exposed
+ui_feature_isfeaturediscovered,Discovered
+ui_feature_fakecondition,Apparent condition
+ui_feature_realcondition,Actual condition
+ui_feature_usecondition,Uses conditions
+ui_feature_isexposable,Can be exposed
+ui_feature_ispublichidden,Hidden from public view
+ui_feature_customintvalue1,Feature value
+ui_feature_isdisabled,Disabled

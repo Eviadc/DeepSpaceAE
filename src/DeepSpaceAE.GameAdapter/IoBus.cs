@@ -15,9 +15,15 @@ internal static class IoBus
     internal static bool IsBus(GameItem item)=>item.identifier=="deepspaceae.item_storage_bus" || IsAutomation(item);
     internal static string FacePrefix(GameItem item)=>(PartModes.IsFluid(item)?"fluid-":"")+(item.identifier==Import?"import-face-":item.identifier==Export?"export-face-":item.identifier==Formation?"formation-face-":item.identifier==Annihilation?"annihilation-face-":"bus-face-");
     internal static int Order(GameItem bus)=>Math.Max(1,Math.Min(15,PartStorage.Int(bus,"io_order",IsImport(bus)?11:1)));
+    internal static bool CollectOverflow(GameItem bus)=>PartStorage.Int(bus,"io_overflow",1)!=0;
     internal static bool Exact(GameItem bus)=>PartStorage.Int(bus,"io_exact")!=0;
-    internal static IEnumerable<GameItem> LiquidTargets(GameItem machine,bool import)=>LiquidStorage.IsContainer(machine)
-        ?new[]{machine}:TargetSlots(machine,import).SelectMany(slot=>slot.childItems).Where(LiquidStorage.IsContainer).Distinct();
+    internal static IEnumerable<GameItem> LiquidTargets(GameItem machine,bool import)
+    {
+        if(LiquidStorage.IsContainer(machine)) return new[]{machine};
+        var slots=!import && !DrawerStorage.IsDrawer(machine)
+            ? FindSlots(machine,false,true,fluidInput:true) : TargetSlots(machine,import);
+        return slots.SelectMany(slot=>slot.childItems).Where(LiquidStorage.IsContainer).Distinct();
+    }
     internal static bool Matches(GameItem bus,GameItem item)
     {
         var policy=PartStorage.Policy(bus);
@@ -45,8 +51,8 @@ internal static class IoBus
             if(filters[slot]!=item.identifier) continue;
             var expected=PartStorage.Text(bus,"filter_state_"+slot);
             if(expected.Length==0) continue;
-            if(!read) { state=TerminalStackKey.Read(item); read=true; }
-            if(state!=null && state==expected) { match=true; break; }
+            if(!read) { state=ExactItemFilter.Read(item); read=true; }
+            if(state!=null && state==ExactItemFilter.Normalize(expected)) { match=true; break; }
         }
         return policy.Exclude?!match:match;
     }
@@ -61,7 +67,7 @@ internal static class IoBus
         }
         return FindSlots(owner,import,true);
     }
-    private static List<GameInventory> FindSlots(GameItem machine,bool import,bool includeStorage)
+    private static List<GameInventory> FindSlots(GameItem machine,bool import,bool includeStorage,bool fluidInput=false)
     {
         var result=new List<GameInventory>(); var seen=new HashSet<PixelElement>();
         var root=machine.contentWindow?.childElement;
@@ -87,7 +93,7 @@ internal static class IoBus
                     break;
                 case MachineryPanel panel when panel.content!=null:
                     queue.Enqueue((panel.content,panel.role==null?match:panel.role==AutomationRules.MachineRole(import)
-                        || includeStorage && panel.role=="storage"));
+                        || includeStorage && panel.role=="storage" || fluidInput && panel.role is ("container" or "water")));
                     break;
                 case MachineryIntake intake when intake.content!=null:
                     queue.Enqueue((intake.content,match));

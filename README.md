@@ -58,7 +58,7 @@ GameManagedDir='<游戏目录>/Probably Stolen_Data/Managed' bash scripts/build-
 先提交源码再构建打包，`scripts/package-game.py` 将源码提交写入包信息。产物位于被忽略的 `artifacts/packages/`。
 
 模型测试入口为 `scripts/verify.ps1` / `scripts/verify.sh`；独立运行时测试宿主不属于发布包。
-`scripts/runtime-pilot.ps1 -Usability -Launch` 在新建测试存档中检查终端位置与缩放、驱动器与总线优先级、抽屉锁定与溢出销毁、黑白名单、机器区组网、水培产出优先入网、礼包及村民成对供货，包含普通及多页储物区输入／输出，总共17步并验证保存重载。
+`scripts/runtime-pilot.ps1 -Usability -Launch` 在新建测试存档中检查终端位置与缩放、驱动器与总线优先级、抽屉锁定与溢出销毁、黑白名单、机器区组网、水培和熔炉的溢出收取、礼包及村民成对供货，包含普通及多页储物区输入／输出，总共17步并验证保存重载。
 构建同时运行游戏自带 ModScanner，拒绝弃用能力和待生效发现；不修改扫描规则。编译、PE审计和能力扫描只验证静态绑定及扫描合同，不代表游戏交互或保存读取已经验收。
 
 ## 开发文档
