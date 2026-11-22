@@ -17,6 +17,11 @@ public sealed class EngineerStartTests
             Assert.DoesNotContain("energy_credit",kit);
             Assert.DoesNotContain(kit,id=>id.Contains("battery",System.StringComparison.OrdinalIgnoreCase));
         }
+        foreach(var id in new[]{"import_bus","export_bus","formation_bus","annihilation_bus"})
+        {
+            Assert.Single(normal,item=>item=="deepspaceae."+id);
+            Assert.Single(skipped,item=>item=="deepspaceae."+id);
+        }
         Assert.Equal(2, normal.Count(id => id == "toilet_paper"));
         Assert.Equal(2, normal.Count(id => id == "processed_meat"));
         Assert.DoesNotContain("sign_food", normal); Assert.Single(skipped, id => id == "sign_food");

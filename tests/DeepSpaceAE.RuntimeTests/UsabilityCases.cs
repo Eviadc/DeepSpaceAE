@@ -33,10 +33,18 @@ public sealed partial class RuntimePilot
         usabilityDrawer=Spawn(Product+".drawer"); At(usabilityDrawer,x+8,y+2);
         usabilityCable=Spawn(Product+".pipeline"); At(usabilityCable,x+8,y+4);
         foreach(var part in new[]{drive,usabilityDrive,input,terminal}) Check(Status(part)=="Online","Usability fixture is offline: "+part.identifier);
+        StartSuppliesForRouting();
         var scenario=StartingScenario.Get(ExpectedScenario);
         Check(!scenario.GetDescription().Contains("battery") && !scenario.GetDescription().Contains("电池"),"New start still advertises a battery.");
         Check(scenario.GetStartWith().Any(s=>s.Contains("无线") || s.Contains("wireless")),"Native starting-supply list omits the wireless pair.");
         details="Fresh current engineer start delivered two wireless connectors, no AE battery, and a saved immutable grant plan; repeated start/upgrade callbacks gave no duplicate. Real two-drive network is online; new menu description and supply list were rendered.";
+    }
+    private void StartSuppliesForRouting()
+    {
+        var plan=ModHelper.GetModData(Product,"gift_plan_v2","").Split('\n');
+        foreach(var kind in new[]{"import_bus","export_bus","formation_bus","annihilation_bus"})
+            Check(plan.Count(id=>id==Product+"."+kind)==1,"Unexpected routing bus in the engineer start plan: "+kind);
+        Check(StartingScenario.Get(ExpectedScenario).GetStartWith().Count==3,"Engineer start should show three supply lines.");
     }
     private void UsabilityWindowPosition()
     {
@@ -103,6 +111,21 @@ public sealed partial class RuntimePilot
             var bus=Mount(usabilityCable,kind,kind=="item_storage_bus"?0:3);
             Adapter.Static("PartStorage","Number",bus,"io_enabled",0);
             EditPriority(bus,1); Check(Priority(bus)==10,"Bus priority control did not update: "+kind);
+            if(kind=="import_bus" || kind=="export_bus")
+            {
+                var window=(PixelWindow)Adapter.Field(Adapter.Session,"partWindow")!;
+                window.rectTransform.anchoredPosition+=new Vector2(16,-16); window.FixBounds();
+                var position=window.rectTransform.anchoredPosition;
+                Press(FindButton(window,ModHelper.GetLocalized(Product,"ui_io_run")));
+                Check(ReferenceEquals(window,Adapter.Field(Adapter.Session,"partWindow")) && window.rectTransform.anchoredPosition==position,
+                    "Immediate transfer replaced or recentered the bus window.");
+                var upgrades=(GameInventory)Adapter.Static("PartStorage","Inventory",bus)!;
+                var card=Spawn(Product+".tag_upgrade"); Add(card); Adapter.Move(card,upgrades);
+                Check(ReferenceEquals(card.parentInventory,upgrades) && card.MayRemove(),"Installed tag card is locked in the bus.");
+                Adapter.Move(card,root); Check(ReferenceEquals(card.parentInventory,root),"Could not remove tag card into the main inventory.");
+                card.Destroy();
+                Press((MachineryButton)Adapter.Field(Adapter.Session,"priorityButton")!);
+            }
             if(kind=="item_storage_bus") usabilityBus=bus; else Unmount(bus);
         }
         Adapter.Call(Adapter.Session,"OpenPart",usabilityBus);
@@ -131,10 +154,21 @@ public sealed partial class RuntimePilot
         Adapter.Call(Adapter.Session,"OpenPart",usabilityDrawer);
         Check((string)Adapter.Static("DrawerStorage","LockedId",usabilityDrawer)! == usabilityPaper.identifier,"Final empty-drawer lock identity differs.");
         StartCoroutine(Screenshot("05-empty-locked-drawer"));
+        var box=Spawn("storage_bay_large"); Add(box);
+        var inside=BayGrid(box);
+        var controller=PlaceBay(inside,Product+".drawer_controller",0,0);
+        var drawer=PlaceBay(inside,Product+".drawer",2,0);
+        var sample=Spawn("toilet_paper"); Add(sample);
+        Adapter.Move(sample,DrawerData(drawer));
+        CheckDrawerOverview(controller,sample,1);
+        Adapter.Move(sample,root);
+        // Leave it open until the next native update handles the stock change.
         details="Actual lock button, insertion, withdrawal and swap paths passed: an empty locked drawer retains its type; unlocking while full still rejects other types; unlocking plus emptying permits a new type. Empty locked state is ready for save/reload.";
     }
     private void UsabilityUpgrade()
     {
+        Check(!OverviewElements().Any(e=>e.GetType().Name=="StockIcon"),"Drawer overview did not update after native withdrawal.");
+        Adapter.Call(Adapter.Session,"ClosePart");
         var keys=new[]{"engineer_start_v1","engineer_skip_intro_v1","gift_cursor","gift_inflight","gift_plan_v2"};
         var backup=keys.ToDictionary(k=>k,k=>ModHelper.GetModData(Product,k,null));
         var upgrade=ModHelper.GetNetworkUpgrade(Upgrade); int oldState=upgrade.state;

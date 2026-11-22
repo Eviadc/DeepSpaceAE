@@ -17,7 +17,7 @@ public sealed partial class RuntimePilot
     private void StartSupplies()
     {
         var expected = new Dictionary<string, int> { ["core"] = 1, ["pipeline"] = 8, ["item_storage_bus"] = 2, ["terminal"] = 1,
-            ["disk_drive"] = 1, ["disk_small"] = 2, ["wrench"] = 1,["tag_upgrade"]=1,["import_bus"]=2,["export_bus"]=2,["steve_contact"]=1,["wireless_connector"]=2 };
+            ["disk_drive"] = 1, ["disk_small"] = 2, ["wrench"] = 1,["tag_upgrade"]=1,["import_bus"]=1,["export_bus"]=1,["formation_bus"]=1,["annihilation_bus"]=1,["steve_contact"]=1,["wireless_connector"]=2 };
         var all=MainItems();
         foreach (var pair in expected)
             Check(all.Count(i => i.identifier == Product + "." + pair.Key) == pair.Value, "AE start quantity mismatch: " + pair.Key);

@@ -28,10 +28,11 @@ internal sealed partial class Acquisition
         if (ModHelper.HasModData(ModEntry.ModId,"gift_plan_v2")) return;
         // Older cursors refer to a different ordered loadout. Preserve already
         // delivered items; completed grants must never replay after a mod update.
-        var old = CurrentGiftItems.Where(id=>id!=AcquisitionCatalog.Wireless).ToList();
+        var previousKit = CurrentGiftItems.Select(id=>id==IoBus.Formation?IoBus.Import:id==IoBus.Annihilation?IoBus.Export:id).ToList();
+        var old = previousKit.Where(id=>id!=AcquisitionCatalog.Wireless).ToList();
         if (EngineerGift) old.Insert(old.Count-6,"energy_credit");
         int delivered = Math.Max(0,Get("gift_cursor"));
-        var remaining = delivered >= old.Count ? new List<string>() : CurrentGiftItems.ToList();
+        var remaining = delivered >= old.Count ? new List<string>() : previousKit;
         foreach (var id in old.Take(delivered)) remaining.Remove(id);
         RecordGiftPlan(remaining); Put("gift_cursor",0);
     }
@@ -40,7 +41,7 @@ internal sealed partial class Acquisition
         EnableContact();
         ModHelper.AddStartingScenario(ModEntry.ModId, EngineerStart.Scenario,
             () => UiText.Get("start_engineer_title"), () => UiText.Get("start_engineer_description"),
-            new Func<string>[] { () => UiText.Get("start_engineer_base"), () => UiText.Get("start_engineer_kit"), () => UiText.Get("start_engineer_disks"), () => UiText.Get("start_engineer_routing"), () => UiText.Get("start_engineer_wireless"), () => UiText.Get("start_engineer_contact") },
+            new Func<string>[] { () => UiText.Get("start_engineer_base"), () => UiText.Get("start_engineer_kit"), () => UiText.Get("start_engineer_contact") },
             BeginEngineerStart, iconKey: ModEntry.ModId + ":engineer-start", tag: () => "AE", tagTone: StartingScenario.TagTone.Positive);
         // RegisterModUpgrade accesses the lazy PlayerStore singleton. OnEnable runs
         // before NewGameData exists, so defer until a real new/loaded world is ready.

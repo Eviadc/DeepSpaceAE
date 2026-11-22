@@ -14,7 +14,7 @@ internal sealed partial class GameSession
         if(Loading || !GeneralHelper.IsItemEffectivelyOwned(device))
             throw new Rejected(UiText.Get("error_part_main"));
         var board=ReadBoard();
-        if(DrawerController.IsController(device)) return ReadDrawerController(device,board,catalog:false);
+        if(DrawerController.IsController(device)) return ReadDrawerController(device,board);
         if(!board.Evaluation.Devices.TryGetValue(Id(device),out var connection) || connection.Status!=DeviceStatus.Online || connection.CoreId==null)
             throw new Rejected(UiText.Get("ui_interface_offline"));
         if(!board.Powered.Contains(connection.CoreId)) throw new Rejected(UiText.Get("error_network_power"));

@@ -32,6 +32,7 @@ public sealed partial class RuntimePilot
         var wrench=MainItems().First(i=>i.identifier==Product+".wrench");
         Check(wrench.MayTarget(bus) && wrench.CanTarget(bus),"Native wrench target declined.");
         wrench.Target(bus); Check(ReferenceEquals(bus.parentInventory,root),"Wrench did not remove installed bus.");
+        Check(!ReferenceEquals(bus,Adapter.Field(Adapter.Session,"displayedPart")),"Detached bus configuration is still open.");
         Adapter.Call(Adapter.Session,"Close"); StowTopology(bus);
     }
     private void RunBus(GameItem bus)=>Adapter.Call(Adapter.Session,"RunAutomation",0,bus);

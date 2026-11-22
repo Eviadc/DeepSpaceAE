@@ -171,15 +171,27 @@ public sealed partial class RuntimePilot
         var localStock=Spawn("toothpaste"); Add(localStock);
         Check(Status(localController)=="Absent" && (int)Adapter.Call(Adapter.Session,"DepositInterface",localController,localStock,1)! == 1
             && ReferenceEquals(localStock.parentInventory,DrawerData(localDrawer)),"Local controller in an unnetworked box required AE connectivity.");
-        Adapter.Call(Adapter.Session,"Open",localController);
-        Check(Adapter.Field(Adapter.Session,"terminalGrid")!=null,"Unnetworked box controller catalog did not open.");
-        Adapter.Call(Adapter.Session,"Close");
-        Adapter.Call(Adapter.Session,"Open",drawerController);
-        Check(Adapter.Field(Adapter.Session,"terminalGrid")!=null,"Controller local catalog did not open.");
-        Adapter.Call(Adapter.Session,"Close");
-        Adapter.Call(Adapter.Session,"OpenPart",drawerController);
+        CheckDrawerOverview(localController,localStock,1);
+        Adapter.Move(localStock,root);
+        Adapter.Call(Adapter.Session,"RefreshControllerStock",localController);
+        Check(!OverviewElements().Any(e=>e.GetType().Name=="StockIcon"),"Empty controller retained a stale item icon.");
+        CheckDrawerOverview(drawerController,drawerStock.childItems.First(),DrawerUsed(drawer));
         StartCoroutine(Screenshot("drawer-controller-priority"));
         details="Direct controller deposit chose matching stock before empty drawers; +20 priority beat the disk. Gap and unowned bridge immediately split membership. Local controller catalog and priority panel opened.";
+    }
+    private PixelElement[] OverviewElements()
+    {
+        var window=(PixelWindow)Adapter.Field(Adapter.Session,"partWindow")!;
+        return window.handler.GetComponentsInChildren<TreeNodeRender>(true).Select(n=>n.element).OfType<PixelElement>().Distinct().ToArray();
+    }
+    private void CheckDrawerOverview(GameItem controller,GameItem sample,long count)
+    {
+        Adapter.Call(Adapter.Session,"OpenPart",controller);
+        var elements=OverviewElements();
+        Check(Adapter.Field(Adapter.Session,"terminalGrid")==null && !elements.OfType<GameInventory>().Any(),"Overview exposed an interactive inventory.");
+        Check(elements.OfType<MachineryText>().Any(t=>t.GetText()=="× "+count),"Missing stock count on the first controller panel.");
+        Check(elements.Where(e=>e.GetType().Name=="StockIcon").OfType<TooltipListener>().Any(icon=>icon.HasTooltip()
+            && icon.GetTooltip().nakedText.Contains(sample.name)),"Controller icon lost its native item tooltip.");
     }
     private void DrawerQuickActions()
     {

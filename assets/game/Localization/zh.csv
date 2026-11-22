@@ -183,16 +183,14 @@ ui_drawer_count,抽屉存量：{0} / {1} 件
 ui_all_tags,全部标签
 ui_customer_demand,当前顾客需求
 start_engineer_title,网络工程师
-start_engineer_description,"在导师身边学徒时，你学会了用AE网络整理货物。如今，你带着一套存储设备和研究员的联系方式，准备让这间小店井井有条。"
-start_engineer_base,"普通开局物资与储藏区；启动开销50"
-start_engineer_kit,"AE核心、终端、8根线缆及2个存储总线"
-start_engineer_disks,"硬盘驱动器、2块小硬盘及扳手"
+start_engineer_description,"你用 AE 网络管理店里的货物。"
+start_engineer_base,"普通开局物资，启动开销 50"
+start_engineer_kit,"一套 AE 设备，含无线连接器"
 start_engineer_pending,网络工程师开局已包含此礼包。尚待发放：{0}件。其他模组可能将已发物品自动收入主栏的容器中。
 setting_energy_name,AE 网络耗电（测试选项）
 setting_energy_desc,默认关闭：AE 网络无需电池且不扣电或收取电费。开启后恢复当日峰值耗电、共用电池最少组合、必要电池锁定及原生电网结算逻辑。应用后立即生效；已有能源接收器仍可使用，但不再出售或掉落。此选项用于测试供电机制。
 ui_power_disabled,免电模式 · 无需电池，电池可自由取出
-start_engineer_routing,"标签升级、2个输入总线及2个输出总线"
-start_engineer_contact,"研究员供货电话6322；已解锁AE工程师升级"
+start_engineer_contact,"福鲁伊克斯研究员的供货电话"
 item_interface_name,ME物品接口
 item_fluid_interface_name,ME流体接口
 ui_interface_online,网络已连接
@@ -248,14 +246,12 @@ ui_drawer_locked_type,"已锁定：{0}"
 ui_drawer_lock,"锁定物品种类"
 ui_drawer_unlock,"解锁物品种类"
 ui_drawer_lock_help,"锁定后，取空也会保留物品种类。解锁并清空后，才能换存其他物品。"
-start_engineer_wireless,"2个无线连接器，可配对连接不同库存"
 ui_drawer_void,溢出销毁
 ui_drawer_void_help,默认关闭。开启后，符合种类但超出容量的新投入物品会永久销毁；已有库存不变。
 
 item_drawer_controller_name,抽屉控制器
-item_drawer_controller_desc,统一访问同一物品栏内上下左右相连的自有抽屉。只有控制器接入AE；抽屉不传输AE信号。向控制器投入物品即可存入抽屉，打开目录可取出。
+item_drawer_controller_desc,"向控制器投入物品可存入相连的抽屉。打开控制器可查看库存。"
 ui_drawer_controller_count,相连抽屉：{0}
-ui_drawer_controller_open,打开抽屉目录
 setting_native_inventory_name,使用原版库存读取（兼容性）
 setting_native_inventory_desc,默认关闭。开启后，抽屉读取和终端容器判空使用公开的 childItems 方法，允许其他模组拦截这些读取。原版每次都会分配并复制整个库存，大抽屉可能明显变慢。下次读取生效；物品搬运和所有权检查始终使用原版 API。
 setting_native_drawer_name,使用原版抽屉布局验证（兼容性）
@@ -1014,3 +1010,8 @@ ui_feature_isexposable,可揭示
 ui_feature_ispublichidden,公开信息中隐藏
 ui_feature_customintvalue1,特征数值
 ui_feature_isdisabled,已禁用
+ui_bus_target_face,"{0} · {1}"
+ui_bus_target_inventory,"{0}（物品栏 ×{1}）"
+ui_bus_target_liquid,"{0}（流体容器 ×{1}）"
+ui_drawer_contents,"库存"
+ui_drawer_empty,"暂无物品"

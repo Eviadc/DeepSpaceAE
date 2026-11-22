@@ -183,16 +183,14 @@ ui_drawer_count,Drawer stock: {0} / {1} units
 ui_all_tags,All tags
 ui_customer_demand,Current customer demand
 start_engineer_title,Network Engineer
-start_engineer_description,"During your apprenticeship with The Mentor, you learned to organize stock with an AE network. You arrive with a storage kit and a research contact, ready to bring order to your own little shop."
-start_engineer_base,"Generalist supplies and a storage bay; starting cost 50"
-start_engineer_kit,"AE controller and terminal; 8 cables and 2 storage buses"
-start_engineer_disks,"Disk drive; 2 small disks and a wrench"
+start_engineer_description,"You manage your shop’s stock with an AE network."
+start_engineer_base,"Generalist supplies, starting cost 50"
+start_engineer_kit,"AE equipment with wireless connectors"
 start_engineer_pending,This gift is included in the Network Engineer start. Pending delivery: {0} items. Other mods may automatically pack delivered items into containers in your main inventory.
 setting_energy_name,AE network energy use (testing option)
 setting_energy_desc,Off by default: AE networks need no batteries and incur no energy use or grid charges. Enable to restore daily peak budgeting and pooled minimum-battery selection with required-source locks and native grid billing. Applies immediately. Existing energy receivers remain usable but are no longer sold or dropped. This option is for testing the power system.
 ui_power_disabled,Free power: no battery needed; batteries can be removed freely
-start_engineer_routing,"Tag upgrade; 2 import buses and 2 export buses"
-start_engineer_contact,"Research supplier at 6322; AE Engineer upgrade already unlocked"
+start_engineer_contact,"Fluix Researcher’s supply contact"
 item_interface_name,ME Item Interface
 item_fluid_interface_name,ME Fluid Interface
 ui_interface_online,Connected to network
@@ -248,14 +246,12 @@ ui_drawer_locked_type,"Locked: {0}"
 ui_drawer_lock,"Lock item type"
 ui_drawer_unlock,"Unlock item type"
 ui_drawer_lock_help,"The drawer remembers its item type even when empty. Unlock and empty it before storing a different item."
-start_engineer_wireless,"2 wireless connectors to link separate inventories"
 ui_drawer_void,Destroy overflow
 ui_drawer_void_help,"Off by default. Incoming matching items beyond capacity are permanently destroyed. Existing stock is kept."
 
 item_drawer_controller_name,Drawer Controller
-item_drawer_controller_desc,"Accesses owned drawers connected by edge contact in this inventory. Only the controller connects to AE; drawers do not carry AE signals. Drop items here to store them, or open the drawer catalog to withdraw."
+item_drawer_controller_desc,"Drop items here to store them in connected drawers. Open the controller to view their contents."
 ui_drawer_controller_count,Connected drawers: {0}
-ui_drawer_controller_open,Open drawers
 setting_native_inventory_name,Use native inventory reads (compatibility)
 setting_native_inventory_desc,Off by default. Enable to use the public childItems getter for drawer access and terminal container-empty checks so other mods can intercept those reads. The native getter allocates and copies the full inventory each time; large drawers may slow down considerably. Applies on the next read. Transfers and ownership checks always use native APIs.
 setting_native_drawer_name,Use native drawer layout validation (compatibility)
@@ -1014,3 +1010,8 @@ ui_feature_isexposable,Can be exposed
 ui_feature_ispublichidden,Hidden from public view
 ui_feature_customintvalue1,Feature value
 ui_feature_isdisabled,Disabled
+ui_bus_target_face,"{0} · {1}"
+ui_bus_target_inventory,"{0} (item slots: {1})"
+ui_bus_target_liquid,"{0} (fluid containers: {1})"
+ui_drawer_contents,"Stock"
+ui_drawer_empty,"No items"

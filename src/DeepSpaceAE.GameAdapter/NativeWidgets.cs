@@ -198,6 +198,24 @@ internal static class NativeWidgets
         public RichText GetTooltip()=>new RichTextBuilder().Add(value).Build();
         public RichText GetTooltipAdvanced()=>GetTooltip();
     }
+    internal sealed class StockIcon : EmptyPixelElement, TooltipListener
+    {
+        private readonly GameItem item;
+        internal StockIcon(GameItem item) : base(32,32)
+        {
+            this.item=item;
+            if(item is GameItemElement element && NativeItemMirror.CurrentSprite(element) is Sprite sprite)
+            {
+                var image=TreeNodeRender.Instantiate(this).SetParent(handler);
+                MachineryStyle.SetSimple(image,sprite,Color.white);
+                image.image.preserveAspect=true;
+                MachineryStyle.Place(image,0,0,32,32);
+            }
+        }
+        public bool HasTooltip()=>true;
+        public RichText GetTooltip()=>item is GameItemElement element?element.GetTooltip():new RichTextBuilder().Add(item.name).Build();
+        public RichText GetTooltipAdvanced()=>item is GameItemElement element?element.GetTooltipAdvanced():GetTooltip();
+    }
     private sealed class IconView : EmptyPixelElement, TooltipListener
     {
         private readonly string? description;

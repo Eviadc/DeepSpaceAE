@@ -267,7 +267,6 @@ internal sealed partial class GameSession
     private View Read(GameItem terminal)
     {
         var board = ReadBoard(); var root = MainInventory()!;
-        if(DrawerController.IsController(terminal)) return ReadDrawerController(terminal,board);
         if (DrawerStorage.IsDrawer(terminal))
         {
             if (!ReferenceEquals(terminal.parentInventory, root) || !GeneralHelper.IsItemEffectivelyOwned(terminal)) throw new Rejected(UiText.Get("error_part_main"));
@@ -366,6 +365,10 @@ internal sealed partial class GameSession
         log.Warning(Diagnostics.ConsoleText(e.ToString()));
         ShowNotice(e is Rejected ? Safe(e.Message) : UiText.Get("error_operation"));
     }
+    internal void BusDetached(GameItem bus)
+    {
+        if(ReferenceEquals(displayedPart,bus)) ClosePart();
+    }
     internal void OpenPart(GameItem part)
     {
         if (writing) return;
@@ -394,6 +397,7 @@ internal sealed partial class GameSession
         if (writing) return;
         try
         {
+            if(DrawerController.IsController(terminal)) { OpenPart(terminal); return; }
             var view = Read(terminal);
             if (!PowerView(view)) throw new Rejected(UiText.Get("error_reserve"));
             Show(terminal, view);

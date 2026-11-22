@@ -248,6 +248,13 @@ internal sealed class DrawerInventory : GameGridInventory
         }
         return DrawerStorage.AcceptsType(Drawer,item) && variants.Count==0 && (First==null || DrawerStorage.Same(First,item));
     }
+    internal IEnumerable<(GameItem Item,long Count)> OverviewStock()
+    {
+        var first=First;
+        if(first==null) yield break;
+        if(Identical(first)) { yield return (first,Used); yield break; }
+        foreach(var item in Stock) yield return (item,item.unitCount);
+    }
     public override bool MayHaveValidInventorySlot(GameItem item)
     {
         if (item == null || item.unitCount <= 0 || item.child != null || IsInsertLocked() || GraphUtils.FindParentEquals(this, item)

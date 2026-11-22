@@ -54,6 +54,8 @@ public sealed partial class RuntimePilot
         productionDrawer=PlaceBay(grid,Product+".drawer",5,2);
         PlaceBay(grid,Product+".pipeline",4,4); var storage=PlaceBay(grid,Product+".pipeline",5,4);
         productionStorageBus=Mount(storage,"item_storage_bus",0);
+        var hover=((GameItemElement)intake).GetTooltip().nakedText;
+        Check(hover.Contains(productionMachine.name) && hover.Contains(productionImport.name),"Cable tooltip omits the bus or the machine it faces.");
         productionSeed=Spawn("nutrifruit_seed"); Add(productionSeed); StowTopology(productionSeed);
         Check(CoreOnline(productionCore),"Expanded machine bay core is not powered.");
         foreach(var item in new[]{productionDrive,productionTerminal,productionInterface,productionImport,productionStorageBus})

@@ -14,7 +14,7 @@ public static class EngineerStart
     private static readonly IReadOnlyList<string> withoutIntro = Array.AsReadOnly(ordinary.Concat(new[] { "sign_food", "sign_household" })
         .Concat(AcquisitionCatalog.Starter).ToArray());
     private static readonly string[] routing = { "deepspaceae.tag_upgrade", "deepspaceae.import_bus", "deepspaceae.export_bus",
-        "deepspaceae.import_bus", "deepspaceae.export_bus" };
+        "deepspaceae.formation_bus", "deepspaceae.annihilation_bus" };
     private static readonly IReadOnlyList<string> withContact = Array.AsReadOnly(withIntro.Concat(routing).Append(AcquisitionCatalog.ContactSlip).ToArray());
     private static readonly IReadOnlyList<string> withoutIntroWithContact = Array.AsReadOnly(withoutIntro.Concat(routing).Append(AcquisitionCatalog.ContactSlip).ToArray());
     public static IReadOnlyList<string> Items(bool skipIntro) => skipIntro?withoutIntroWithContact:withContact;

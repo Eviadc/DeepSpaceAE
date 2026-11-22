@@ -111,7 +111,11 @@ internal static partial class PartStorage
                 ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item,true);
             };
             grid.onSlotRemoveItemEndFunc += (bus, _, _) => {
-                if (ModEntry.ActiveSession?.Loading == false) Number(bus, "cable_face", -1);
+                if (ModEntry.ActiveSession?.Loading == false)
+                {
+                    Number(bus, "cable_face", -1);
+                    ModEntry.ActiveSession.BusDetached(bus);
+                }
                 ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item,true);
             };
             var window = new PixelWindow(true, UiText.Get("ui_cable_bus_data")); window.Attach(grid); item.SetContentWindow(window);
@@ -123,8 +127,7 @@ internal static partial class PartStorage
             slots.Add(item, data);
             grid.mayInventoryAddItemFunc = (card, _) => CanConfigure(item) && GeneralHelper.IsItemEffectivelyOwned(card) && card.unitCount == 1
                 && (card.identifier == Capacity || (card.identifier == Tag && !grid.childItems.Any(c => c.identifier == Tag)));
-            grid.maxSlotRemoveItemFunc = (_, _, _) => data.RemovingUpgrade ? int.MaxValue : 0;
-            grid.mayInventoryRemoveItemFunc = (_, _) => data.RemovingUpgrade;
+            grid.mayInventoryRemoveItemFunc = (card, _) => CanConfigure(item) && GeneralHelper.IsItemEffectivelyOwned(card) || data.RemovingUpgrade;
             grid.onSlotAddItemEndFunc += (_, _, _) => { ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item,true); };
             grid.onSlotRemoveItemEndFunc += (_, _, _) => { ModEntry.ActiveSession?.Visuals.Invalidate(); ModEntry.ActiveSession?.NativeStorageChanged(item,true); };
             var window = new PixelWindow(true, UiText.Get("ui_upgrade_data")); window.Attach(grid); item.SetContentWindow(window);

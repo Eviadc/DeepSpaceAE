@@ -50,6 +50,7 @@ public sealed class ModEntry : IMod
         ModHook.OnGoingSleepEarly += session.Night;
         ModHook.OnGoingSleepLate += session.NightLate;
         ModHook.OnLootTablesLoaded += LootLoaded;
+        ModHook.OnCreateTooltipLate += GameSession.CableInventoryTooltip;
         acquisition.Enable();
         log.Log("Enabled.");
     }
@@ -64,6 +65,7 @@ public sealed class ModEntry : IMod
         ModHook.OnGoingSleepEarly -= session.Night;
         ModHook.OnGoingSleepLate -= session.NightLate;
         ModHook.OnLootTablesLoaded -= LootLoaded;
+        ModHook.OnCreateTooltipLate -= GameSession.CableInventoryTooltip;
         acquisition.Disable();
         ModSettings.Disable();
         foreach (var group in lootGroups) ModHelper.RemoveLootGroupEntry(ModId, group, "deepspaceae.scavenging");

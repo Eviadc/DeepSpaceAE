@@ -10,6 +10,7 @@ internal sealed partial class GameSession
     private PixelWindow? terminalWindow, partWindow, editorWindow, noticeWindow;
     private TerminalWindowState? terminalWindowState;
     private MachineryButton? priorityButton;
+    private MachineryText? busStatus;
     private VirtualInventory? terminalGrid;
     private GhostFilterInventory? filterGrid;
     private MachineryPanel? filterPanel;
@@ -45,7 +46,7 @@ internal sealed partial class GameSession
     {
         if (editorWindow != null) { var w = editorWindow; editorWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); }
         foreach(var borrowed in driveBorrowed) borrowed.Return(); driveBorrowed.Clear();
-        borrowedStorage?.Return(); borrowedStorage = null; displayedPart = null; filterGrid = null; filterPanel = null; priorityButton = null;
+        borrowedStorage?.Return(); borrowedStorage = null; displayedPart = null; filterGrid = null; filterPanel = null; priorityButton = null; busStatus=null; controllerStockPanel=null;
         if (partWindow != null) { var w = partWindow; partWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); }
     }
     internal void NativeWindowHidden(PixelWindow window)
@@ -108,7 +109,7 @@ internal sealed partial class GameSession
         { inv.onSlotAddItemEndFunc+=Changed; inv.onSlotRemoveItemEndFunc+=Changed; inv.onSlotChangeAmountItemFunc+=Changed; }
         if (create)
         {
-            if (DrawerStorage.IsDrawer(terminal) || DrawerController.IsController(terminal)) liquidMode = false;
+            if (DrawerStorage.IsDrawer(terminal)) liquidMode = false;
             terminalGrid = new VirtualInventory(terminal, 12, 8);
             terminalGrid.Redraw = RenderTerminal;
             var query = NativeWidgets.Input(UiText.Get("ui_terminal_search"), search, value => { if (search == value) return; search = value; terminalGrid?.SetScroll(0); RenderTerminal(); }, 128);
@@ -117,7 +118,7 @@ internal sealed partial class GameSession
             var sortField = NativeWidgets.Dropdown(new[] { UiText.Get("ui_native_order"), UiText.Get("ui_name"), UiText.Get("ui_quantity"), UiText.Get("ui_modified") }, (int)sort, i => { sort = (CatalogSort)i; packedRows=null; terminalGrid?.SetScroll(0); RenderTerminal(); }, 70, 4);
             MachineryButton? modeButton=null;
             modeButton=new MachineryButton(UiText.Get(liquidMode?"ui_liquids":"ui_items"),()=>{
-                if(DrawerStorage.IsDrawer(terminal) || DrawerController.IsController(terminal)) return;
+                if(DrawerStorage.IsDrawer(terminal)) return;
                 NativeLiquidSelection.EndFor(openTerminal); liquidMode=!liquidMode; tag=""; packedRows=null;
                 modeButton!.SetText(UiText.Get(liquidMode?"ui_liquids":"ui_items"));
                 terminalGrid?.SetScroll(0); RenderTerminal();
@@ -133,7 +134,6 @@ internal sealed partial class GameSession
             terminalWindow.SetTitle(UiText.Get("ui_terminal_title")); terminalWindow.closeCallback = CloseTerminal;
             terminalWindowState = TerminalWindowState.Attach(terminalWindow, terminal);
             if (DrawerStorage.IsDrawer(terminal)) terminalWindow.SetTitle(UiText.Get("item_drawer_name"));
-            if (DrawerController.IsController(terminal)) terminalWindow.SetTitle(UiText.Get("item_drawer_controller_name"));
             terminalWindow.handler.gameObject.AddComponent<TerminalCustomerWatch>().Session = this;
         }
         if (create) displayedTags = new[] { "" }; // Force initial options, including an empty catalog.
@@ -269,6 +269,32 @@ internal sealed partial class GameSession
         int hit = wrench ? CablePorts.WrenchFaceAt(mask, x, y) : CablePorts.FaceAt(mask, x, y);
         return hit < 0 ? null : PartStorage.CableBuses(cable).FirstOrDefault(b => PartStorage.Int(b, "cable_face", -1) == hit);
     }
+    internal static void CableInventoryTooltip(RichTextBuilder builder,GameItem cable)
+    {
+        if(cable.identifier!="deepspaceae.pipeline" || cable.parentInventory==null || !GeneralHelper.IsItemEffectivelyOwned(cable)) return;
+        var buses=PartStorage.CableBuses(cable).Where(IoBus.IsIo).OrderBy(bus=>PartStorage.Int(bus,"cable_face",-1)).ToArray();
+        if(buses.Length==0) return;
+        var layout=new InventoryLayout(cable.parentInventory);
+        foreach(var bus in buses)
+        {
+            int face=PartStorage.Int(bus,"cable_face",-1);
+            if(face<0 || face>3) continue;
+            var target=layout.FrontOwner(bus);
+            string destination=UiText.Get("ui_io_no_slots");
+            if(target!=null && !IsPart(target) && GeneralHelper.IsItemEffectivelyOwned(target))
+            {
+                bool fluid=PartModes.IsFluid(bus), import=IoBus.IsImport(bus);
+                int count=fluid?IoBus.LiquidTargets(target,import).Count():IoBus.TargetSlots(target,import).Count;
+                destination=UiText.Get(fluid?"ui_bus_target_liquid":"ui_bus_target_inventory",target.name,count);
+            }
+            string faceLabel=FaceName(face)+" · "+bus.name;
+            builder.AddLine(UiText.Get("ui_bus_target_face",faceLabel,destination));
+            var cards=PartStorage.Inventory(bus).childItems;
+            if(cards.Count>0)
+                builder.AddLine(UiText.Get("ui_upgrades")+" · "+string.Join(", ",cards.GroupBy(card=>card.name)
+                    .Select(group=>group.Key+" ×"+group.Sum(card=>card.unitCount))));
+        }
+    }
     internal void OpenCableBusAt(GameItem cable, Vector2 pointer)
     {
         var bus = CableBusAt(cable, pointer);
@@ -289,13 +315,14 @@ internal sealed partial class GameSession
             value => { ConfigureNumber(bus,"io_exact",value); RenderFilters(); },110):null;
         var extraction = io?null:NativeWidgets.Toggle(UiText.Get("ui_filter_extract"), policy.FilterExtraction,
             value => ConfigureNumber(bus, "extract_filter", value ? 1 : 0), 110);
+        busStatus=io?NativeWidgets.Text(BusStatus(bus)):null;
         var options = io?MachineryStack.Vertical(NativeWidgets.Text(UiText.Get(IoBus.IsPlane(bus)?(IoBus.IsImport(bus)?"ui_plane_absorb":"ui_plane_place"):IoBus.IsImport(bus)?"ui_io_import":"ui_io_export")),
             NativeWidgets.Toggle(UiText.Get("ui_io_enabled"),PartStorage.Int(bus,"io_enabled",1)!=0,v=>ConfigureNumber(bus,"io_enabled",v?1:0)),
             NativeWidgets.Input(UiText.Get("ui_io_order"),IoBus.Order(bus).ToString(),v=>{ if(int.TryParse(v,out int n) && n>=1 && n<=15) ConfigureNumber(bus,"io_order",n); },110),
             NativeWidgets.Text(UiText.Get("ui_filter_matching")),matching,precision!,
             PriorityControl(bus),
-            new MachineryButton(UiText.Get("ui_io_run"),()=>{ RunAutomation(0,bus); ShowBus(bus); },110,18),
-            NativeWidgets.Text(UiText.Get(string.IsNullOrEmpty(PartStorage.Text(bus,"io_status"))?"ui_io_idle":PartStorage.Text(bus,"io_status"),PartStorage.Int(bus,"io_moved")))):
+            new MachineryButton(UiText.Get("ui_io_run"),()=>{ RunAutomation(0,bus); busStatus?.SetText(BusStatus(bus)); },110,18),
+            busStatus!):
             MachineryStack.Vertical(NativeWidgets.Text(UiText.Get("ui_access_mode")), access!,
             NativeWidgets.Text(UiText.Get("ui_filter_matching")), matching, extraction!,
             PriorityControl(bus));
@@ -319,6 +346,11 @@ internal sealed partial class GameSession
             new MachineryPanel(UiText.Get("ui_upgrades"), Borrow(bus), "upgrades"));
         partWindow.SetTitle((io?bus.name:UiText.Get("ui_bus_title")) + " - " + FaceName(PartStorage.Int(bus, "cable_face"))); partWindow.closeCallback = ClosePart;
         RenderFilters(); partWindow.Show().Center();
+    }
+    private static string BusStatus(GameItem bus)
+    {
+        string key=PartStorage.Text(bus,"io_status");
+        return UiText.Get(key.Length==0?"ui_io_idle":key,PartStorage.Int(bus,"io_moved"));
     }
     private void RenderFilters()
     {
@@ -436,7 +468,8 @@ internal sealed partial class GameSession
     {
         if(topology) { AutomationStructureChanged(); terminalDirty=openTerminal!=null; ScheduleTerminalRefresh(); }
         if (owner != null) StructureChanged(owner);
-        if (owner == null || ReferenceEquals(owner, displayedPart) || (displayedPart != null && ReferenceEquals(PartStorage.BusHost(displayedPart), owner))) RefreshPartLater();
+        if (controllerStockPanel!=null && (topology || owner!=null && DrawerStorage.IsDrawer(owner) && ReferenceEquals(owner.parentInventory,displayedPart?.parentInventory))
+            || owner == null || ReferenceEquals(owner, displayedPart) || (displayedPart != null && ReferenceEquals(PartStorage.BusHost(displayedPart), owner))) RefreshPartLater();
     }
     private void RefreshPartLater()
     {
@@ -444,9 +477,10 @@ internal sealed partial class GameSession
         partRefreshQueued = true;
         LetterboxManager.RunNextUpdate(() => {
             partRefreshQueued = false;
-            if (displayedPart == null || ItemMouseDragHandler.current?.IsDraggingItem == true) return;
+            if (displayedPart == null) return;
+            if (ItemMouseDragHandler.current?.IsDraggingItem == true) { RefreshPartLater(); return; }
             if (displayedPart.parentInventory==null || !GeneralHelper.IsItemEffectivelyOwned(displayedPart)) { ClosePart(); return; }
-            if (filterGrid != null) RenderFilters();
+            if (filterGrid != null) { busStatus?.SetText(BusStatus(displayedPart)); RenderFilters(); }
             else if(InterfaceStorage.IsInterface(displayedPart))
             {
                 var position=partWindow?.rectTransform.position; ShowInterface(displayedPart);
@@ -464,8 +498,7 @@ internal sealed partial class GameSession
             }
             else if(DrawerController.IsController(displayedPart))
             {
-                var position=partWindow?.rectTransform.position; ShowDrawerController(displayedPart);
-                if(position.HasValue && partWindow!=null) { partWindow.rectTransform.position=position.Value; partWindow.FixBounds(); }
+                RefreshControllerStock(displayedPart);
             }
             else if(DiskStorage.IsDrive(displayedPart))
             {
