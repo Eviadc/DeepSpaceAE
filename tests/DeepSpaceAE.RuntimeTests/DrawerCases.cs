@@ -289,7 +289,7 @@ public sealed partial class RuntimePilot
         { Adapter.Static("PartStorage","WithUpgradeRemoval",cable,(Action)(()=>Adapter.Move(bus,root))); bus.Destroy(); }
         for(int gx=2;gx<=4;gx++) At(Spawn(Product+".pipeline"),x+gx,y+4);
         At(Spawn(Product+".pipeline"),x+2,y+3);
-        drawerFluid=Spawn("small_bottled_water"); At(drawerFluid,x+5,y+4); WaterHelper.EmptyContainer(drawerFluid);
+        drawerFluid=Spawn(Product+".fluid_drawer"); At(drawerFluid,x+5,y+4); WaterHelper.EmptyContainer(drawerFluid);
         var fluidCable=root.childItems.Single(i=>i.identifier==Product+".pipeline" && i.modifiedShape.minX==x+4 && i.modifiedShape.minY==y+4);
         var fluidStorage=Mount(fluidCable,"item_storage_bus",1); fluidStorage.ToggleSlotItem();
         var bottles=new List<GameItem>();
@@ -303,7 +303,108 @@ public sealed partial class RuntimePilot
         Check(bottles.All(b=>WaterHelper.GetTotalVolume(b)==0) && WaterHelper.GetTotalVolume(drawerFluid)==volume,"Manual fluid import stopped at one sink or 8 transfers.");
         RunBus(drawerExport);
         Check(WaterHelper.GetTotalVolume(drawerFluid)==0 && bottles.Sum(b=>(long)WaterHelper.GetTotalVolume(b))==volume,"Manual fluid export did not exhaust available source volume.");
-        details="Manual fluid import emptied ten native bottles into one shared container through its fluid storage bus; export exhausted that source into available bottles. Both preserved native composition and total volume beyond eight transfers.";
+        CheckFluidDrawer(grid,bottles,fluidStorage);
+        details="Native fluid drawer passed bus, interface, controller and terminal pours, exact partial fill, manual mixing, all five capacity tiers and downgrade protection. Both preserved native composition and total volume beyond eight transfers.";
+    }
+    private void CheckFluidDrawer(GameGridInventory grid,List<GameItem> bottles,GameItem storageBus)
+    {
+        const string water="water", other="physical_contaminant";
+        int Part(GameItem vessel,string id)=>vessel.GetTagReadonly(Liquid.GetCurrentPartFromId(id)).GetInt();
+        void Mix(GameItem vessel,int a,int b)
+        {
+            WaterHelper.EmptyContainer(vessel);
+            WaterHelper.AddLiquid(vessel,water,a); WaterHelper.AddLiquid(vessel,other,b);
+        }
+        foreach(var bottle in bottles) WaterHelper.EmptyContainer(bottle);
+        var source=bottles[0];
+        var tank=drawerFluid;
+        Check(WaterHelper.GetTotalCapacityML(tank)==1000 && WaterHelper.CanUseWaterContainer(tank)
+            && tank.MaySelectSlotItem() && Cells(tank)==4,"Fluid drawer did not initialize as a native 1 L container.");
+        Check(DrawerMembers(drawerController).Contains(tank),"The controller did not discover its adjacent fluid drawer.");
+        Unmount(storageBus); // The controller is now the only route to this tank.
+        var routes=(IDictionary)Adapter.Field(Adapter.Call(Adapter.Session,"Read",terminal)!,"LiquidPolicies")!;
+        Check(routes.Contains(tank),"The controller did not expose the tank to the fluid network.");
+
+        Adapter.Static("PartStorage","Number",drawerImport,"fluid_strict",0);
+        Mix(source,1000,2000); RunBus(drawerImport);
+        Mix(source,1001,2000); RunBus(drawerImport);
+        Check(Part(tank,water)==1000 && Part(source,water)==1001,"A nearly equal ratio bypassed the tank on a non-strict bus.");
+        Mix(source,2000,4000); RunBus(drawerImport);
+        Check(Part(tank,water)==3000 && Part(tank,other)==6000 && WaterHelper.IsEmpty(source),"Equal ratios at different volumes did not merge.");
+
+        var device=Spawn(Product+".item_interface"); At(device,x+2,y+5); device.ToggleSlotItem();
+        Adapter.Static("PartStorage","Number",device,"fluid_strict",0);
+        Mix(device,2000,4001); Adapter.Call(Adapter.Session,"PumpInterfaces");
+        Check(Part(device,other)==4001 && Part(tank,other)==6000,"A non-strict fluid interface diluted the drawer.");
+        Mix(device,1000,2000); Adapter.Call(Adapter.Session,"PumpInterfaces");
+        Check(WaterHelper.IsEmpty(device) && Part(tank,water)==4000,"A matching interface mixture missed the drawer.");
+        device.Destroy();
+
+        Adapter.Call(Adapter.Session,"Open",terminal);
+        var auth=new object?[]{source,tank,null,terminal,false};
+        Check((bool)Adapter.Call(Adapter.Session,"BeginLiquidAction",auth)! && (bool)auth[4]!,"Terminal denied a writable tank.");
+        try
+        {
+            Mix(source,5,11); WaterHelper.TransferLiquid(source,tank);
+            Check(WaterHelper.GetTotalVolume(source)==16,"A remote terminal accepted a mismatched mixture.");
+            Mix(source,5,10); WaterHelper.TransferLiquid(source,tank);
+            Check(WaterHelper.IsEmpty(source),"Remote terminal rejected an exact mixture.");
+        }
+        finally { Adapter.Call(Adapter.Session,"EndLiquidAction",(object?)null); Adapter.Call(Adapter.Session,"Close"); }
+
+        // 999,996 uL of 1:2 leaves four uL free: only three can enter intact.
+        Mix(tank,333332,666664); Mix(source,2,4); RunBus(drawerImport);
+        Check(Part(tank,water)==333333 && Part(tank,other)==666666 && Part(source,water)==1 && Part(source,other)==2,
+            "A partial network pour rounded the ratio or lost the remainder.");
+        RunBus(drawerImport);
+        Check(WaterHelper.GetFreeCapacity(tank)==1 && WaterHelper.GetTotalVolume(source)==3,"A fractional ratio unit entered the drawer.");
+
+        var cards=(GameGridInventory)Adapter.Static("FluidDrawer","Upgrades",tank)!;
+        for(int i=1;i<=5;i++)
+        {
+            Put(cards,Product+".capacity_upgrade");
+            Check(WaterHelper.GetTotalCapacityML(tank)==1000*(1<<(2*i)),"Wrong capacity at upgrade "+i);
+        }
+        var extra=Spawn(Product+".capacity_upgrade"); Add(extra);
+        var wrong=Spawn(Product+".tag_upgrade"); Add(wrong);
+        Check(cards.TryFindOneValidInventorySlot(extra)==null || cards.TryFindOneValidInventorySlot(extra).numTransfer==0,"Sixth capacity card was accepted.");
+        var card=cards.childItems.Last(); Adapter.Move(card,root);
+        Check(cards.TryFindOneValidInventorySlot(wrong)==null || cards.TryFindOneValidInventorySlot(wrong).numTransfer==0,"Tag card accepted as a capacity upgrade.");
+        Check(WaterHelper.GetTotalCapacityML(tank)==256000,"Safe downgrade did not recompute capacity.");
+        Adapter.Move(card,cards); extra.Destroy();
+        Mix(tank,0,65000001); // Removing either card alone fits; removing both would overflow.
+        var selection=(List<GameItemElement>)Adapter.Field(ItemMultiSelectHandler.current,"selectedItems")!;
+        var previous=selection.ToArray();
+        int width=root.inventoryShape.width, height=root.inventoryShape.height;
+        root.SetShape(width+8,height);
+        try
+        {
+            selection.Clear(); selection.Add((GameItemElement)card);
+            Check((bool)Adapter.Call(ItemMultiSelectHandler.current,"IsFormationValid",root,width,0)!,"Legal single-card group transfer declined.");
+            selection.Add((GameItemElement)cards.childItems.First(c=>c!=card));
+            Check(!(bool)Adapter.Call(ItemMultiSelectHandler.current,"IsFormationValid",root,width,0)!,"Precise group placement bypassed the downgrade limit.");
+        }
+        finally { selection.Clear(); selection.AddRange(previous); root.SetShape(width,height); }
+        Mix(tank,0,256000001);
+        Check(card.MaxNumRemove()==0 && !GraphUtils.SwapItemsInPlace(card,wrong),"Overfilled downgrade or invalid swap was allowed.");
+        wrong.Destroy();
+        Mix(source,17,0); Check(source.MayTarget(tank) && source.CanTarget(tank),"Native pouring target declined the fluid drawer.");
+        source.Target(tank);
+        Check(Part(tank,water)==17 && Part(tank,other)==256000001,"Manual pouring into a different mixture failed.");
+        Check(tank.MayTarget(source) && tank.CanTarget(source),"The fluid drawer cannot act as a native pouring source.");
+        tank.Target(source);
+        Check(!WaterHelper.IsEmpty(source),"Native manual withdrawal failed.");
+        Mix(tank,120000000,240000000);
+        var glass=tank.getItemSpriteModifierForItemFunc(tank).Single().sprite;
+        Check(((GameItemElement)tank).handler.GetComponentsInChildren<Component>(false)
+            .Any(image=>image.GetType().FullName=="UnityEngine.UI.Image" && Equals(Adapter.Property(image,"sprite"),glass)),"Native item renderer did not show its level after a volume change.");
+        Adapter.Call(Adapter.Session,"OpenPart",tank);
+        var window=(PixelWindow)Adapter.Field(Adapter.Session,"partWindow")!;
+        Check(FindButton(window,ModHelper.GetLocalized(Product,"ui_fluid_drawer_pour"))!=null
+            && ((GameItemElement)tank).GetTooltip().nakedText.Length>0 && tank.getItemSpriteModifierForItemFunc(tank).Single().sprite!=null,
+            "Fluid drawer window, tooltip or liquid-level artwork is missing.");
+        StartCoroutine(Screenshot("fluid-drawer"));
+        Adapter.Call(Adapter.Session,"ClosePart");
     }
     private void DrawerSave()
     {
@@ -321,13 +422,19 @@ public sealed partial class RuntimePilot
         var all=MainItems(); foreach(int id in drawerSaved) Check(all.Count(i=>i.GetUniqueID()==id)==1,"Saved device missing or duplicated.");
         core=all.Single(i=>i.GetUniqueID()==drawerSaved[0]); drawerController=all.Single(i=>i.GetUniqueID()==drawerSaved[1]);
         drawerPeer=all.Single(i=>i.GetUniqueID()==drawerSaved[2]); drawer=all.Single(i=>i.GetUniqueID()==drawerSaved[3]);
+        drawerFluid=all.Single(i=>i.GetUniqueID()==drawerSaved[7]);
+        var upgrades=(GameInventory)Adapter.Static("FluidDrawer","Upgrades",drawerFluid)!;
+        Check(upgrades.childItems.Count==5 && WaterHelper.GetTotalCapacityML(drawerFluid)==1024000
+            && drawerFluid.GetTagReadonly(Liquid.GetCurrentPartFromId("water")).GetInt()==120000000
+            && drawerFluid.GetTagReadonly(Liquid.GetCurrentPartFromId("physical_contaminant")).GetInt()==240000000
+            && upgrades.childItems.All(card=>card.MaxNumRemove()==0),"Native reload lost tank volume, composition, capacity or downgrade protection.");
         terminal=all.Single(i=>i.GetUniqueID()==drawerSaved[6]); drawerStock=DrawerData(drawer);
         Check(drawerStock.childItems.Select(i=>i.GetUniqueID()).OrderBy(i=>i).SequenceEqual(drawerStockIds.OrderBy(i=>i)),"Reload lost or duplicated stored real instances.");
         foreach(var item in drawerStock.childItems) Check(item.GetTagReadonly(PlayerStore.BOUGHT_PRICE_TAG).GetInt()==drawerPrices[item.GetUniqueID()],"Native reload changed a stored instance's purchase price.");
-        Check(DrawerUsed(drawer)==drawerStock.childItems.Sum(i=>(long)i.unitCount) && Priority(drawerController)==20 && DrawerMembers(drawerController).Length==3,"Reload lost cached quantity, priority or adjacency.");
+        Check(DrawerUsed(drawer)==drawerStock.childItems.Sum(i=>(long)i.unitCount) && Priority(drawerController)==20 && DrawerMembers(drawerController).Length==4,"Reload lost cached quantity, priority or adjacency.");
         Check(Status(drawerController)=="Online" && Status(drawerPeer)=="NoCore","Reload changed the independent AE/adjacency graphs.");
         Adapter.Call(Adapter.Session,"OpenPart",drawer); StartCoroutine(Screenshot("drawer-large-reloaded"));
         report.saveReloadTested=true;
-        details="Native reload retained every stored identity, exact cached count, +20 controller priority and three-drawer membership. Drawer-only peer stayed AE-offline; populated drawer UI reopened.";
+        details="Native reload retained every stored identity, exact cached count, +20 controller priority and fluid drawer capacity and 360 L of 1:2 mixture. Drawer-only peer stayed AE-offline; populated drawer UI reopened.";
     }
 }

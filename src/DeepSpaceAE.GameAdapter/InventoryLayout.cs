@@ -27,7 +27,7 @@ internal sealed class InventoryLayout
             foreach(var cell in footprints[item]) for(int side=0;side<4;side++)
             {
                 var other=grid.GetValueOrDefault(cell+GridSides.Step((GridSide)side));
-                if(other!=null && !ReferenceEquals(item,other) && Owned.Contains(other) && DrawerStorage.IsDrawer(other)) yield return other;
+                if(other!=null && !ReferenceEquals(item,other) && Owned.Contains(other) && (DrawerStorage.IsDrawer(other) || FluidDrawer.IsDrawer(other))) yield return other;
             }
         }
         foreach(var start in AdjacentDrawers(controller))

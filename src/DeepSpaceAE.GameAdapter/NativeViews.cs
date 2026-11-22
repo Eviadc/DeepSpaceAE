@@ -46,7 +46,7 @@ internal sealed partial class GameSession
     {
         if (editorWindow != null) { var w = editorWindow; editorWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); }
         foreach(var borrowed in driveBorrowed) borrowed.Return(); driveBorrowed.Clear();
-        borrowedStorage?.Return(); borrowedStorage = null; displayedPart = null; filterGrid = null; filterPanel = null; priorityButton = null; busStatus=null; controllerStockPanel=null;
+        borrowedStorage?.Return(); borrowedStorage = null; displayedPart = null; filterGrid = null; filterPanel = null; priorityButton = null; busStatus=null; controllerStockPanel=null; fluidDrawerStatus=null;
         if (partWindow != null) { var w = partWindow; partWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); }
     }
     internal void NativeWindowHidden(PixelWindow window)
@@ -468,7 +468,7 @@ internal sealed partial class GameSession
     {
         if(topology) { AutomationStructureChanged(); terminalDirty=openTerminal!=null; ScheduleTerminalRefresh(); }
         if (owner != null) StructureChanged(owner);
-        if (controllerStockPanel!=null && (topology || owner!=null && DrawerStorage.IsDrawer(owner) && ReferenceEquals(owner.parentInventory,displayedPart?.parentInventory))
+        if (controllerStockPanel!=null && (topology || owner!=null && (DrawerStorage.IsDrawer(owner) || FluidDrawer.IsDrawer(owner)) && ReferenceEquals(owner.parentInventory,displayedPart?.parentInventory))
             || owner == null || ReferenceEquals(owner, displayedPart) || (displayedPart != null && ReferenceEquals(PartStorage.BusHost(displayedPart), owner))) RefreshPartLater();
     }
     private void RefreshPartLater()
@@ -481,6 +481,7 @@ internal sealed partial class GameSession
             if (ItemMouseDragHandler.current?.IsDraggingItem == true) { RefreshPartLater(); return; }
             if (displayedPart.parentInventory==null || !GeneralHelper.IsItemEffectivelyOwned(displayedPart)) { ClosePart(); return; }
             if (filterGrid != null) { busStatus?.SetText(BusStatus(displayedPart)); RenderFilters(); }
+            else if(fluidDrawerStatus!=null) fluidDrawerStatus.SetText(LiquidStorage.Read(displayedPart).Description);
             else if(InterfaceStorage.IsInterface(displayedPart))
             {
                 var position=partWindow?.rectTransform.position; ShowInterface(displayedPart);

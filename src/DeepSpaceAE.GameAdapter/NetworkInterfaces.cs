@@ -122,12 +122,13 @@ internal sealed partial class GameSession
                     else
                     {
                         if(buffer.Composition.Volume==0) break;
+                        if(FluidDrawer.IsDrawer(container) && LiquidStorage.ExactFill(buffer.Composition,liquid)==0) continue;
                         if(liquid.Composition.Volume>=liquid.Capacity || InterfaceStorage.Strict(device) && liquid.Composition.Volume>0
                             && liquid.Composition.Signature!=buffer.Composition.Signature) continue;
                         source=device; target=container;
                     }
                     attempts++; operations++;
-                    WaterHelper.TransferLiquid(source,target);
+                    LiquidStorage.NetworkTransfer(source,target);
                 }
             }
         }

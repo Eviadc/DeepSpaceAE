@@ -15,6 +15,23 @@ internal sealed class LiquidSnapshot
 }
 internal static class LiquidStorage
 {
+    [ThreadStatic] internal static GameItem? NetworkTarget;
+    [ThreadStatic] internal static int? SplitLimit;
+    internal static void NetworkTransfer(GameItem source,GameItem target)
+    {
+        var previous=NetworkTarget;
+        NetworkTarget=target;
+        try { WaterHelper.TransferLiquid(source,target); }
+        finally { NetworkTarget=previous; }
+    }
+    // Only complete units of the reduced ratio fit. Native largest-remainder rounding
+    // would otherwise change a 1:2 mixture when only one or two microlitres remain.
+    internal static int ExactFill(LiquidComposition from,LiquidSnapshot to)
+    {
+        if(from.Volume==0 || to.Composition.Volume>0 && from.Signature!=to.Composition.Signature) return 0;
+        long available=Math.Min(from.Volume,Math.Max(0,to.Capacity-to.Composition.Volume));
+        return (int)(available/from.RatioUnit*from.RatioUnit);
+    }
     // The legacy drinking-water helper shares the tag but has no chemical amounts.
     // Require the actual modern capacity field, never infer a composition from a name.
     internal static bool IsContainer(GameItem item)=>item.IsTag(WaterHelper.LIQUID_CONTAINER_TAG)

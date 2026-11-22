@@ -30,7 +30,7 @@ internal sealed partial class GameSession
         var view=new View { Board=board,Root=MainInventory()!,Core=controller };
         var policy=DrawerController.Policy(controller);
         view.Owners.Add(controller,controller); view.Policies.Add(controller,policy);
-        view.Inventories.Add(controller,DrawerController.Members(controller,board.Layout).OrderByDescending(d=>DrawerStorage.Data(d).Used>0 || DrawerStorage.IsLocked(d) && DrawerStorage.LockedId(d).Length>0).Select(d=>(GameInventory)DrawerStorage.Data(d)).ToList());
+        view.Inventories.Add(controller,DrawerController.Members(controller,board.Layout).Where(DrawerStorage.IsDrawer).OrderByDescending(d=>DrawerStorage.Data(d).Used>0 || DrawerStorage.IsLocked(d) && DrawerStorage.LockedId(d).Length>0).Select(d=>(GameInventory)DrawerStorage.Data(d)).ToList());
         view.Attachments.Add(controller.parentInventory);
         return view;
     }
@@ -51,12 +51,13 @@ internal sealed partial class GameSession
         if(controllerStockPanel==null) return;
         var members=new InventoryLayout(controller.parentInventory).DrawerMembers(controller);
         var rows=new List<(GameItem Item,long Count)>();
-        foreach(var entry in members.SelectMany(drawer=>DrawerStorage.Data(drawer).OverviewStock()))
+        foreach(var entry in members.Where(DrawerStorage.IsDrawer).SelectMany(drawer=>DrawerStorage.Data(drawer).OverviewStock()))
         {
             int index=rows.FindIndex(row=>DrawerStorage.Same(row.Item,entry.Item));
             if(index<0) rows.Add(entry);
             else rows[index]=(rows[index].Item,rows[index].Count+entry.Count);
         }
+        foreach(var drawer in members.Where(FluidDrawer.IsDrawer)) rows.Add((drawer,WaterHelper.GetTotalVolume(drawer)));
         rows.Sort((a,b)=>string.Compare(a.Item.name,b.Item.name,StringComparison.CurrentCulture));
         const int columns=5, pageSize=20;
         var tabs=rows.Count>pageSize?new MachineryTabs():null;
@@ -68,7 +69,7 @@ internal sealed partial class GameSession
             for(int i=0;i<length;i++)
             {
                 var entry=rows[start+i];
-                grid.AttachPos(MachineryStack.Vertical(new NativeWidgets.StockIcon(entry.Item),NativeWidgets.Text("× "+entry.Count)),i%columns,i/columns);
+                grid.AttachPos(MachineryStack.Vertical(new NativeWidgets.StockIcon(entry.Item),NativeWidgets.Text(FluidDrawer.IsDrawer(entry.Item)?LiquidSnapshot.Volume(entry.Count):"× "+entry.Count)),i%columns,i/columns);
             }
             if(tabs==null) stock=grid;
             else { tabs.AddTab((1+start/pageSize).ToString(),grid); stock=tabs; }

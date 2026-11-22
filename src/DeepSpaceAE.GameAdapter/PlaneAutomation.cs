@@ -91,10 +91,11 @@ internal sealed partial class GameSession
                 if(!IoBus.Matches(bus,source)) continue;
                 if(!GeneralHelper.IsItemEffectivelyOwned(source) || !GeneralHelper.IsItemEffectivelyOwned(target)) continue;
                 var from=LiquidStorage.Read(source); var to=LiquidStorage.Read(target);
+                if(FluidDrawer.IsDrawer(target) && LiquidStorage.ExactFill(from.Composition,to)==0) continue;
                 if(from.Composition.Volume<=0 || to.Composition.Volume>=to.Capacity
                     || PartStorage.Int(bus,"fluid_strict",1)!=0 && to.Composition.Volume>0 && from.Composition.Signature!=to.Composition.Signature) continue;
                 attempts++; operations++;
-                WaterHelper.TransferLiquid(source,target);
+                LiquidStorage.NetworkTransfer(source,target);
                 int changed=(int)Math.Max(0,from.Composition.Volume-LiquidStorage.Read(source).Composition.Volume);
                 volume+=changed;
                 if(changed>0) { moved.Add(remote); moved.Add(local); }

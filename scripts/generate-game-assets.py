@@ -1,5 +1,5 @@
 """Reproduce pinned pixel assets (Pillow 12.3.0 for decoding; stdlib PNG encoder).
-Provenance: assets/ae2-source/sources.json (CC BY-NC-SA 3.0), drawers-source (MIT).
+Provenance: ae2-source (CC BY-NC-SA 3.0), drawers-source and functional-storage-source (MIT).
 """
 from pathlib import Path
 import argparse
@@ -9,7 +9,7 @@ import struct
 import zlib
 import math
 from PIL import Image, ImageDraw, ImageOps, ImageChops
-from device_pixel_art import assets as device_pixel_assets, casing, rect
+from device_pixel_art import assets as device_pixel_assets
 from bus_pixel_art import assets as bus_pixel_assets
 
 REPO = Path(__file__).resolve().parents[1]
@@ -26,6 +26,42 @@ def png(image):
 def image(name): return Image.open(SOURCE / name).convert('RGBA')
 def inactive(img):
     result = ImageOps.grayscale(img).point(lambda x: x*2//5).convert('RGBA'); result.putalpha(img.getchannel('A')); return result
+
+def drawer_controller(source, online):
+    original=Image.open(source/'drawers_controller_front.png').convert('L')
+    # Keep every source texel, including the stone lip around the recessed face.
+    face=ImageOps.colorize(original, '#211c2b', '#e8e3d1', mid='#85838b').convert('RGBA')
+    face=face.resize((32,32),Image.Resampling.NEAREST)
+    pen=ImageDraw.Draw(face)
+    for x in (4,24):
+        pen.line((x,15,x+3,15),fill='#1e2531')
+        pen.line((x,16,x+3,16),fill='#96ddc3' if online else '#586164')
+    return face
+
+def fluid_drawer(source):
+    front=Image.open(source/'fluid_front.png').convert('RGBA')
+    inner=Image.open(source/'fluid_inner.png').convert('L')
+    # The source model has an open metal rim in front of a dark tank lining.
+    lining=ImageOps.colorize(inner,'#172232','#577286').convert('RGBA')
+    rim=ImageOps.colorize(front.convert('L'),'#262330','#eee8d9',mid='#787983').convert('RGBA')
+    rim.putalpha(front.getchannel('A'))
+    lining.alpha_composite(rim)
+    pen=ImageDraw.Draw(lining)
+    pen.line((4,3,6,3),fill='#819dab')
+    pen.point((3,4),fill='#819dab')
+    for y in (5,8,11):
+        pen.line((11,y,12,y),fill='#879b9e')
+    result={'fluid-drawer.png':lining.resize((32,32),Image.Resampling.NEAREST)}
+    # Native liquid colour tints this neutral sight-glass overlay at runtime.
+    for level in range(1,5):
+        overlay=Image.new('RGBA',(16,16)); pen=ImageDraw.Draw(overlay)
+        y0=13-(level*10+3)//4
+        pen.rectangle((3,y0,12,12),fill=(183,192,197,220))
+        pen.line((3,y0,12,y0),fill=(255,255,255,245))
+        for y in (5,8,11):
+            if y>=y0: pen.line((11,y,12,y),fill=(230,235,235,245))
+        result[f'fluid-drawer-level-{level}.png']=overlay.resize((32,32),Image.Resampling.NEAREST)
+    return result
 
 def inset_device(img, margin):
     """Uniform area sampling keeps source geometry at a noninteger pixel scale.
@@ -264,14 +300,12 @@ def assets():
         assert hashlib.sha256(content).hexdigest()==entry['sha256'],entry['file']
     drawer=Image.open(drawer_source/'drawers_oak_front_1.png').convert('RGBA').resize((28,28),Image.Resampling.NEAREST)
     result['drawer.png']=Image.new('RGBA',(32,32)); result['drawer.png'].alpha_composite(drawer,(2,2))
-    controller=casing(32,2); pen=ImageDraw.Draw(controller)
-    rect(pen,(5,5,26,26),'recess')
-    for x,y in ((7,7),(17,7),(7,17),(17,17)):
-        rect(pen,(x,y,x+7,y+7),'metal_dark')
-        rect(pen,(x+1,y+1,x+6,y+6),'panel')
-        rect(pen,(x+2,y+3,x+5,y+3),'trace_light')
-    result['drawer-controller.png']=controller
-    result['drawer-controller-off.png']=inactive(controller)
+    fluid_source=REPO/'assets/functional-storage-source'
+    for entry in json.loads((fluid_source/'sources.json').read_text())['files']:
+        assert hashlib.sha256((fluid_source/entry['file']).read_bytes()).hexdigest()==entry['sha256']
+    result.update(fluid_drawer(fluid_source))
+    result['drawer-controller.png']=drawer_controller(drawer_source,True)
+    result['drawer-controller-off.png']=drawer_controller(drawer_source,False)
     return {k:png(v) for k,v in result.items()}
 
 if __name__=='__main__':

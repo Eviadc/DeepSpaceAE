@@ -9,6 +9,7 @@ public sealed class LiquidComposition
 {
     public IReadOnlyList<KeyValuePair<string,int>> Parts { get; }
     public long Volume { get; }
+    public long RatioUnit { get; }
     public string Signature { get; }
     public LiquidComposition(IEnumerable<KeyValuePair<string,int>> parts)
     {
@@ -20,6 +21,7 @@ public sealed class LiquidComposition
         Parts=Array.AsReadOnly(values); Volume=values.Sum(p=>(long)p.Value);
         int divisor=0;
         foreach(var part in values) { int value=part.Value; while(value!=0) { int next=divisor%value; divisor=value; value=next; } }
+        RatioUnit=divisor==0?0:Volume/divisor;
         Signature=values.Length==0?"empty":string.Join(";",values.Select(p=>p.Key.Length.ToString(CultureInfo.InvariantCulture)+":"+p.Key+"="+(p.Value/divisor).ToString(CultureInfo.InvariantCulture)));
     }
 }

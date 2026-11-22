@@ -8,8 +8,8 @@ public sealed class AcquisitionTests
     [Fact]
     public void StockCatalogExcludesTheReceiverAndKeepsNonzeroAppearanceChances()
     {
-        Assert.Equal(18,AcquisitionCatalog.Offers.Count);
-        Assert.Equal(18,AcquisitionCatalog.Offers.Select(o=>o.Id).Distinct().Count());
+        Assert.Equal(19,AcquisitionCatalog.Offers.Count);
+        Assert.Equal(19,AcquisitionCatalog.Offers.Select(o=>o.Id).Distinct().Count());
         Assert.DoesNotContain(AcquisitionCatalog.Offers,o=>o.Id=="deepspaceae.energy_receiver");
         Assert.DoesNotContain(AcquisitionCatalog.Offers,o=>o.Id=="deepspaceae.fluid_interface");
         Assert.Contains(AcquisitionCatalog.Offers,o=>o.Id=="deepspaceae.wireless_connector" && o.Minimum>=2);

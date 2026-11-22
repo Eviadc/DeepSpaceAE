@@ -11,6 +11,11 @@
       "file": "LICENSE",
       "source": "https://raw.githubusercontent.com/jaquadro/StorageDrawers/62a33ab1aa3e79e0c13e149f34fca4d30f07df8a/LICENSE",
       "sha256": "0b59d262ceba4892b08700d3a5039f1bd7e455ab1cefad5049609e1d555abe8d"
+    },
+    {
+      "file": "drawers_controller_front.png",
+      "source": "https://raw.githubusercontent.com/jaquadro/StorageDrawers/62a33ab1aa3e79e0c13e149f34fca4d30f07df8a/common/src/main/resources/assets/storagedrawers/textures/block/drawers_controller_front.png",
+      "sha256": "29b887a5e3a75bd66ebe005ede663565ba47a9e3cb30e718b2800ab874fed501"
     }
   ]
 }

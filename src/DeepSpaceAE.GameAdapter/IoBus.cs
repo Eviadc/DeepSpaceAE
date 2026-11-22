@@ -65,6 +65,7 @@ internal static class IoBus
     internal static List<GameInventory> TargetSlots(GameItem owner,bool import)
     {
         // A drawer's upgrade bay is configuration, never transferable stock.
+        if(FluidDrawer.IsDrawer(owner)) return new();
         if(DrawerStorage.IsDrawer(owner))
         {
             var data=DrawerStorage.Data(owner);

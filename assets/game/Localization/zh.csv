@@ -1015,3 +1015,6 @@ ui_bus_target_inventory,"{0}（物品栏 ×{1}）"
 ui_bus_target_liquid,"{0}（流体容器 ×{1}）"
 ui_drawer_contents,"库存"
 ui_drawer_empty,"暂无物品"
+item_fluid_drawer_name,"流体抽屉"
+item_fluid_drawer_desc,"可手动倒入或倒出液体。AE 只会注入与现有液体配比完全相同的液体。基础容量 1 升，每张容量卡扩容至四倍，最多五张。"
+ui_fluid_drawer_pour,从抽屉倒出

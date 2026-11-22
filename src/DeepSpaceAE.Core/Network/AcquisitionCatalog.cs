@@ -27,7 +27,7 @@ public static class AcquisitionCatalog
         new ComponentOffer("capacity_upgrade",80,100,3,5),new ComponentOffer("tag_upgrade",100,25,1,2),
         new ComponentOffer("core",600,20,1,1),new ComponentOffer("disk_drive",500,30,1,1),
         new ComponentOffer("terminal",250,55,1,1),new ComponentOffer("item_interface",300,45,1,1),
-        new ComponentOffer("wireless_connector",450,100,2,4),new ComponentOffer("drawer",160,70,1,2),
+        new ComponentOffer("wireless_connector",450,100,2,4),new ComponentOffer("drawer",160,70,1,2),new ComponentOffer("fluid_drawer",160,70,1,2),
         new ComponentOffer("drawer_controller",350,70,1,1),
         new ComponentOffer("formation_bus",180,60,1,2),new ComponentOffer("annihilation_bus",180,60,1,2),
         new ComponentOffer("disk_small",200,75,1,3),

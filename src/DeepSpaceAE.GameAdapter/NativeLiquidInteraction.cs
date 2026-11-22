@@ -54,8 +54,34 @@ internal static class LiquidNativeTargetPatch
 [HarmonyPatch(typeof(WaterHelper),nameof(WaterHelper.TransferLiquid))]
 internal static class LiquidNativeTransferPatch
 {
+    [HarmonyPrefix]
+    private static bool Prefix(GameItem __0,GameItem __1,out int? __state)
+    {
+        __state=LiquidStorage.SplitLimit;
+        LiquidStorage.SplitLimit=null;
+        if(!FluidDrawer.IsDrawer(__1) || !(ReferenceEquals(LiquidStorage.NetworkTarget,__1)
+            || ModEntry.ActiveSession?.TerminalPour==true)) return true;
+        int allowed=LiquidStorage.ExactFill(LiquidStorage.Read(__0).Composition,LiquidStorage.Read(__1));
+        if(allowed==0) return false;
+        LiquidStorage.SplitLimit=allowed;
+        return true;
+    }
+    [HarmonyFinalizer]
+    private static void Restore(int? __state)=>LiquidStorage.SplitLimit=__state;
     [HarmonyPostfix]
-    private static void Postfix(GameItem __0,GameItem __1)=>ModEntry.ActiveSession?.LiquidChanged(__0,__1);
+    private static void Postfix(GameItem __0,GameItem __1,bool __runOriginal)
+    { if(__runOriginal) ModEntry.ActiveSession?.LiquidChanged(__0,__1); }
+}
+[HarmonyPatch(typeof(WaterHelper),nameof(WaterHelper.SplitProportionally))]
+internal static class DrawerPourAmountPatch
+{
+    [HarmonyPrefix]
+    private static void Prefix(ref int amount)
+    {
+        if(LiquidStorage.SplitLimit is not int limit) return;
+        amount=Math.Min(amount,limit);
+        LiquidStorage.SplitLimit=null;
+    }
 }
 [HarmonyPatch(typeof(GameItemElement),nameof(GameItemElement.GetTooltip))]
 internal static class LiquidTooltipPatch
@@ -76,6 +102,7 @@ internal static class LiquidAdvancedTooltipPatch
 
 internal sealed partial class GameSession
 {
+    internal bool TerminalPour { get; private set; }
     internal bool IsLiquidEntry(GameItem item)=>terminalGrid?.IsLiquid==true && displayedView?.LiquidPolicies.ContainsKey(item)==true;
     internal void LiquidChanged(GameItem source,GameItem target)
     {
@@ -108,13 +135,13 @@ internal sealed partial class GameSession
             }
             if(sourceTerminal!=null) Check(sourceTerminal,source,!reverse);
             if(targetTerminal!=null) Check(targetTerminal,target,source.IsTag(WaterHelper.LIQUID_CONTAINER_TAG)?reverse:(bool?)null);
-            writing=true; entered=true; return true;
+            writing=true; TerminalPour=true; entered=true; return true;
         }
         catch(Exception e) { Error(e); return false; }
     }
     internal void EndLiquidAction(Exception? error)
     {
         if(error!=null) log.Error("Native liquid action failed: "+Diagnostics.ConsoleText(error.ToString()));
-        writing=false; terminalDirty=openTerminal!=null; ScheduleTerminalRefresh(); RefreshPartLater();
+        TerminalPour=false; writing=false; terminalDirty=openTerminal!=null; ScheduleTerminalRefresh(); RefreshPartLater();
     }
 }

@@ -1015,3 +1015,6 @@ ui_bus_target_inventory,"{0} (item slots: {1})"
 ui_bus_target_liquid,"{0} (fluid containers: {1})"
 ui_drawer_contents,"Stock"
 ui_drawer_empty,"No items"
+item_fluid_drawer_name,"Fluid Drawer"
+item_fluid_drawer_desc,"Pour directly to fill or drain. AE fills a nonempty drawer only with the same mixture. Starts at 1 litre. Each of five capacity cards quadruples its capacity."
+ui_fluid_drawer_pour,Pour from drawer

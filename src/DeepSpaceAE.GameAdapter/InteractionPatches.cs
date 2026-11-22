@@ -10,7 +10,7 @@ internal static class DoubleClickPatch
     [HarmonyPrefix]
     private static bool Prefix(GameItem __0, Vector2 __1)
     {
-        if (__0 == null || __0.isDebugMenu || (!GameSession.IsPart(__0) && !DrawerStorage.IsDrawer(__0)) || ModEntry.ActiveSession == null) return true;
+        if (__0 == null || __0.isDebugMenu || (!GameSession.IsPart(__0) && !DrawerStorage.IsDrawer(__0) && !FluidDrawer.IsDrawer(__0)) || ModEntry.ActiveSession == null) return true;
         if (__0.identifier == "deepspaceae.pipeline") ModEntry.ActiveSession.OpenCableBusAt(__0, __1);
         else ModEntry.ActiveSession.OpenPart(__0);
         return false;
@@ -24,7 +24,7 @@ internal static class SingleClickPatch
     private static bool Prefix(GameItem __0, bool __2, bool __3)
     {
         if(__0==null || __0.isDebugMenu || ModEntry.ActiveSession==null) return true;
-        if(InterfaceStorage.IsFluid(__0))
+        if(InterfaceStorage.IsFluid(__0) || FluidDrawer.IsDrawer(__0))
         {
             // Both forms retain the same saved deposit graph. Native ClickAction
             // otherwise opens that graph and refuses selection for any container.
@@ -69,6 +69,9 @@ internal static class LockedBatterySwapPatch
             if(inventory is DiskAreaInventory disk) return !inventory.IsRemoveLocked() && current.MaxNumRemove()>=current.unitCount && disk.CanReplace(current,incoming);
             if(inventory is DrawerInventory stock) return !inventory.IsRemoveLocked() && current.MaxNumRemove()>=current.unitCount && stock.CanReplace(current,incoming);
             var host=inventory?.GetParentItem();
+            if(FluidDrawer.IsDrawer(host) && ReferenceEquals(inventory,FluidDrawer.Upgrades(host!)))
+                return !inventory!.IsRemoveLocked() && !inventory.IsInsertLocked() && incoming.identifier==PartStorage.Capacity
+                    && incoming.unitCount==1 && current.MaxNumRemove()>=current.unitCount && GeneralHelper.IsItemEffectivelyOwned(incoming);
             if(host?.identifier=="deepspaceae.terminal") return incoming.identifier==PartStorage.Tag && incoming.unitCount==1;
             if(host!=null && DrawerStorage.IsDrawer(host) && ReferenceEquals(inventory,DrawerStorage.Upgrades(host)))
                 return incoming.identifier==PartStorage.Capacity && incoming.unitCount==1 && current.MaxNumRemove()>=current.unitCount;
@@ -106,5 +109,5 @@ internal static class DayStartedPatch
 internal static class CableContentWindowPatch
 {
     [HarmonyPrefix]
-    private static bool Prefix(GameItem __0) => __0?.identifier != "deepspaceae.pipeline" && (__0==null || (!DiskStorage.IsDisk(__0) && !DiskStorage.IsDrive(__0) && !EnergyReceiver.IsReceiver(__0) && !DrawerStorage.IsDrawer(__0) && !InterfaceStorage.IsInterface(__0)));
+    private static bool Prefix(GameItem __0) => __0?.identifier != "deepspaceae.pipeline" && (__0==null || (!DiskStorage.IsDisk(__0) && !DiskStorage.IsDrive(__0) && !EnergyReceiver.IsReceiver(__0) && !DrawerStorage.IsDrawer(__0) && !FluidDrawer.IsDrawer(__0) && !InterfaceStorage.IsInterface(__0)));
 }

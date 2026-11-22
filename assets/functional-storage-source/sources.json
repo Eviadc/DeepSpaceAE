@@ -1,0 +1,21 @@
+{
+  "commit": "11edb40deec2714e1aa2aca3f0a699b9cc29efd7",
+  "license": "MIT",
+  "files": [
+    {
+      "file": "fluid_front.png",
+      "source": "https://raw.githubusercontent.com/Buuz135/FunctionalStorage/11edb40deec2714e1aa2aca3f0a699b9cc29efd7/src/main/resources/assets/functionalstorage/textures/block/fluid_front.png",
+      "sha256": "8630fc667550b07f88b1c04f827a5b0152c80797be084f0bcc5c1f34f5baa756"
+    },
+    {
+      "file": "fluid_inner.png",
+      "source": "https://raw.githubusercontent.com/Buuz135/FunctionalStorage/11edb40deec2714e1aa2aca3f0a699b9cc29efd7/src/main/resources/assets/functionalstorage/textures/block/fluid_inner.png",
+      "sha256": "6dc8919278fa7bdab524861c3646ca9ca47d89c60d975d614c0aaa96a65fdce9"
+    },
+    {
+      "file": "LICENSE",
+      "source": "https://raw.githubusercontent.com/Buuz135/FunctionalStorage/11edb40deec2714e1aa2aca3f0a699b9cc29efd7/LICENSE",
+      "sha256": "b64ac86da57a720bed3d42256d4ed88cfca541b22c3f3167e0ab86b689c0072a"
+    }
+  ]
+}

@@ -24,6 +24,18 @@ drawer.png derives from the oak single-drawer front texture in jaquadro/StorageD
 Copyright (c) 2014 Justin Aquadro. Licensed under MIT, separately from the AE2 artwork.
 The complete notice is included as StorageDrawers-LICENSE.txt; source URL/hash is in drawer-artwork-sources.json. Repository copies are in assets/drawers-source.
 
+The two controller sprites use the complete Storage Drawers controller front at
+2× nearest-neighbour scale. DeepSpaceAE adjusts the metal palette and adds two
+status lights along the horizontal seam. See drawer-artwork-sources.json.
+
+# Functional Storage fluid drawer
+
+The fluid drawer adapts fluid_front.png and fluid_inner.png from Functional Storage
+by Buuz135 and Rid (MIT, copyright 2021). The complete front and tank lining are
+composited at their original pixel size, with a glass scale and liquid-level overlay
+drawn for DeepSpaceAE. See FunctionalStorage-LICENSE.txt and fluid-drawer-artwork-sources.json
+for the license, pinned source URLs and SHA-256 hashes.
+
 # Source code
 
 DeepSpaceAE's own source code is Copyright (c) 2026 Eviadc, licensed under GNU GPL version3 or (at your option) any later version. See LICENSE and SOURCE.md in the mod package, or the repository LICENSE.

@@ -13,9 +13,32 @@ public sealed class GameTextureTests
     private static readonly string Root = Path.Combine(AppContext.BaseDirectory, "assets", "game", "Textures", "Items");
 
     [Fact]
+    public void DrawerFacesFillFourCellsAndLiquidLevelsRiseWithinTheRim()
+    {
+        foreach(var name in new[]{"fluid-drawer","drawer-controller","drawer-controller-off"})
+        {
+            var (width,height,pixels)=Decode(name+".png");
+            Assert.Equal((32,32),(width,height));
+            for(int i=3;i<pixels.Length;i+=4) Assert.Equal(255,pixels[i]);
+        }
+        int filled=0;
+        for(int level=1;level<=4;level++)
+        {
+            var (width,height,pixels)=Decode($"fluid-drawer-level-{level}.png");
+            Assert.Equal((32,32),(width,height));
+            int next=0;
+            for(int y=0;y<32;y++) for(int x=0;x<32;x++) if(pixels[(y*32+x)*4+3]>0)
+            {
+                Assert.InRange(x,6,25); Assert.InRange(y,6,25); next++;
+            }
+            Assert.True(next>filled); filled=next;
+        }
+    }
+
+    [Fact]
     public void CoreTextureCoversAllNineCellsAndWhitelistContainsAllActiveAndInactiveImages()
     {
-        Assert.Equal(168, Directory.GetFiles(Root, "*.png").Length);
+        Assert.Equal(173, Directory.GetFiles(Root, "*.png").Length);
         foreach (var name in new[] { "core", "terminal", "pipeline", "wireless-connector", "drawer-controller" })
             Assert.True(File.Exists(Path.Combine(Root, name + "-off.png")));
         foreach (var name in new[] { "item-storage-bus", "import-bus", "export-bus", "formation-bus", "annihilation-bus", "fluid-item-storage-bus", "fluid-import-bus", "fluid-export-bus" })

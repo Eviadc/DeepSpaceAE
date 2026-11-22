@@ -127,6 +127,7 @@ internal sealed partial class GameSession
     }
     internal static List<GameInventory> Contents(GameItem owner)
     {
+        if (FluidDrawer.IsDrawer(owner)) return new List<GameInventory>();
         if (DrawerStorage.IsDrawer(owner)) return new List<GameInventory> { DrawerStorage.Data(owner) };
         var result = new List<GameInventory>();
         if (owner.child == null) return result;
@@ -318,10 +319,16 @@ internal sealed partial class GameSession
         foreach(var controller in board.Layout.Parts.Where(DrawerController.IsController))
         {
             if(!board.Evaluation.Devices.TryGetValue(Id(controller),out var dc) || dc.Status!=DeviceStatus.Online || dc.CoreId!=coreId) continue;
-            var inventories=board.Layout.DrawerMembers(controller).OrderByDescending(d=>DrawerStorage.Data(d).Used>0 || DrawerStorage.IsLocked(d) && DrawerStorage.LockedId(d).Length>0).Select(d=>(GameInventory)DrawerStorage.Data(d)).ToList();
+            var members=board.Layout.DrawerMembers(controller).ToArray();
+            var inventories=members.Where(DrawerStorage.IsDrawer).OrderByDescending(d=>DrawerStorage.Data(d).Used>0 || DrawerStorage.IsLocked(d) && DrawerStorage.LockedId(d).Length>0).Select(d=>(GameInventory)DrawerStorage.Data(d)).ToList();
             view.Inventories.Add(controller,inventories); view.Owners.Add(controller,controller);
             var policy=DrawerController.Policy(controller); view.Policies.Add(controller,policy);
             ownerPolicies.Add(controller,new List<StoragePolicy>{policy});
+            foreach(var drawer in members.Where(FluidDrawer.IsDrawer))
+            {
+                if(!view.LiquidPolicies.TryGetValue(drawer,out var routes)) view.LiquidPolicies.Add(drawer,routes=new());
+                routes.Add(policy);
+            }
         }
         return catalog?ReadCatalog(view, ownerPolicies):view;
     }
@@ -381,7 +388,8 @@ internal sealed partial class GameSession
                 return;
             }
             if (!GeneralHelper.IsItemEffectivelyOwned(part)) throw new Rejected(UiText.Get("error_not_owned"));
-            if (DrawerStorage.IsDrawer(part)) ShowDrawer(part);
+            if (FluidDrawer.IsDrawer(part)) ShowFluidDrawer(part);
+            else if (DrawerStorage.IsDrawer(part)) ShowDrawer(part);
             else if(DrawerController.IsController(part)) ShowDrawerController(part);
             else if(InterfaceStorage.IsInterface(part)) ShowInterface(part);
             else if(WirelessConnector.IsConnector(part)) ShowWireless(part);

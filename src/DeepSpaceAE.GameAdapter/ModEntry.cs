@@ -169,6 +169,7 @@ public sealed class ModEntry : IMod
                 DiskStorage.CreateDisk(item); return item;
             });
         }
+        directory.Add(FluidDrawer.Id,FluidDrawer.Create);
         directory.Add(DrawerStorage.Id, () => {
             var item = ItemDirectory.CreateEmptyItem(DrawerStorage.Id); item.name = UiText.Get("item_drawer_name");
             item.shortDescription = UiText.Get("item_drawer_desc"); item.unitValue = AcquisitionCatalog.Price(item.identifier);
@@ -177,7 +178,7 @@ public sealed class ModEntry : IMod
             item.mayActivateSlotItemFunc = (_, _, _) => false; item.canActivateSlotItemFunc = (_, _, _) => false;
             DrawerStorage.Create(item); return item;
         });
-        log.Log("Registration complete: 19 components plus legacy fluid-interface save factory.");
+        log.Log("Component registration complete.");
     }
 
     private readonly HashSet<string> lootGroups = new(StringComparer.Ordinal);
@@ -188,7 +189,7 @@ public sealed class ModEntry : IMod
             ("deepspaceae.item_storage_bus", 3f), ("deepspaceae.terminal", 2f),
             (IoBus.Import,2f),(IoBus.Export,2f),
             (PartStorage.Capacity, 2f), (PartStorage.Tag, 1f), (PartStorage.Wrench, 3f),
-            (DiskStorage.Drive, 1f), (DiskStorage.Small, 2f), (DiskStorage.Large, 0.5f), (DrawerStorage.Id, 2f),
+            (DiskStorage.Drive, 1f), (DiskStorage.Small, 2f), (DiskStorage.Large, 0.5f), (DrawerStorage.Id, 2f), (FluidDrawer.Id, 2f),
             (InterfaceStorage.Item,2f),(WirelessConnector.Id,4f),(DrawerController.Id,2f),(IoBus.Formation,2f),(IoBus.Annihilation,2f));
         // Rev13 scavenging and expedition POIs roll these native item groups.
         // POI_dumpingGround is a table of locations, not an item-loot group.
