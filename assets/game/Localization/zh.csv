@@ -260,7 +260,7 @@ setting_native_inventory_name,使用原版库存读取（兼容性）
 setting_native_inventory_desc,默认关闭。开启后，抽屉读取和终端容器判空使用公开的 childItems 方法，允许其他模组拦截这些读取。原版每次都会分配并复制整个库存，大抽屉可能明显变慢。下次读取生效；物品搬运和所有权检查始终使用原版 API。
 setting_native_drawer_name,使用原版抽屉布局验证（兼容性）
 setting_native_drawer_desc,默认关闭。开启后执行完整原版库存布局验证，包含所有隐藏物品及其他模组的相关补丁，大抽屉可能卡顿。关闭时只验证可见的首个物品，仍调用原版背景和格子布局方法。下次刷新布局生效；不改变已存物品和容量。
-ui_internal_tag,〔内部〕{0}
+ui_internal_tag,〔{0}〕
 ui_io_overflow,收取机器溢出产物
 tag_chemical_product_purity_tag,化学制品纯度
 tag_activate_ingredient_tag,有效成分

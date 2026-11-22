@@ -77,7 +77,7 @@ internal static class NativeWidgets
                 return UiText.Get("ui_internal_tag",tag);
             label=UiText.Get(key);
         }
-        return UiText.Get("ui_internal_tag",label)+" (#"+tag+")";
+        return UiText.Get("ui_internal_tag",label);
     }
     internal static Sprite? Sprite(string name) => ModLoader.Mods.FirstOrDefault(m => m.Manifest.ID == ModEntry.ModId)?.Sprites.TryGetValue(name, out var image) == true ? image : null;
     // CustomUI machinery controls use twice the design-pixel scale of PixelWindow.

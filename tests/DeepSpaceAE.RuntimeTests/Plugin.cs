@@ -7,10 +7,38 @@ namespace DeepSpaceAE.RuntimeTests;
 public sealed class Plugin : IMod
 {
     internal const string Id="deepspaceae.runtime-tests",Scenario="deepspaceae.runtime-pilot";
+    internal const string OutputMachine=Id+".press", OutputProduct=Id+".plate";
     private RuntimePilot? runner;
+
+    private static void RegisterProducer(ModItemDirectory items)
+    {
+        items.Add(OutputProduct,()=>{
+            var item=ItemDirectory.CreateEmptyItem(OutputProduct);
+            item.name="Pilot plate";
+            item.SetShape(new GridShapeBuilder(1,1).SetDataFill(1).Build());
+            item.mayStackItemFunc=(_,_)=>false;
+            return item;
+        });
+        items.Add(OutputMachine,()=>{
+            var output=new GameGridInventory(1,1);
+            var machine=ItemDirectory.CreateEmptyItem(OutputMachine).SetSpriteAndShape("Items/items_tool2","furnace");
+            machine.SetContentWindow(MachineHelper.CreateMachineryWindow(true,MachineHelper.Panel("Plates",output,"output")));
+            machine.name="Pilot press"; machine.SetGameItemType("MACHINE");
+            machine.onCycleEndSlotItemFunc=delegate
+            {
+                var plate=DirectoryMaster.Item(OutputProduct);
+                if(!GraphUtils.CanAccept(output,plate)) { plate.Destroy(); return; }
+                plate.EnableTag("PILOT_FINISHED");
+                GraphUtils.EmporiumTryAdd(output,plate);
+            };
+            return machine;
+        });
+    }
+
     public void Init(ModManifest manifest) { }
     public void OnEnable()
     {
+        ModHook.OnModItemDirectoryInit += RegisterProducer;
         ModHook.OnNewGameStarted += Started;
         ModHelper.AddStartingScenario(Id,Scenario,()=>"AE Runtime Pilot (test save)",()=>"Isolated one-shot runtime test. Not a normal playthrough.",
             Array.Empty<Func<string>>(),()=>RuntimePilot.FreshScenarioStarted=true,skipIntro:true);
@@ -30,6 +58,7 @@ public sealed class Plugin : IMod
     }
     public void OnDisable()
     {
+        ModHook.OnModItemDirectoryInit -= RegisterProducer;
         ModHook.OnNewGameStarted -= Started;
         ModHelper.RemoveStartingScenarios(Id);
         if(runner!=null) UnityEngine.Object.Destroy(runner.gameObject);

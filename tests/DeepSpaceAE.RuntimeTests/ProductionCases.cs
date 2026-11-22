@@ -189,9 +189,9 @@ public sealed partial class RuntimePilot
             var tile=window.handler.GetComponentsInChildren<TreeNodeRender>(true).Select(n=>n.element)
                 .OfType<MachineryButton>().First(b=>b.description?.Contains(pair.Item2)==true);
             string qualityTag=pair.Item2=="metal_ingot"?"INGOT_PURITY_TAG":"CHEMICAL_PRODUCT_PURITY_TAG";
-            Check(tile.HasTooltip() && tile.description.Contains(qualityTag)
-                && tile.description.Contains(ModHelper.GetLocalized(Product,"ui_internal_tag",
-                    ModHelper.GetLocalized(Product,"tag_"+qualityTag.ToLowerInvariant()))) && !tile.description.Contains("BOUGHT_PRICE_TAG"),
+            string qualityLabel="〔"+ModHelper.GetLocalized(Product,"tag_"+qualityTag.ToLowerInvariant())+"〕";
+            Check(tile.HasTooltip() && !tile.description.Contains("(#"+qualityTag+")")
+                && tile.description.Contains(qualityLabel) && !tile.description.Contains("BOUGHT_PRICE_TAG"),
                 "Filter tile did not expose its exact properties on hover.");
             Press(FindButton(window,ModHelper.GetLocalized(Product,"ui_io_run")));
             Check(items.All(i=>ReferenceEquals(i.parentInventory,disk)),"One manual click left an identical item in "+pair.Item1);
@@ -202,11 +202,56 @@ public sealed partial class RuntimePilot
             foreach(var item in disk.childItems.ToArray()) { Adapter.Move(item,root); StowTopology(item); }
             machine.Destroy();
         }
-        GridAt(grid,productionMachine,0,5);
         Adapter.Call(Adapter.Session,"SetFilter",productionImport,0,"");
         Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"exclude",1);
         Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"io_exact",0);
-        details="Native harvest stays in available output space and spills only its remainder. One native button click collects identical ingots and pills, including a third instance with a different purchase price. Turbo furnace output and finisher output use the finished grade; the finisher takes liquid in place.";
+        CheckModProduction(grid,disk);
+        GridAt(grid,productionMachine,0,5);
+        details="Independent mod machine and product passed preflight, partial placement and overflow. Native harvest stays in available output space and spills only its remainder. One native button click collects identical ingots and pills, including a third instance with a different purchase price. Turbo furnace output and finisher output use the finished grade; the finisher takes liquid in place.";
+    }
+
+    private void CheckModProduction(GameGridInventory grid,GameInventory disk)
+    {
+        var machine=PlaceBay(grid,Plugin.OutputMachine,0,5);
+        var panel=((MachineryPanelRow)machine.contentWindow.childElement).Panels.Single();
+        var output=((List<GameInventory>)Adapter.Static("IoBus","MachineSlots",machine,true)!).Single();
+        MachineTurboBoosterAdv.BoostMachine(machine);
+        var sample=output.childItems.Single();
+        Check(sample.identifier==Plugin.OutputProduct && disk.childItems.Count==0,"Mod press failed to fill its own output first.");
+        Adapter.Call(Adapter.Session,"CaptureGhost",productionImport,0,sample);
+        Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"exclude",0);
+        Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"io_exact",1);
+        var probe=Spawn(Plugin.OutputProduct);
+        Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"io_overflow",0);
+        Check(!GraphUtils.CanAccept(output,probe),"Disabled overflow changed mod preflight.");
+        Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"io_overflow",1);
+        output.mayInventoryAddItemFunc=(_,_)=>false;
+        Check(!GraphUtils.CanAccept(output,probe),"Overflow bypassed the mod machine's admission rule.");
+        output.mayInventoryAddItemFunc=null;
+        Check(GraphUtils.CanAccept(output,probe),"Full mod output with no admission callback rejected the unfinished probe.");
+        MachineTurboBoosterAdv.BoostMachine(machine);
+        Check(disk.childItems.Single().IsTag("PILOT_FINISHED") && ReferenceEquals(sample.parentInventory,output),
+            "Final mod product missed the exact whitelist or drained existing stock.");
+        Check(GraphUtils.TryAcceptAll(output,probe)==1 && probe.parentInventory==null,"Failed mod placement consumed a custom caller's remainder.");
+        GraphUtils.EmporiumTryAdd(output,probe);
+        Check(probe.parentInventory!=null && probe.parentInventory.GetParentItem()==null,"Rejected mod product missed native spill.");
+
+        Adapter.Call(Adapter.Session,"SetFilter",productionImport,0,"");
+        Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"exclude",1);
+        Adapter.Call(Adapter.Session,"ConfigureNumber",productionImport,"io_exact",0);
+        panel.SetRole("storage");
+        var batch=Spawn(Plugin.OutputProduct); batch.SetAmount(3);
+        Check(GraphUtils.TryAcceptOnce(output,batch,1)==0 && batch.unitCount==2 && batch.parentInventory==null,
+            "Single placement failed to respect the requested quantity for a machine storage panel.");
+        panel.SetRole("custom");
+        Check(!GraphUtils.CanAccept(output,batch),"Unmarked custom panel was treated as an output.");
+        output.EnableTag("deepspaceae.machine_output");
+        Check(GraphUtils.TryAccept(output,batch)==1 && batch.unitCount==1,"Single-unit placement failed for an explicitly marked custom output.");
+        Check(GraphUtils.TryAcceptAllMid((GameGridInventory)output,batch)==0 && ReferenceEquals(batch.parentInventory,disk),
+            "Centered placement failed for a custom output.");
+        Check(disk.childItems.Sum(i=>i.unitCount)==4,"Partial placements lost or duplicated mod products.");
+        foreach(var item in disk.childItems.ToArray()) item.Destroy();
+        machine.Destroy();
     }
 
     private void CheckFurnaceOverflow(GameItem furnace,GameGridInventory output,GameInventory disk,GameItem sample)
@@ -392,6 +437,16 @@ public sealed partial class RuntimePilot
             try { RunBus(importBus); Check(ReferenceEquals(paper.parentInventory,slots.Last()),"Import ignored a locked ordinary source."); }
             finally { slots.Last().UnlockInv(); }
             RunBus(importBus); Check(ReferenceEquals(paper.parentInventory,disk),"Import did not extract from ordinary storage/inactive tab.");
+            var shelf=(GameGridInventory)slots.Last();
+            var shape=shelf.inventoryShape;
+            var extra=Spawn("toilet_paper");
+            shelf.SetShape("1",1); // Block the only cell while the matching import bus is online.
+            try
+            {
+                Check(!GraphUtils.CanAccept(shelf,extra) && GraphUtils.TryAcceptAll(shelf,extra)==1
+                    && extra.parentInventory==null,"Full ordinary storage redirected an insertion into the network.");
+            }
+            finally { shelf.SetShape(shape.width,shape.height); extra.Destroy(); }
             foreach(var slot in slots) slot.LockInv();
             try
             {

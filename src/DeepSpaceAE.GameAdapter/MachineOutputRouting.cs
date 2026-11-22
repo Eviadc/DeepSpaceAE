@@ -28,6 +28,48 @@ internal static class MachineOutputPlacementPatch
     }
 }
 
+// Native helpers have different return contracts: TryAccept reports the accepted
+// count, while the other placement helpers report the unplaced remainder.
+[HarmonyPatch(typeof(GraphUtils),nameof(GraphUtils.TryAccept))]
+internal static class MachineSingleOutputPatch
+{
+    [HarmonyPostfix]
+    private static void Postfix(GraphNodeStorage currentNode,GameItem item,ref int __result)
+    {
+        if(__result<=0 && currentNode is GameInventory output && item?.parentInventory==null && item?.unitCount>0
+            && ModEntry.ActiveSession?.RouteMachineOutput(output,item,1,out _)>0) __result=1;
+    }
+}
+
+[HarmonyPatch(typeof(GraphUtils),nameof(GraphUtils.TryAcceptOnce))]
+internal static class MachineOutputOncePatch
+{
+    [HarmonyPrefix]
+    private static void Prefix(GameItem item,int amount,out int __state)
+    {
+        __state=item==null || item.parentInventory!=null ? 0 : amount<0 ? item.unitCount : amount;
+    }
+
+    [HarmonyPostfix]
+    private static void Postfix(GraphNodeStorage currentNode,GameItem item,int __state,ref int __result)
+    {
+        // A partial success in one slot does not mean the other local slots are full.
+        if(__result>0 && __result==__state && currentNode is GameInventory output && item!=null && item.parentInventory==null)
+            __result-=ModEntry.ActiveSession?.RouteMachineOutput(output,item,Math.Min(__result,item.unitCount),out _,singlePlacement:true)??0;
+    }
+}
+
+[HarmonyPatch(typeof(GraphUtils),nameof(GraphUtils.TryAcceptAllMid))]
+internal static class MachineCenteredOutputPatch
+{
+    [HarmonyPostfix]
+    private static void Postfix(GameGridInventory currentNode,GameItem item,ref int __result)
+    {
+        if(__result>0 && currentNode!=null && item!=null && item.parentInventory==null)
+            __result-=ModEntry.ActiveSession?.RouteMachineOutput(currentNode,item,Math.Min(__result,item.unitCount),out _)??0;
+    }
+}
+
 [HarmonyPatch(typeof(GraphUtils),nameof(GraphUtils.CanAccept))]
 internal static class MachineOutputCapacityPatch
 {
@@ -35,8 +77,7 @@ internal static class MachineOutputCapacityPatch
     private static void Postfix(GraphNodeStorage currentNode,GameItem item,ref bool __result)
     {
         if(__result || currentNode is not GameInventory output || item==null || item.parentInventory!=null
-            || output.IsInsertLocked() || output.GetParentItem()?.identifier is not ("furnace" or "bottle_printer" or "box_dispenser")
-            || output.mayInventoryAddItemFunc?.Invoke(item,output)!=true) return;
+            || output.IsInsertLocked()) return;
         __result=ModEntry.ActiveSession?.RouteMachineOutput(output,item,item.unitCount,out _,preview:true)>0;
     }
 }
@@ -56,7 +97,7 @@ internal static class MachineOutputOverflowPatch
 
 internal sealed partial class GameSession
 {
-    internal int RouteMachineOutput(GameInventory output,GameItem item,int requested,out bool enabled,bool preview=false)
+    internal int RouteMachineOutput(GameInventory output,GameItem item,int requested,out bool enabled,bool preview=false,bool singlePlacement=false)
     {
         enabled=false;
         if(Loading || writing || requested<=0 || item.parentInventory!=null || MainInventory()==null
@@ -64,7 +105,10 @@ internal sealed partial class GameSession
             || output.IsRemoveLocked() || output.IsTag(HopperHelper.NO_HOPPER_INVENTORY_TAG)
             || MapUIManager.Instance!=null && MapUIManager.Instance.IsOutside) return 0;
         var machine=output.GetParentItem();
-        if(machine==null || !GeneralHelper.IsItemEffectivelyOwned(machine) || !IoBus.MachineSlots(machine,true).Contains(output)) return 0;
+        if(machine==null || !GeneralHelper.IsItemEffectivelyOwned(machine) || !IoBus.IsProductionOutput(machine,output)) return 0;
+        if(preview && (!GeneralHelper.MayOwnershipAcceptItem(item,output)
+            || item.mayInventoryAddItemFunc?.InvokeAllReduce(item,output,InvokeFuncExtensions.BoolReduceOR)==false
+            || output.mayInventoryAddItemFunc?.InvokeAllReduce(item,output,InvokeFuncExtensions.BoolReduceOR)==false)) return 0;
         int moved=0;
         writing=true;
         try
@@ -82,8 +126,8 @@ internal sealed partial class GameSession
                     ChemicalProductHelper.GradeProduct(item); // Native button grades immediately after placement.
                 enabled=true;
                 var policy=PartStorage.Policy(bus);
-                bool pendingQuality=preview && machine.identifier=="furnace" && IoBus.Exact(bus) && !policy.Tags && !policy.Exclude;
-                // The furnace probes with a generic ingot even for its scrap recipe.
+                bool pendingQuality=preview && IoBus.Exact(bus) && !policy.Tags && !policy.Exclude;
+                // Producers may probe with a placeholder and determine type or grade only after production.
                 if(pendingQuality ? policy.Keys.Count==0 : !IoBus.Matches(bus,item)) continue;
                 var view=ReadStorage(board,connection.CoreId,false); int before=moved;
                 foreach(var destination in NetworkDestinations(view,item,machine))
@@ -96,13 +140,18 @@ internal sealed partial class GameSession
                         if(pendingQuality && destination is DrawerInventory drawer && DrawerStorage.AcceptsType(drawer.Drawer,item)
                             && (drawer.First==null || drawer.First.identifier==item.identifier)
                             && (drawer.Used<DrawerStorage.Capacity(drawer.Drawer) || DrawerStorage.VoidOverflow(drawer.Drawer)))
-                            return 1; // Only the ingot's final grade is unknown.
+                            return 1; // Recheck the actual product against drawer stock on placement.
                         var slot=destination.TryFindOneValidInventorySlot(item);
                         if(slot==null || slot.numTransfer<=0) break;
                         if(preview) return slot.numTransfer;
                         int accepted=slot.TryAcceptOnce(Math.Min(requested-moved,slot.numTransfer));
                         if(accepted<=0) break;
                         moved+=accepted;
+                        if(singlePlacement)
+                        {
+                            Result(bus,moved,"ui_io_moved");
+                            return moved;
+                        }
                     }
                 }
                 if(!preview) Result(bus,moved-before,moved>before?"ui_io_moved":"ui_io_idle");

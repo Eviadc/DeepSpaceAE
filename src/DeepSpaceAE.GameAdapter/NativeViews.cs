@@ -338,7 +338,7 @@ internal sealed partial class GameSession
                         : RenderHandler.TryLoadFromAtlas(source[0], source[1]);
                 if (sprite != null) filterSprites[key] = sprite;
             }
-            string name = string.IsNullOrEmpty(key) ? UiText.Get(policy.Tags?"ui_set_tag_filter":"ui_set_filter") : policy.Tags ? TagChoiceName(key) : FilterName(bus, slot, key);
+            string name = string.IsNullOrEmpty(key) ? UiText.Get(policy.Tags?"ui_set_tag_filter":"ui_set_filter") : policy.Tags ? NativeWidgets.TagName(key) : FilterName(bus, slot, key);
             if(!policy.Tags && PartModes.IsFluid(bus) && IoBus.IsIo(bus) && key.Length>0)
             {
                 string recipe=PartStorage.Text(bus,"filter_liquid_name_"+i);
@@ -401,12 +401,11 @@ internal sealed partial class GameSession
         CloseEditor();
         int chosen = 0;
         editorWindow = MachineHelper.CreateMachineryWindow(true, MachineHelper.Panel(UiText.Get("ui_choose_category"), MachineryStack.Vertical(
-            NativeWidgets.Dropdown(tags.Select(TagChoiceName).ToArray(), 0, i => chosen = i, 220,visibleOptions:6),
+            NativeWidgets.Dropdown(tags.Select(NativeWidgets.TagName).ToArray(), 0, i => chosen = i, 220,visibleOptions:6),
             NativeWidgets.Text(UiText.Get("ui_tag_filter_help")),
             new MachineryButton(UiText.Get("ui_confirm"), () => { SetFilter(bus, slot, tags[chosen]); CloseEditor(); RenderFilters(); })), "tag", false));
         editorWindow.closeCallback = CloseEditor; editorWindow.Show().Center();
     }
-    private static string TagChoiceName(string key)=>NativeWidgets.HasTagLabel(key)?NativeWidgets.TagName(key)+" (#"+key+")":NativeWidgets.TagName(key);
     private void CloseEditor()
     { if (editorWindow != null) { var w = editorWindow; editorWindow = null; w.Hide(); UnityEngine.Object.Destroy(w.handler.gameObject); } }
     private MachineryButton PriorityControl(GameItem part)

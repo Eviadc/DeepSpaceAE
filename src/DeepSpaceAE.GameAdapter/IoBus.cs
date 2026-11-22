@@ -56,6 +56,11 @@ internal static class IoBus
         }
         return policy.Exclude?!match:match;
     }
+    // Custom machines can mark an inventory even when their UI has no native panel roles.
+    internal const string OutputInventoryTag="deepspaceae.machine_output";
+    internal static bool IsProductionOutput(GameItem owner,GameInventory inventory) =>
+        inventory.IsTag(OutputInventoryTag) || MachineSlots(owner,true).Contains(inventory);
+
     internal static List<GameInventory> MachineSlots(GameItem machine,bool import)=>FindSlots(machine,import,false);
     internal static List<GameInventory> TargetSlots(GameItem owner,bool import)
     {
@@ -76,13 +81,14 @@ internal static class IoBus
         // Its role is lost when the native save graph flattens the panel's inventories.
         bool ordinary=includeStorage && !machine.IsTag(MachineryHelper.MACHINERY_TAG)
             && (machine.IsTag(ContainerHelper.CONTAINER_TAG) || machine.IsTag(ContainerHelper.BACKPACK_TAG) || machine.IsTag("STORAGE"));
+        bool machineStorage=import && (machine.IsGameItemType("MACHINE") || machine.IsTag(MachineryHelper.MACHINERY_TAG));
         var queue=new Queue<(PixelElement Node,bool Match)>(); queue.Enqueue((root,ordinary));
         while(queue.Count>0)
         {
             var (node,match)=queue.Dequeue(); if(!seen.Add(node)) continue;
             if(node is GameInventory inv)
             {
-                if(match && ReferenceEquals(inv.GetParentItem(),machine) && !inv.IsTag(HopperHelper.NO_HOPPER_INVENTORY_TAG)) result.Add(inv);
+                if((match || import && inv.IsTag(OutputInventoryTag)) && ReferenceEquals(inv.GetParentItem(),machine) && !inv.IsTag(HopperHelper.NO_HOPPER_INVENTORY_TAG)) result.Add(inv);
                 continue;
             }
             if(node is GameItem) continue; // Never recurse into stored containers.
@@ -93,7 +99,7 @@ internal static class IoBus
                     break;
                 case MachineryPanel panel when panel.content!=null:
                     queue.Enqueue((panel.content,panel.role==null?match:panel.role==AutomationRules.MachineRole(import)
-                        || includeStorage && panel.role=="storage" || fluidInput && panel.role is ("container" or "water")));
+                        || (includeStorage || machineStorage) && panel.role=="storage" || fluidInput && panel.role is ("container" or "water")));
                     break;
                 case MachineryIntake intake when intake.content!=null:
                     queue.Enqueue((intake.content,match));

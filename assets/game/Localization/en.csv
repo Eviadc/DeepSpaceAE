@@ -260,7 +260,7 @@ setting_native_inventory_name,Use native inventory reads (compatibility)
 setting_native_inventory_desc,Off by default. Enable to use the public childItems getter for drawer access and terminal container-empty checks so other mods can intercept those reads. The native getter allocates and copies the full inventory each time; large drawers may slow down considerably. Applies on the next read. Transfers and ownership checks always use native APIs.
 setting_native_drawer_name,Use native drawer layout validation (compatibility)
 setting_native_drawer_desc,Off by default. Enable to run the complete native inventory layout validator including every hidden stored item and patches from other mods. Large drawers may stutter. When off only the visible representative is validated; native background and cell layout methods are retained. Applies on the next layout refresh; stored items and capacity are unchanged.
-ui_internal_tag,[Internal] {0}
+ui_internal_tag,〔{0}〕
 ui_io_overflow,Collect machine overflow
 tag_chemical_product_purity_tag,Chemical purity
 tag_activate_ingredient_tag,Active ingredient
